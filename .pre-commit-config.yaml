@@ -10,6 +10,8 @@ repos:
       - id: clippy
         name: clippy
         description: Check if all files follow the clippy style
+        # Note: This only runs on default crates in the workspace. Lint
+        # on all other crates is enforced in the CI pipeline.
         entry: cargo clippy --fix --allow-staged -- -D warnings
         language: system
         pass_filenames: false
