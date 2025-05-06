@@ -1,0 +1,26 @@
+[package]
+name = "block-data"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"
+
+[dependencies]
+approx = "0.5.1"
+num-traits = { version = "0.2.19", default-features = false, features = [
+  "libm",
+] }
+miniserde = { version = "0.1.42", default-features = false }
+nalgebra = { version = "0.33.2", default-features = false, features = [
+  "alloc",
+  "libm",
+] }
+strum = { version = "0.26.1", default-features = false, features = ["derive"] }
+pictorus-traits = { path = "../pictorus-traits" }
+
+[features]
+std = ["nalgebra/std", "miniserde/std"]

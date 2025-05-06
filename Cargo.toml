@@ -1,0 +1,18 @@
+[workspace]
+members = [
+  "block-data",
+  "pictorus-traits",
+  "pictorus-blocks",
+  "pictorus-internal",
+  "pictorus-linux",
+  "pictorus-sim",
+  "pictorus-stm32",
+]
+# Exclude platform-specific crates from the default crates
+default-members = [
+  "block-data",
+  "pictorus-traits",
+  "pictorus-blocks",
+  "pictorus-internal",
+]
+resolver = "3"

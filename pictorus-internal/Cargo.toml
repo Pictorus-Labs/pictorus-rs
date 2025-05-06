@@ -1,0 +1,33 @@
+[package]
+name = "pictorus-internal"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+pictorus-traits = { path = "../pictorus-traits" }
+block-data = { path = "../block-data" }
+embedded-hal = "1.0.0"
+embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [
+  "unproven",
+] }
+embedded-io = "0.6.1"
+embedded-time = "0.12.1"
+num-traits = { version = "0.2.19", default-features = false, features = [
+  "libm",
+] }
+log = "0.4.21"
+miniserde = { version = "0.1.42", default-features = false }
+cfg-if = "1.0.0"
+embedded-can = "0.4.1"
+nb = "1.1.0"
+chrono = { version = "0.4.40", optional = true }
+env_logger = { version = "0.11.8", optional = true }
+rtt-target = { git = "https://github.com/Pictorus-Labs/rtt-target", branch = "alignment-fix", optional = true }
+
+[dev-dependencies]
+temp-env = "0.3"
+
+[features]
+std = ["miniserde/std", "dep:env_logger", "dep:chrono"]
+rtt = ["dep:rtt-target"]

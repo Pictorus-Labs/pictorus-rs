@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+
+echo -e "\n===== RUST ====="
+if ! command -v cargo &> /dev/null
+then
+    echo "Rust not installed. Installing now..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+    echo "Rust installed. Restart your shell and run setup again."
+    exit 1
+fi
+echo "Rust is installed."
+
+echo -e "\n===== PRE-COMMIT HOOKS ====="
+if ! command -v pre-commit &> /dev/null
+then
+    echo "Pre-commit not installed. Installing now..."
+    pip install pre-commit
+    echo "Pre-commit installed."
+fi
+pre-commit install
+echo "pre-commit is installed."
