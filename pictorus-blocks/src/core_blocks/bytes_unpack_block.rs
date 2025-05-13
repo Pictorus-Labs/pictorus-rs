@@ -476,14 +476,14 @@ mod tests {
         assert_relative_eq!(unpacked.0, -23.0_f64);
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_eq!(unpacked.3, true);
+        assert!(unpacked.3);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
         assert_relative_eq!(unpacked.0, -23.0_f64);
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_eq!(unpacked.3, true);
+        assert!(unpacked.3);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -491,7 +491,7 @@ mod tests {
         assert_relative_eq!(unpacked.0, -23.0_f64);
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_eq!(unpacked.3, false);
+        assert!(!unpacked.3);
     }
 
     #[test]
@@ -516,7 +516,7 @@ mod tests {
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_eq!(unpacked.4, true);
+        assert!(unpacked.4);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -524,7 +524,7 @@ mod tests {
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_eq!(unpacked.4, true);
+        assert!(unpacked.4);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -533,7 +533,7 @@ mod tests {
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1);
-        assert_eq!(unpacked.4, false);
+        assert!(!unpacked.4);
     }
 
     #[test]
@@ -560,7 +560,7 @@ mod tests {
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_eq!(unpacked.5, true);
+        assert!(unpacked.5);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -569,7 +569,7 @@ mod tests {
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_eq!(unpacked.5, true);
+        assert!(unpacked.5);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -579,7 +579,7 @@ mod tests {
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_eq!(unpacked.5, false);
+        assert!(!unpacked.5);
     }
 
     #[test]
@@ -608,7 +608,7 @@ mod tests {
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_eq!(unpacked.6, true);
+        assert!(unpacked.6);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -618,7 +618,7 @@ mod tests {
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_eq!(unpacked.6, true);
+        assert!(unpacked.6);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -629,7 +629,7 @@ mod tests {
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_eq!(unpacked.6, false);
+        assert!(!unpacked.6);
 
         // Make it un-stale with new input
         let test_data = (1337.0, 12.0, 1994.0, -8.3, 71.92, -15.0);
@@ -641,7 +641,7 @@ mod tests {
         assert_relative_eq!(unpacked.3, -8.3_f64);
         assert_relative_eq!(unpacked.4, 71.0_f64); // Int storage drops decimal
         assert_relative_eq!(unpacked.5, 0.0_f64); // unsigned storage can't hold negative and defaults to 0
-        assert_eq!(unpacked.6, true);
+        assert!(unpacked.6);
     }
 
     #[test]
@@ -672,7 +672,7 @@ mod tests {
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
         assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert_eq!(unpacked.7, true);
+        assert!(unpacked.7);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -683,7 +683,7 @@ mod tests {
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
         assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert_eq!(unpacked.7, true);
+        assert!(unpacked.7);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -695,6 +695,6 @@ mod tests {
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
         assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert_eq!(unpacked.7, false);
+        assert!(!unpacked.7);
     }
 }
