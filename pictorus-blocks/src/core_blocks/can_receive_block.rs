@@ -34,23 +34,27 @@ impl Parameters {
 /// - S: The type of the input signal (e.g., f32, f64). Currently either f32 or f64.
 /// - C: The struct type for encoding and decoding the CAN data frame.
 /// - I: A scalar or tuple of output data (1 to 8 values of type S) quantized based on the CAN DBC file.
-pub struct CanReceiveBlock<const N: usize, S: Float, C, O: Pass + Default> {
+pub struct CanReceiveBlock<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> {
     rx_cb: RxCallback<C, S>,
     stale_check: StaleTracker,
     _phantom: core::marker::PhantomData<O>,
-    output_buffer: O,
+    output_buffer: O::Output,
     pub data: [OldBlockData; N],
     cache: [S; N],
     previous_stale_check_time_ms: f64,
 }
 
-impl<const N: usize, S: Float, C, O: Pass + Default> Default for CanReceiveBlock<N, S, C, O> {
+impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> Default
+    for CanReceiveBlock<N, S, C, O>
+{
     fn default() -> Self {
         panic!("CanReceiveBlock must be initialized using the ::new method");
     }
 }
 
-impl<const N: usize, S: Float, C, O: Pass + Default> CanReceiveBlock<N, S, C, O> {
+impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>>
+    CanReceiveBlock<N, S, C, O>
+{
     pub fn new(rx_cb: RxCallback<C, S>) -> Self {
         let data = core::array::from_fn(|_f| OldBlockData::from_scalar(0.));
         let cache = [S::zero(); N];
@@ -59,7 +63,7 @@ impl<const N: usize, S: Float, C, O: Pass + Default> CanReceiveBlock<N, S, C, O>
             stale_check: StaleTracker::from_ms(0.),
             _phantom: core::marker::PhantomData,
             data,
-            output_buffer: O::default(),
+            output_buffer: O::Output::default(),
             cache,
             previous_stale_check_time_ms: 0.0,
         }
@@ -69,12 +73,12 @@ impl<const N: usize, S: Float, C, O: Pass + Default> CanReceiveBlock<N, S, C, O>
 impl<const N: usize, S: Float, C: embedded_can::Frame, O: Pass + Default> ProcessBlock
     for CanReceiveBlock<N, S, C, O>
 where
-    O: ToTuple<S>,
+    O: ToTupleOutput<S>,
     S: From<f64>,
 {
     type Inputs = ByteSliceSignal;
 
-    type Output = O;
+    type Output = O::Output;
 
     type Parameters = Parameters;
 
@@ -101,100 +105,111 @@ where
         }
 
         // Update buffer
-        self.output_buffer = O::to_tuple(&self.cache)
-            .expect("parameters.signal_count is shorter than output tuple type");
+        self.output_buffer = O::to_tuple(
+            &self.cache,
+            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
+        )
+        .expect("parameters.signal_count is shorter than output tuple type");
         self.output_buffer.as_by()
     }
 }
 
-impl<const N: usize, S: Float, C, O: Pass + Default> IsValid for CanReceiveBlock<N, S, C, O> {
+impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> IsValid
+    for CanReceiveBlock<N, S, C, O>
+{
     fn is_valid(&self, app_time_s: f64) -> OldBlockData {
         self.stale_check.is_valid(app_time_s)
     }
 }
 
 /// Trait to convert a vector of floats into a tuple.
-trait ToTuple<S: Float>: Sized {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()>;
+pub trait ToTupleOutput<S: Float>: Sized {
+    type Output: Pass + Default;
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()>;
 }
 
-impl<S: Float + Sized> ToTuple<S> for S {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
+impl<S: Float + Sized> ToTupleOutput<S> for S {
+    type Output = (S, bool);
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()> {
         if vec.is_empty() {
             Err(())
         } else {
-            Ok(vec[0])
+            Ok((vec[0], is_valid))
         }
     }
 }
 
-impl<S: Float> ToTuple<S> for (S, S) {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
+impl<S: Float> ToTupleOutput<S> for (S, S) {
+    type Output = (S, S, bool);
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()> {
         if vec.len() < 2 {
             Err(())
         } else {
-            Ok((vec[0], vec[1]))
+            Ok((vec[0], vec[1], is_valid))
         }
     }
 }
 
-impl<S: Float> ToTuple<S> for (S, S, S) {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
+impl<S: Float> ToTupleOutput<S> for (S, S, S) {
+    type Output = (S, S, S, bool);
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()> {
         if vec.len() < 3 {
             Err(())
         } else {
-            Ok((vec[0], vec[1], vec[2]))
+            Ok((vec[0], vec[1], vec[2], is_valid))
         }
     }
 }
 
-impl<S: Float> ToTuple<S> for (S, S, S, S) {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
+impl<S: Float> ToTupleOutput<S> for (S, S, S, S) {
+    type Output = (S, S, S, S, bool);
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()> {
         if vec.len() < 4 {
             Err(())
         } else {
-            Ok((vec[0], vec[1], vec[2], vec[3]))
+            Ok((vec[0], vec[1], vec[2], vec[3], is_valid))
         }
     }
 }
 
-impl<S: Float> ToTuple<S> for (S, S, S, S, S) {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
+impl<S: Float> ToTupleOutput<S> for (S, S, S, S, S) {
+    type Output = (S, S, S, S, S, bool);
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()> {
         if vec.len() < 5 {
             Err(())
         } else {
-            Ok((vec[0], vec[1], vec[2], vec[3], vec[4]))
+            Ok((vec[0], vec[1], vec[2], vec[3], vec[4], is_valid))
         }
     }
 }
 
-impl<S: Float> ToTuple<S> for (S, S, S, S, S, S) {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
+impl<S: Float> ToTupleOutput<S> for (S, S, S, S, S, S) {
+    type Output = (S, S, S, S, S, S, bool);
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()> {
         if vec.len() < 6 {
             Err(())
         } else {
-            Ok((vec[0], vec[1], vec[2], vec[3], vec[4], vec[5]))
+            Ok((vec[0], vec[1], vec[2], vec[3], vec[4], vec[5], is_valid))
         }
     }
 }
 
-impl<S: Float> ToTuple<S> for (S, S, S, S, S, S, S) {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
+impl<S: Float> ToTupleOutput<S> for (S, S, S, S, S, S, S) {
+    type Output = (S, S, S, S, S, S, S, bool);
+
+    fn to_tuple(vec: &[S], is_valid: bool) -> Result<Self::Output, ()> {
         if vec.len() < 7 {
             Err(())
         } else {
-            Ok((vec[0], vec[1], vec[2], vec[3], vec[4], vec[5], vec[6]))
-        }
-    }
-}
-
-impl<S: Float> ToTuple<S> for (S, S, S, S, S, S, S, S) {
-    fn to_tuple(vec: &[S]) -> Result<Self, ()> {
-        if vec.len() < 8 {
-            Err(())
-        } else {
             Ok((
-                vec[0], vec[1], vec[2], vec[3], vec[4], vec[5], vec[6], vec[7],
+                vec[0], vec[1], vec[2], vec[3], vec[4], vec[5], vec[6], is_valid,
             ))
         }
     }
@@ -271,7 +286,7 @@ mod tests {
             CanReceiveBlock::<1, f64, StubCanParser, f64>::new(stub_can_parser_callback);
 
         let output = block.process(&parameters, &runtime.context(), &[42, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(output, 42.);
+        assert_eq!(output.0, 42.);
         assert_eq!(
             block
                 .is_valid(runtime.context().time.as_secs_f64())
@@ -283,7 +298,7 @@ mod tests {
 
         // Simulate a stale message
         let output = block.process(&parameters, &runtime.context(), &[]);
-        assert_eq!(output, 42.);
+        assert_eq!(output.0, 42.);
         assert_eq!(
             block
                 .is_valid(runtime.context().time.as_secs_f64())
@@ -293,21 +308,19 @@ mod tests {
     }
 
     #[test]
-    fn test_can_receive_8_signals() {
+    fn test_can_receive_7_signals() {
         let id = embedded_can::Id::Standard(StandardId::new(0x123).expect("Could not create ID"));
         let mut runtime = StubRuntime::default();
 
         let parameters = Parameters::new(id, 8, 1000.0);
 
-        let mut block = CanReceiveBlock::<
-            8,
-            f64,
-            StubCanParser,
-            (f64, f64, f64, f64, f64, f64, f64, f64),
-        >::new(stub_can_parser_callback);
+        let mut block =
+            CanReceiveBlock::<8, f64, StubCanParser, (f64, f64, f64, f64, f64, f64, f64)>::new(
+                stub_can_parser_callback,
+            );
 
         let output = block.process(&parameters, &runtime.context(), &[42, 1, 2, 3, 4, 5, 6, 7]);
-        assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., 7.));
+        assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., true));
         assert_eq!(
             block
                 .is_valid(runtime.context().time.as_secs_f64())
@@ -319,7 +332,7 @@ mod tests {
         runtime.set_time(Duration::from_secs(2));
 
         let output = block.process(&parameters, &runtime.context(), &[]);
-        assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., 7.));
+        assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., false));
         assert_eq!(
             block
                 .is_valid(runtime.context().time.as_secs_f64())
@@ -331,20 +344,20 @@ mod tests {
     #[test]
     fn to_tuple() {
         // Test the conversion of a vector to a tuple of the same size
-        let array_8 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let tuple_8 = <(f64, f64, f64, f64, f64, f64, f64, f64)>::to_tuple(&array_8);
-        assert!(tuple_8.is_ok());
-        assert!(tuple_8.unwrap() == (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0));
+        let array_7 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
+        let tuple_7 = <(f64, f64, f64, f64, f64, f64, f64)>::to_tuple(&array_7, true);
+        assert!(tuple_7.is_ok());
+        assert!(tuple_7.unwrap() == (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, true));
 
         // Test the conversion of a vector smaller than requested tuple
-        let array_7 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
-        let tuple_8 = <(f64, f64, f64, f64, f64, f64, f64, f64)>::to_tuple(&array_7);
-        assert!(tuple_8.is_err());
+        let array_6 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let tuple_7 = <(f64, f64, f64, f64, f64, f64, f64)>::to_tuple(&array_7, true);
+        assert!(tuple_7.is_err());
 
         // Test the conversion of a vector larger than requested tuple
         let array_2 = [1.0, 2.0];
-        let tuple_1 = <f64>::to_tuple(&array_2);
+        let tuple_1 = <f64>::to_tuple(&array_2, true);
         assert!(tuple_1.is_ok());
-        assert!(tuple_1.unwrap() == 1.0);
+        assert!(tuple_1.unwrap().0 == 1.0);
     }
 }

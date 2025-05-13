@@ -50,7 +50,7 @@ impl IsValid for UdpReceiveBlock {
 impl ProcessBlock for UdpReceiveBlock {
     type Parameters = Parameters;
     type Inputs = ByteSliceSignal;
-    type Output = ByteSliceSignal;
+    type Output = (ByteSliceSignal, bool);
 
     fn process<'b>(
         &'b mut self,
@@ -71,6 +71,9 @@ impl ProcessBlock for UdpReceiveBlock {
             self.data.set_bytes(&self.buffer);
         }
 
-        &self.buffer
+        (
+            &self.buffer,
+            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
+        )
     }
 }

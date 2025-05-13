@@ -47,7 +47,7 @@ impl Default for SpiReceiveBlock {
 impl ProcessBlock for SpiReceiveBlock {
     type Parameters = Parameters;
     type Inputs = ByteSliceSignal;
-    type Output = ByteSliceSignal;
+    type Output = (ByteSliceSignal, bool);
 
     fn process<'b>(
         &'b mut self,
@@ -69,7 +69,10 @@ impl ProcessBlock for SpiReceiveBlock {
             self.stale_check.mark_updated(context.time().as_secs_f64());
         }
 
-        &self.buffer
+        (
+            &self.buffer,
+            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
+        )
     }
 }
 
@@ -96,7 +99,7 @@ mod tests {
 
         // Buffer the input data
         let output = block.process(&parameters, &runtime.context(), input_data);
-        assert_eq!(output, input_data);
+        assert_eq!(output.0, input_data);
         assert_eq!(block.data.to_bytes(), input_data);
         let is_valid = block
             .stale_check
@@ -106,7 +109,7 @@ mod tests {
         runtime.set_time(Duration::from_secs(1));
 
         let output = block.process(&parameters, &runtime.context(), &[]);
-        assert_eq!(output, input_data);
+        assert_eq!(output.0, input_data);
         assert_eq!(block.data.to_bytes(), input_data);
         let is_valid = block
             .stale_check

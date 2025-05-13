@@ -60,7 +60,7 @@ impl IsValid for I2cInputBlock {
 impl ProcessBlock for I2cInputBlock {
     type Parameters = Parameters;
     type Inputs = ByteSliceSignal;
-    type Output = ByteSliceSignal;
+    type Output = (ByteSliceSignal, bool);
 
     fn process<'b>(
         &'b mut self,
@@ -82,7 +82,10 @@ impl ProcessBlock for I2cInputBlock {
             self.data.set_bytes(&self.buffer);
         }
 
-        &self.buffer
+        (
+            &self.buffer,
+            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
+        )
     }
 }
 
@@ -102,7 +105,7 @@ mod tests {
         let input_data: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         let output = block.process(&parameters, &runtime.context(), input_data);
-        assert_eq!(output, input_data);
+        assert_eq!(output.0, input_data);
         assert_eq!(block.data.to_bytes(), input_data);
         let valid = block
             .is_valid(runtime.context().time().as_secs_f64())
@@ -114,7 +117,7 @@ mod tests {
         // When the I2cWrapper has an error, the buffer is clear and the parameters.read_bytes is not
         // equal to the length of the empty buffer, however the previous value is buffered
         let output = block.process(&parameters, &runtime.context(), &[]);
-        assert_eq!(output, input_data);
+        assert_eq!(output.0, input_data);
         let valid = block.is_valid(runtime.context().time().as_secs_f64());
         assert_eq!(valid.scalar(), 0.0);
     }
