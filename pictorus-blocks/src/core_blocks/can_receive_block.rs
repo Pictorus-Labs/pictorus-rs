@@ -351,7 +351,7 @@ mod tests {
 
         // Test the conversion of a vector smaller than requested tuple
         let array_6 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        let tuple_7 = <(f64, f64, f64, f64, f64, f64, f64)>::to_tuple(&array_7, true);
+        let tuple_7 = <(f64, f64, f64, f64, f64, f64, f64)>::to_tuple(&array_6, true);
         assert!(tuple_7.is_err());
 
         // Test the conversion of a vector larger than requested tuple
