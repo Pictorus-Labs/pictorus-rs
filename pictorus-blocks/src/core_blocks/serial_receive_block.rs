@@ -219,7 +219,7 @@ impl SerialReceiveBlock {
 impl ProcessBlock for SerialReceiveBlock {
     type Parameters = Parameters;
     type Inputs = ByteSliceSignal;
-    type Output = ByteSliceSignal;
+    type Output = (ByteSliceSignal, bool);
 
     fn process<'b>(
         &'b mut self,
@@ -255,7 +255,10 @@ impl ProcessBlock for SerialReceiveBlock {
             debug!("Read too many bytes without a valid message. Clearing buffer",);
         }
 
-        &self.output
+        (
+            &self.output,
+            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
+        )
     }
 }
 
@@ -275,7 +278,7 @@ mod tests {
         // Test with a valid message
         let input_data = b"$Hello World\r\n";
         let result = block.process(&parameters, &context, input_data);
-        assert_eq!(result, b"Hello World");
+        assert_eq!(result.0, b"Hello World");
     }
 
     #[test]
@@ -288,22 +291,22 @@ mod tests {
         let input_data_1 = [0; 1024]; // BUFF_SIZE_BYTES is 1024
 
         let result = block.process(&parameters, &context, &input_data_1);
-        assert_eq!(result, b"");
+        assert_eq!(result.0, b"");
         assert_eq!(block.buffer.len(), 1024);
 
         let input_data_2 = [0; 1023]; // BUFF_SIZE_BYTES is 1023
         let result = block.process(&parameters, &context, &input_data_2); // Buffer resets at buffer >= 2048
-        assert_eq!(result, b"");
+        assert_eq!(result.0, b"");
         assert_eq!(block.buffer.len(), 2047);
 
         let input_data_3 = b"Still no delimiter";
         let result = block.process(&parameters, &context, input_data_3); // Buffer resets at buffer >= 2048
-        assert_eq!(result, b"");
+        assert_eq!(result.0, b"");
         assert_eq!(block.buffer.len(), b"Still no delimiter".len());
 
         let input_data_delimited = b"STXHelloWorldETX"; // Data with delimiter
         let result = block.process(&parameters, &context, input_data_delimited);
-        assert_eq!(result, b"HelloWorld");
+        assert_eq!(result.0, b"HelloWorld");
         assert_eq!(block.buffer.len(), 0);
     }
 
@@ -316,7 +319,8 @@ mod tests {
 
         // Test with a valid message
         let input_data = b"$Hello World\r\n";
-        block.process(&parameters, &runtime.context(), input_data);
+        let result = block.process(&parameters, &runtime.context(), input_data);
+        assert!(result.1);
         assert_eq!(
             block
                 .stale_check
@@ -327,7 +331,8 @@ mod tests {
         for i in 1..11 {
             // 100ms to 1s
             runtime.set_time(Duration::from_millis(i * 100)); // 10 Hz runtime (100ms per tick)
-            block.process(&parameters, &runtime.context(), &[]);
+            let result = block.process(&parameters, &runtime.context(), &[]);
+            assert!(result.1);
             assert_eq!(
                 block
                     .stale_check
@@ -338,7 +343,8 @@ mod tests {
 
         // Stale
         runtime.set_time(Duration::from_millis(11 * 100)); // 1.1s
-        block.process(&parameters, &runtime.context(), &[]);
+        let result = block.process(&parameters, &runtime.context(), &[]);
+        assert!(!result.1);
         assert_eq!(
             block
                 .stale_check

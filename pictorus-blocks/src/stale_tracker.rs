@@ -41,9 +41,8 @@ impl StaleTracker {
         self.last_updated = Some(now);
     }
 
-    // TODO: Update with core::time::Duration when all blocks are updated
-    pub fn is_valid(&self, app_time_s: f64) -> BlockData {
-        let is_valid = match self.last_updated {
+    pub fn is_valid_bool(&self, app_time_s: f64) -> bool {
+        match self.last_updated {
             None => false,
             Some(inst) => inst
                 .checked_duration_until(&self.seconds_to_instant(app_time_s))
@@ -51,8 +50,12 @@ impl StaleTracker {
                 .and_then(Result::ok)
                 .map(|dur| dur <= self.stale_duration)
                 .unwrap_or(false),
-        };
-        BlockData::scalar_from_bool(is_valid)
+        }
+    }
+
+    // TODO: Update with core::time::Duration when all blocks are updated
+    pub fn is_valid(&self, app_time_s: f64) -> BlockData {
+        BlockData::scalar_from_bool(self.is_valid_bool(app_time_s))
     }
 }
 

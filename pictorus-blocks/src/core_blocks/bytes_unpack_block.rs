@@ -120,7 +120,7 @@ pub trait Apply: Default + Pass {
     fn is_valid(&self) -> bool;
 }
 
-impl<T: Unpack> Apply for (T, f64) {
+impl<T: Unpack> Apply for (T, bool) {
     type Parameters = Parameters<1>;
 
     fn apply(
@@ -131,11 +131,11 @@ impl<T: Unpack> Apply for (T, f64) {
     ) -> bool {
         let val1 = T::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1).0;
         if let Some(val1) = val1 {
-            *dest = (val1, 1.0);
+            *dest = (val1, true);
             true
         } else {
             if update_age > parameters.stale_age {
-                dest.1 = 0.0;
+                dest.1 = false;
             }
             false
         }
@@ -146,11 +146,11 @@ impl<T: Unpack> Apply for (T, f64) {
     }
 
     fn is_valid(&self) -> bool {
-        self.1.is_truthy()
+        self.1
     }
 }
 
-impl<T1: Unpack, T2: Unpack> Apply for (T1, T2, f64) {
+impl<T1: Unpack, T2: Unpack> Apply for (T1, T2, bool) {
     type Parameters = Parameters<2>;
 
     fn apply(
@@ -162,11 +162,11 @@ impl<T1: Unpack, T2: Unpack> Apply for (T1, T2, f64) {
         let (val1, data) = T1::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1);
         let (val2, _) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
         if let (Some(val1), Some(val2)) = (val1, val2) {
-            *dest = (val1, val2, 1.0);
+            *dest = (val1, val2, true);
             true
         } else {
             if update_age > parameters.stale_age {
-                dest.2 = 0.0;
+                dest.2 = false;
             }
             false
         }
@@ -180,11 +180,11 @@ impl<T1: Unpack, T2: Unpack> Apply for (T1, T2, f64) {
     }
 
     fn is_valid(&self) -> bool {
-        self.2.is_truthy()
+        self.2
     }
 }
 
-impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3, f64) {
+impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3, bool) {
     type Parameters = Parameters<3>;
 
     fn apply(
@@ -197,11 +197,11 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3, f64) {
         let (val2, data) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
         let (val3, _) = T3::unpack(data, parameters.pack_spec[2].0, parameters.pack_spec[2].1);
         if let (Some(val1), Some(val2), Some(val3)) = (val1, val2, val3) {
-            *dest = (val1, val2, val3, 1.0);
+            *dest = (val1, val2, val3, true);
             true
         } else {
             if update_age > parameters.stale_age {
-                dest.3 = 0.0;
+                dest.3 = false;
             }
             false
         }
@@ -215,11 +215,11 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3, f64) {
         ]
     }
     fn is_valid(&self) -> bool {
-        self.3.is_truthy()
+        self.3
     }
 }
 
-impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4, f64) {
+impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4, bool) {
     type Parameters = Parameters<4>;
 
     fn apply(
@@ -233,11 +233,11 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4, 
         let (val3, data) = T3::unpack(data, parameters.pack_spec[2].0, parameters.pack_spec[2].1);
         let (val4, _) = T4::unpack(data, parameters.pack_spec[3].0, parameters.pack_spec[3].1);
         if let (Some(val1), Some(val2), Some(val3), Some(val4)) = (val1, val2, val3, val4) {
-            *dest = (val1, val2, val3, val4, 1.0);
+            *dest = (val1, val2, val3, val4, true);
             true
         } else {
             if update_age > parameters.stale_age {
-                dest.4 = 0.0;
+                dest.4 = false;
             }
             false
         }
@@ -253,12 +253,12 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4, 
     }
 
     fn is_valid(&self) -> bool {
-        self.4.is_truthy()
+        self.4
     }
 }
 
 impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack> Apply
-    for (T1, T2, T3, T4, T5, f64)
+    for (T1, T2, T3, T4, T5, bool)
 {
     type Parameters = Parameters<5>;
 
@@ -276,11 +276,11 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack> Apply
         if let (Some(val1), Some(val2), Some(val3), Some(val4), Some(val5)) =
             (val1, val2, val3, val4, val5)
         {
-            *dest = (val1, val2, val3, val4, val5, 1.0);
+            *dest = (val1, val2, val3, val4, val5, true);
             true
         } else {
             if update_age > parameters.stale_age {
-                dest.5 = 0.0;
+                dest.5 = false;
             }
             false
         }
@@ -297,12 +297,12 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack> Apply
     }
 
     fn is_valid(&self) -> bool {
-        self.5.is_truthy()
+        self.5
     }
 }
 
 impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack> Apply
-    for (T1, T2, T3, T4, T5, T6, f64)
+    for (T1, T2, T3, T4, T5, T6, bool)
 {
     type Parameters = Parameters<6>;
 
@@ -321,11 +321,11 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack> App
         if let (Some(val1), Some(val2), Some(val3), Some(val4), Some(val5), Some(val6)) =
             (val1, val2, val3, val4, val5, val6)
         {
-            *dest = (val1, val2, val3, val4, val5, val6, 1.0);
+            *dest = (val1, val2, val3, val4, val5, val6, true);
             true
         } else {
             if update_age > parameters.stale_age {
-                dest.6 = 0.0;
+                dest.6 = false;
             }
             false
         }
@@ -343,12 +343,12 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack> App
     }
 
     fn is_valid(&self) -> bool {
-        self.6.is_truthy()
+        self.6
     }
 }
 
 impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack, T7: Unpack> Apply
-    for (T1, T2, T3, T4, T5, T6, T7, f64)
+    for (T1, T2, T3, T4, T5, T6, T7, bool)
 {
     type Parameters = Parameters<7>;
 
@@ -375,11 +375,11 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack, T7:
             Some(val7),
         ) = (val1, val2, val3, val4, val5, val6, val7)
         {
-            *dest = (val1, val2, val3, val4, val5, val6, val7, 1.0);
+            *dest = (val1, val2, val3, val4, val5, val6, val7, true);
             true
         } else {
             if update_age > parameters.stale_age {
-                dest.7 = 0.0;
+                dest.7 = false;
             }
             false
         }
@@ -397,7 +397,7 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack, T7:
         ]
     }
     fn is_valid(&self) -> bool {
-        self.7.is_truthy()
+        self.7
     }
 }
 
@@ -412,14 +412,14 @@ mod tests {
     fn test_bytes_unpack_1_output() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<f64>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<(f64, bool)>::default();
         let spec_strings = &["I8:BigEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
 
         // Test happy path
         let test_data = 42.0;
-        let expected = (42.0, 1.0);
+        let expected = (42.0, true);
         let packed = pack_block.process(&pack_parameters, &context, test_data);
         let unpacked = block.process(&parameters, &context, packed);
         assert_eq!(unpacked, expected);
@@ -431,21 +431,21 @@ mod tests {
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_eq!(unpacked, (42.0, 0.0));
+        assert_eq!(unpacked, (42.0, false));
     }
 
     #[test]
     fn test_bytes_unpack_2_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, bool)>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
 
         // Test happy path
         let test_data = (-23.0, 43.0);
-        let expected = (-23.0, 43.0, 1.0);
+        let expected = (-23.0, 43.0, true);
         let packed = pack_block.process(&pack_parameters, &context, test_data);
         let unpacked = block.process(&parameters, &context, packed);
         assert_eq!(unpacked, expected);
@@ -457,14 +457,14 @@ mod tests {
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_eq!(unpacked, (-23.0, 43.0, 0.0));
+        assert_eq!(unpacked, (-23.0, 43.0, false));
     }
 
     #[test]
     fn test_bytes_unpack_3_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, bool)>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian", "F32:BigEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
@@ -476,14 +476,14 @@ mod tests {
         assert_relative_eq!(unpacked.0, -23.0_f64);
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_eq!(unpacked.3, 1.0);
+        assert!(unpacked.3);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
         assert_relative_eq!(unpacked.0, -23.0_f64);
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_eq!(unpacked.3, 1.0);
+        assert!(unpacked.3);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -491,14 +491,14 @@ mod tests {
         assert_relative_eq!(unpacked.0, -23.0_f64);
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_eq!(unpacked.3, 0.0);
+        assert!(!unpacked.3);
     }
 
     #[test]
     fn test_bytes_unpack_4_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, bool)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -516,7 +516,7 @@ mod tests {
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_eq!(unpacked.4, 1.0);
+        assert!(unpacked.4);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -524,7 +524,7 @@ mod tests {
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_eq!(unpacked.4, 1.0);
+        assert!(unpacked.4);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -533,14 +533,14 @@ mod tests {
         assert_relative_eq!(unpacked.1, 43.0_f64);
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1);
-        assert_eq!(unpacked.4, 0.0);
+        assert!(!unpacked.4);
     }
 
     #[test]
     fn test_bytes_unpack_5_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, bool)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -560,7 +560,7 @@ mod tests {
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_eq!(unpacked.5, 1.0);
+        assert!(unpacked.5);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -569,7 +569,7 @@ mod tests {
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_eq!(unpacked.5, 1.0);
+        assert!(unpacked.5);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -579,14 +579,14 @@ mod tests {
         assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_eq!(unpacked.5, 0.0);
+        assert!(!unpacked.5);
     }
 
     #[test]
     fn test_bytes_unpack_6_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, bool)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -608,7 +608,7 @@ mod tests {
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_eq!(unpacked.6, 1.0);
+        assert!(unpacked.6);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -618,7 +618,7 @@ mod tests {
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_eq!(unpacked.6, 1.0);
+        assert!(unpacked.6);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -629,7 +629,7 @@ mod tests {
         assert_relative_eq!(unpacked.3, 3.1_f64);
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_eq!(unpacked.6, 0.0);
+        assert!(!unpacked.6);
 
         // Make it un-stale with new input
         let test_data = (1337.0, 12.0, 1994.0, -8.3, 71.92, -15.0);
@@ -641,14 +641,14 @@ mod tests {
         assert_relative_eq!(unpacked.3, -8.3_f64);
         assert_relative_eq!(unpacked.4, 71.0_f64); // Int storage drops decimal
         assert_relative_eq!(unpacked.5, 0.0_f64); // unsigned storage can't hold negative and defaults to 0
-        assert_eq!(unpacked.6, 1.0);
+        assert!(unpacked.6);
     }
 
     #[test]
     fn test_bytes_unpack_7_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, f64, bool)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -672,7 +672,7 @@ mod tests {
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
         assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert_eq!(unpacked.7, 1.0);
+        assert!(unpacked.7);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
@@ -683,7 +683,7 @@ mod tests {
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
         assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert_eq!(unpacked.7, 1.0);
+        assert!(unpacked.7);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
@@ -695,6 +695,6 @@ mod tests {
         assert_relative_eq!(unpacked.4, 42.0_f64);
         assert_relative_eq!(unpacked.5, 9999.0_f64);
         assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert_eq!(unpacked.7, 0.0);
+        assert!(!unpacked.7);
     }
 }
