@@ -6,9 +6,6 @@
 //! of blocks that cover most use cases, however a major goal of this trait system is to allow users to implement custom functionality by
 //! writing their own implementation of these traits. The Block traits provide a consistent interface that allows the Front end and Code
 //! generator to work with all blocks (custom and otherwise) the same way.
-//!
-//! # Features
-//! - `miniserde`: Adds `miniserde` as a dependency and derives `miniserde::Serialize` for non-primitive types defined in this crate
 
 #![no_std]
 // and conditionally no_alloc
@@ -259,7 +256,6 @@ impl Pass for ByteSliceSignal {
 // XXX should this encode row-order vs column-order?
 // NOTE the `Scalar` trait bound prevents the creation of nested matrices
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "miniserde", derive(miniserde::Serialize))]
 pub struct Matrix<const NROWS: usize, const NCOLS: usize, T>
 where
     T: Scalar,

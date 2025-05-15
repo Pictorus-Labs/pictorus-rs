@@ -5,9 +5,3 @@ publish = false          # this is a sketch
 
 [lib]
 doctest = false
-
-[dependencies]
-miniserde = { version = "0.1.42", optional = true, default-features = false }
-
-[features]
-miniserde = ["dep:miniserde"]
