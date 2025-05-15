@@ -10,14 +10,14 @@ use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 pub struct BytesUnpackBlock<T: Apply> {
     pub data: Vec<OldBlockData>,
-    buffer: T,
+    buffer: T::Output,
     last_valid_time: Option<Duration>,
 }
 
 impl<T: Apply> Default for BytesUnpackBlock<T> {
     fn default() -> Self {
-        let buffer = T::default();
-        let data = buffer.as_old_block_data();
+        let buffer = T::Output::default();
+        let data = T::as_old_block_data(&buffer);
         BytesUnpackBlock {
             data,
             buffer,
@@ -28,7 +28,7 @@ impl<T: Apply> Default for BytesUnpackBlock<T> {
 
 impl<T: Apply> ProcessBlock for BytesUnpackBlock<T> {
     type Inputs = ByteSliceSignal;
-    type Output = T;
+    type Output = T::Output;
     type Parameters = T::Parameters;
 
     fn process<'b>(
@@ -39,7 +39,7 @@ impl<T: Apply> ProcessBlock for BytesUnpackBlock<T> {
     ) -> PassBy<'b, Self::Output> {
         let update_age = context.time() - self.last_valid_time.unwrap_or_default();
         let unpack_success = T::apply(&mut self.buffer, inputs, parameters, update_age);
-        self.data = self.buffer.as_old_block_data();
+        self.data = T::as_old_block_data(&self.buffer);
         if unpack_success {
             self.last_valid_time = Some(context.time());
         }
@@ -106,25 +106,27 @@ impl Unpack for f64 {
 }
 
 pub trait Apply: Default + Pass {
+    type Output: Pass + Default;
     type Parameters;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
     ) -> bool;
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData>;
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData>;
 
-    fn is_valid(&self) -> bool;
+    fn is_valid(val: &Self::Output) -> bool;
 }
 
-impl<T: Unpack> Apply for (T, bool) {
+impl<T: Unpack> Apply for T {
+    type Output = (T, bool);
     type Parameters = Parameters<1>;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
@@ -141,20 +143,21 @@ impl<T: Unpack> Apply for (T, bool) {
         }
     }
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData> {
-        vec![OldBlockData::from_scalar(self.0.as_f64())]
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
+        vec![OldBlockData::from_scalar(val.0.as_f64())]
     }
 
-    fn is_valid(&self) -> bool {
-        self.1
+    fn is_valid(val: &Self::Output) -> bool {
+        val.1
     }
 }
 
-impl<T1: Unpack, T2: Unpack> Apply for (T1, T2, bool) {
+impl<T1: Unpack, T2: Unpack> Apply for (T1, T2) {
+    type Output = (T1, T2, bool);
     type Parameters = Parameters<2>;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
@@ -172,23 +175,24 @@ impl<T1: Unpack, T2: Unpack> Apply for (T1, T2, bool) {
         }
     }
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData> {
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
         vec![
-            OldBlockData::from_scalar(self.0.as_f64()),
-            OldBlockData::from_scalar(self.1.as_f64()),
+            OldBlockData::from_scalar(val.0.as_f64()),
+            OldBlockData::from_scalar(val.1.as_f64()),
         ]
     }
 
-    fn is_valid(&self) -> bool {
-        self.2
+    fn is_valid(val: &Self::Output) -> bool {
+        val.2
     }
 }
 
-impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3, bool) {
+impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3) {
+    type Output = (T1, T2, T3, bool);
     type Parameters = Parameters<3>;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
@@ -207,23 +211,24 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3, bool) {
         }
     }
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData> {
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
         vec![
-            OldBlockData::from_scalar(self.0.as_f64()),
-            OldBlockData::from_scalar(self.1.as_f64()),
-            OldBlockData::from_scalar(self.2.as_f64()),
+            OldBlockData::from_scalar(val.0.as_f64()),
+            OldBlockData::from_scalar(val.1.as_f64()),
+            OldBlockData::from_scalar(val.2.as_f64()),
         ]
     }
-    fn is_valid(&self) -> bool {
-        self.3
+    fn is_valid(val: &Self::Output) -> bool {
+        val.3
     }
 }
 
-impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4, bool) {
+impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4) {
+    type Output = (T1, T2, T3, T4, bool);
     type Parameters = Parameters<4>;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
@@ -243,27 +248,26 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4, 
         }
     }
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData> {
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
         vec![
-            OldBlockData::from_scalar(self.0.as_f64()),
-            OldBlockData::from_scalar(self.1.as_f64()),
-            OldBlockData::from_scalar(self.2.as_f64()),
-            OldBlockData::from_scalar(self.3.as_f64()),
+            OldBlockData::from_scalar(val.0.as_f64()),
+            OldBlockData::from_scalar(val.1.as_f64()),
+            OldBlockData::from_scalar(val.2.as_f64()),
+            OldBlockData::from_scalar(val.3.as_f64()),
         ]
     }
 
-    fn is_valid(&self) -> bool {
-        self.4
+    fn is_valid(val: &Self::Output) -> bool {
+        val.4
     }
 }
 
-impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack> Apply
-    for (T1, T2, T3, T4, T5, bool)
-{
+impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack> Apply for (T1, T2, T3, T4, T5) {
+    type Output = (T1, T2, T3, T4, T5, bool);
     type Parameters = Parameters<5>;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
@@ -286,28 +290,29 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack> Apply
         }
     }
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData> {
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
         vec![
-            OldBlockData::from_scalar(self.0.as_f64()),
-            OldBlockData::from_scalar(self.1.as_f64()),
-            OldBlockData::from_scalar(self.2.as_f64()),
-            OldBlockData::from_scalar(self.3.as_f64()),
-            OldBlockData::from_scalar(self.4.as_f64()),
+            OldBlockData::from_scalar(val.0.as_f64()),
+            OldBlockData::from_scalar(val.1.as_f64()),
+            OldBlockData::from_scalar(val.2.as_f64()),
+            OldBlockData::from_scalar(val.3.as_f64()),
+            OldBlockData::from_scalar(val.4.as_f64()),
         ]
     }
 
-    fn is_valid(&self) -> bool {
-        self.5
+    fn is_valid(val: &Self::Output) -> bool {
+        val.5
     }
 }
 
 impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack> Apply
-    for (T1, T2, T3, T4, T5, T6, bool)
+    for (T1, T2, T3, T4, T5, T6)
 {
+    type Output = (T1, T2, T3, T4, T5, T6, bool);
     type Parameters = Parameters<6>;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
@@ -331,29 +336,30 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack> App
         }
     }
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData> {
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
         vec![
-            OldBlockData::from_scalar(self.0.as_f64()),
-            OldBlockData::from_scalar(self.1.as_f64()),
-            OldBlockData::from_scalar(self.2.as_f64()),
-            OldBlockData::from_scalar(self.3.as_f64()),
-            OldBlockData::from_scalar(self.4.as_f64()),
-            OldBlockData::from_scalar(self.5.as_f64()),
+            OldBlockData::from_scalar(val.0.as_f64()),
+            OldBlockData::from_scalar(val.1.as_f64()),
+            OldBlockData::from_scalar(val.2.as_f64()),
+            OldBlockData::from_scalar(val.3.as_f64()),
+            OldBlockData::from_scalar(val.4.as_f64()),
+            OldBlockData::from_scalar(val.5.as_f64()),
         ]
     }
 
-    fn is_valid(&self) -> bool {
-        self.6
+    fn is_valid(val: &Self::Output) -> bool {
+        val.6
     }
 }
 
 impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack, T7: Unpack> Apply
-    for (T1, T2, T3, T4, T5, T6, T7, bool)
+    for (T1, T2, T3, T4, T5, T6, T7)
 {
+    type Output = (T1, T2, T3, T4, T5, T6, T7, bool);
     type Parameters = Parameters<7>;
 
     fn apply(
-        dest: &mut Self,
+        dest: &mut Self::Output,
         data: PassBy<ByteSliceSignal>,
         parameters: &Self::Parameters,
         update_age: Duration,
@@ -385,19 +391,19 @@ impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack, T7:
         }
     }
 
-    fn as_old_block_data(&self) -> Vec<OldBlockData> {
+    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
         vec![
-            OldBlockData::from_scalar(self.0.as_f64()),
-            OldBlockData::from_scalar(self.1.as_f64()),
-            OldBlockData::from_scalar(self.2.as_f64()),
-            OldBlockData::from_scalar(self.3.as_f64()),
-            OldBlockData::from_scalar(self.4.as_f64()),
-            OldBlockData::from_scalar(self.5.as_f64()),
-            OldBlockData::from_scalar(self.6.as_f64()),
+            OldBlockData::from_scalar(val.0.as_f64()),
+            OldBlockData::from_scalar(val.1.as_f64()),
+            OldBlockData::from_scalar(val.2.as_f64()),
+            OldBlockData::from_scalar(val.3.as_f64()),
+            OldBlockData::from_scalar(val.4.as_f64()),
+            OldBlockData::from_scalar(val.5.as_f64()),
+            OldBlockData::from_scalar(val.6.as_f64()),
         ]
     }
-    fn is_valid(&self) -> bool {
-        self.7
+    fn is_valid(val: &Self::Output) -> bool {
+        val.7
     }
 }
 
@@ -412,7 +418,7 @@ mod tests {
     fn test_bytes_unpack_1_output() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<f64>::default();
-        let mut block = BytesUnpackBlock::<(f64, bool)>::default();
+        let mut block = BytesUnpackBlock::<f64>::default();
         let spec_strings = &["I8:BigEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
@@ -438,7 +444,7 @@ mod tests {
     fn test_bytes_unpack_2_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, bool)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64)>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
@@ -464,7 +470,7 @@ mod tests {
     fn test_bytes_unpack_3_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, bool)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64)>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian", "F32:BigEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
@@ -498,7 +504,7 @@ mod tests {
     fn test_bytes_unpack_4_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, bool)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -540,7 +546,7 @@ mod tests {
     fn test_bytes_unpack_5_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, bool)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -586,7 +592,7 @@ mod tests {
     fn test_bytes_unpack_6_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, bool)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -648,7 +654,7 @@ mod tests {
     fn test_bytes_unpack_7_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, f64, bool)>::default();
+        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
