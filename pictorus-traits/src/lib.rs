@@ -22,6 +22,8 @@ use sealed::Sealed;
 pub mod custom_blocks;
 pub use custom_blocks::*;
 
+pub mod tuple_array_interop;
+
 /// A processing block
 pub trait ProcessBlock: Default {
     // NOTE because of the `Inputs` trait bound; all blocks must have at least *one* input
@@ -216,7 +218,7 @@ promotions! {
 pub type Promotion<L, R> = <L as Promote<R>>::Output;
 
 // a fixed-size array is like a mathematical vector
-// NOTE the `Pod` trait bound prevents the creation of nested vectors
+// NOTE the `Scalar` trait bound prevents the creation of nested vectors
 impl<const N: usize, T> Pass for [T; N]
 where
     T: Scalar,

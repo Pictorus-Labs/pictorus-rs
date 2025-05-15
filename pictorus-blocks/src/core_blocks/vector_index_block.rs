@@ -1,6 +1,8 @@
+use alloc::{vec, vec::Vec};
 use block_data::BlockData as OldBlockData;
-use num_traits::Zero;
-use pictorus_traits::{Matrix, PassBy, ProcessBlock, Scalar};
+use pictorus_traits::{
+    tuple_array_interop::TupleEquivalent, Matrix, Pass, PassBy, ProcessBlock, Scalar,
+};
 
 /// An array of indices used to extract individual values from the input matrix. Invalid string values
 /// will cause a panic when parsed.
@@ -27,36 +29,35 @@ impl<const N: usize> Parameters<N> {
 ///
 /// Note: Indices are 0 based and linear. If the indices is output side the bounds of the input matrix, the
 /// output will be 0.
-pub struct VectorIndexBlock<const N: usize, T, I>
+pub struct VectorIndexBlock<const N: usize, T: Scalar, I: Pass>
 where
-    T: Scalar,
+    [T; N]: TupleEquivalent<T, N>,
 {
-    pub data: [OldBlockData; N],
-    buffer: [T; N],
+    pub data: Vec<OldBlockData>,
+    buffer: <[T; N] as TupleEquivalent<T, N>>::TupleEquivalent,
     _phantom: core::marker::PhantomData<I>,
 }
 
-impl<const N: usize, T, I> Default for VectorIndexBlock<N, T, I>
+impl<T: Scalar, const N: usize, I: Pass> Default for VectorIndexBlock<N, T, I>
 where
-    T: Scalar,
+    [T; N]: TupleEquivalent<T, N>,
 {
     fn default() -> Self {
-        let initial = core::array::from_fn(|_f| OldBlockData::from_scalar(T::default().into()));
         VectorIndexBlock {
-            data: initial,
-            buffer: [T::default(); N],
+            data: vec![OldBlockData::from_scalar(0.0); N],
+            buffer: [T::default(); N].into_tuple(),
             _phantom: core::marker::PhantomData,
         }
     }
 }
 
-impl<const N: usize, const ROWS: usize, const COLS: usize, T> ProcessBlock
-    for VectorIndexBlock<N, T, Matrix<ROWS, COLS, T>>
+impl<T: Scalar, const N: usize, const NROWS: usize, const NCOLS: usize> ProcessBlock
+    for VectorIndexBlock<N, T, Matrix<NROWS, NCOLS, T>>
 where
-    T: Scalar + Zero,
+    [T; N]: TupleEquivalent<T, N>,
 {
-    type Inputs = Matrix<ROWS, COLS, T>;
-    type Output = [T; N];
+    type Inputs = Matrix<NROWS, NCOLS, T>;
+    type Output = <[T; N] as TupleEquivalent<T, N>>::TupleEquivalent;
     type Parameters = Parameters<N>;
 
     fn process(
@@ -69,20 +70,22 @@ where
         // i = 0, x = 15 would represent output_0 of the block is the 15th linear element of the input matrix
         // i = 1, x = 0 would represent output_1 of the block is the 0th linear element of the input matrix
         let flattened = inputs.data.as_flattened();
+        let mut output = [T::default(); N];
         for (i, x) in parameters.indices.iter().enumerate() {
             // Check if the matrix index is within the bounds of the matrix dimensions, out-of-bounds indexes will
             // be set to 0.
             if *x < flattened.len() {
                 let value = flattened[*x];
-                self.buffer[i] = value;
+                output[i] = value;
                 self.data[i] = OldBlockData::from_scalar(value.into());
             } else {
-                self.buffer[i] = T::zero();
-                self.data[i] = OldBlockData::from_scalar(T::zero().into());
+                output[i] = T::default();
+                self.data[i] = OldBlockData::from_scalar(T::default().into());
             }
         }
 
-        &self.buffer
+        self.buffer = output.into_tuple();
+        self.buffer.as_by()
     }
 }
 
@@ -109,31 +112,31 @@ mod tests {
         let vec_string_indexes: Vec<String> = vec![String::from("Scalar:2")];
         let parameters = Parameters::<1>::new(&vec_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
-        assert_eq!(output, &[3.0]);
+        assert_eq!(output, 3.0);
 
         // This also works:
         let vec_string_indexes = vec!["2".to_string()];
         let parameters = Parameters::<1>::new(&vec_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
-        assert_eq!(output, &[3.0]);
+        assert_eq!(output, 3.0);
 
         // And this:
         let vec_string_indexes = vec!["2"];
         let parameters = Parameters::<1>::new(&vec_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
-        assert_eq!(output, &[3.0]);
+        assert_eq!(output, 3.0);
 
         // And this:
         let array_string_indexes = ["2"];
         let parameters = Parameters::<1>::new(&array_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
-        assert_eq!(output, &[3.0]);
+        assert_eq!(output, 3.0);
 
         // And this:
         let array_string_indexes = ["Scalar:2"];
         let parameters = Parameters::<1>::new(&array_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
-        assert_eq!(output, &[3.0]);
+        assert_eq!(output, 3.0);
     }
 
     #[test]
@@ -149,8 +152,8 @@ mod tests {
 
         let parameters = Parameters::<2>::new(&array_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
-        assert_eq!(output[0], 7.0);
-        assert_eq!(output[1], 8.0);
+        assert_eq!(output.0, 7.0);
+        assert_eq!(output.1, 8.0);
         assert_eq!(index_block.data[0].scalar(), 7.0);
         assert_eq!(index_block.data[0], BlockData::from_scalar(7.0));
         assert_eq!(index_block.data[1].scalar(), 8.0);
@@ -170,8 +173,8 @@ mod tests {
 
         let parameters = Parameters::<2>::new(&vec_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
-        assert_eq!(output[0], 7.0);
-        assert_eq!(output[1], 0.0);
+        assert_eq!(output.0, 7.0);
+        assert_eq!(output.1, 0.0);
         assert_eq!(index_block.data[0].scalar(), 7.0);
         assert_eq!(index_block.data[0], BlockData::from_scalar(7.0));
         assert_eq!(index_block.data[1].scalar(), 0.0);
