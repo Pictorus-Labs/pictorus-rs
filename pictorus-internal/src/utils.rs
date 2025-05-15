@@ -231,11 +231,10 @@ cfg_if::cfg_if! {
                     String::from("{}")
                 }
             };
-            let diagram_params = json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
+            json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
                 warn!("Error parsing params file, using empty params map.");
                 HashMap::<String, HashMap<String, String>>::new()
-            });
-            diagram_params
+            })
         }
 
         pub fn get_pictorus_vars() -> PictorusVars {
