@@ -1,4 +1,5 @@
 //! Public interfaces defining Pictorus block interactions
+use crate::{Matrix, Scalar};
 use core::ops::Index;
 
 /// Param types passed into block constructors
@@ -85,6 +86,98 @@ pub trait BlockDef {
     /// This is useful if you would like to set some hardware state back to a default value before the app exits
     #[deprecated = "Users should use impl the core::ops::Drop trait instead"]
     fn cleanup(&mut self) {}
+}
+
+impl BlockDataRead for &bool {
+    fn get_scalar(&self) -> f64 {
+        if **self {
+            1.0
+        } else {
+            0.0
+        }
+    }
+
+    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+        unimplemented!("Can not get matrix of scalar bool value")
+    }
+}
+
+macro_rules! scalar_block_data_read_impl {
+        ($($t:ty),+) => {
+            $(
+                impl BlockDataRead for &$t {
+                    fn get_scalar(&self) -> f64 {
+                        (**self).into()
+                    }
+                    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+                        unimplemented!("Can not get matrix of scalar {} value", stringify!($t))
+                    }
+                }
+            )+
+        };
+    }
+
+scalar_block_data_read_impl!(u8, i8, u16, i16, u32, i32, f32, f64);
+
+// We can't easily implement this for non f64 types because we need to have an array of f64
+// with a long enough lifetime to be passed to the caller. We would need to use some sort of
+// wrapper over the passed around data or over custom blocks to do this.
+impl<const NROWS: usize, const NCOLS: usize> BlockDataRead for &Matrix<NROWS, NCOLS, f64> {
+    fn get_scalar(&self) -> f64 {
+        unimplemented!("Can not get scalar of matrix value")
+    }
+
+    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+        let data = self.data.as_flattened();
+        (NROWS, NCOLS, data)
+    }
+}
+
+impl BlockDataWrite for &mut bool {
+    fn set_scalar_value(&mut self, value: f64) {
+        **self = value != 0.0;
+    }
+
+    fn set_matrix_value(&mut self, _nrows: usize, _ncols: usize, _data: &[f64]) {
+        unimplemented!("Can not set matrix of scalar bool value")
+    }
+}
+
+macro_rules! scalar_block_data_write_impl {
+        ($($t:ty),+) => {
+            $(
+                impl BlockDataWrite for &mut $t {
+                    fn set_scalar_value(&mut self, value: f64) {
+                        // This is a lossy as cast which is currently our behavior elsewhere but still not ideal
+                        **self = value as $t;
+                    }
+                    fn set_matrix_value(&mut self, _nrows: usize, _ncols: usize, _data: &[f64]) {
+                        unimplemented!("Can not set matrix for scalar {}", stringify!($t))
+                    }
+                }
+            )+
+        };
+    }
+scalar_block_data_write_impl!(u8, i8, u16, i16, u32, i32, f32, f64);
+
+impl<const NROWS: usize, const NCOLS: usize, T: Scalar> BlockDataWrite
+    for &mut Matrix<NROWS, NCOLS, T>
+where
+    for<'a> &'a mut T: BlockDataWrite,
+{
+    fn set_scalar_value(&mut self, _value: f64) {
+        unimplemented!("Can not set scalar of matrix value")
+    }
+
+    fn set_matrix_value(&mut self, nrows: usize, ncols: usize, data: &[f64]) {
+        assert_eq!(nrows, NROWS);
+        assert_eq!(ncols, NCOLS);
+        self.data
+            .as_flattened_mut()
+            .iter_mut()
+            .zip(data.iter())
+            .for_each(|(mut a, b)| a.set_scalar_value(*b));
+    }
 }
 
 #[cfg(test)]
