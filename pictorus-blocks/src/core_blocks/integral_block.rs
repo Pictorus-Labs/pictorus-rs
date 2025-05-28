@@ -33,7 +33,7 @@ impl<F: Float> ProcessBlock for IntegralBlock<F>
 where
     OldBlockData: FromPass<F>,
 {
-    type Inputs = (F, bool);
+    type Inputs = (F, F);
     type Output = F;
     type Parameters = Parameters<F>;
 
@@ -44,7 +44,7 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
-        if reset {
+        if reset.is_truthy() {
             // Reset all state
             self.output = None;
             self.previous_sample = None;
@@ -98,7 +98,7 @@ impl<F: Float, const NROWS: usize, const NCOLS: usize> ProcessBlock
 where
     OldBlockData: FromPass<Matrix<NROWS, NCOLS, F>>,
 {
-    type Inputs = (Matrix<NROWS, NCOLS, F>, bool);
+    type Inputs = (Matrix<NROWS, NCOLS, F>, F);
     type Output = Matrix<NROWS, NCOLS, F>;
     type Parameters = Parameters<Matrix<NROWS, NCOLS, F>>;
 
@@ -109,7 +109,7 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
-        if reset {
+        if reset.is_truthy() {
             self.output = None;
             self.previous_sample = None;
         } else {

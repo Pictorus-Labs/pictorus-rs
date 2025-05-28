@@ -82,7 +82,7 @@ pub trait Apply: Pass + Sized + Copy {
 }
 
 impl<C: ChangeDetect> Apply for C {
-    type Output = bool;
+    type Output = f64;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
@@ -100,7 +100,7 @@ impl<C: ChangeDetect> Apply for C {
 }
 
 impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<NROWS, NCOLS, C> {
-    type Output = Matrix<NROWS, NCOLS, bool>;
+    type Output = Matrix<NROWS, NCOLS, f64>;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
@@ -135,15 +135,21 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
 }
 
 trait ChangeDetect: Scalar + for<'a> Pass<By<'a> = Self> + PartialEq + PartialOrd {
-    fn change_detect(left_hand: PassBy<Self>, right_hand: PassBy<Self>, mode: ChangeMode) -> bool {
-        match mode {
+    fn change_detect(left_hand: PassBy<Self>, right_hand: PassBy<Self>, mode: ChangeMode) -> f64 {
+        let bool_output = match mode {
             ChangeMode::Any => left_hand != right_hand,
             ChangeMode::Rising => left_hand > right_hand,
             ChangeMode::Falling => left_hand < right_hand,
+        };
+        if bool_output {
+            1.0
+        } else {
+            0.0
         }
     }
 }
 
+impl ChangeDetect for bool {}
 impl ChangeDetect for u8 {}
 impl ChangeDetect for i8 {}
 impl ChangeDetect for u16 {}
@@ -241,6 +247,7 @@ mod tests {
             }
         };
     }
+
     test_scalars!(u8);
     test_scalars!(i8);
     test_scalars!(u16);
@@ -409,4 +416,61 @@ mod tests {
     test_matrix!(i32);
     test_matrix!(f32);
     test_matrix!(f64);
+
+    #[test]
+    fn test_scalar_bool_any() {
+        let context = StubContext::default();
+        let params = Parameters::new(true, "Any");
+        let mut block = ChangeDetectionBlock::<bool>::default();
+
+        // No change
+        let output = block.process(&params, &context, false);
+        assert_eq!(output, true);
+
+        // Falling for all values
+        let output = block.process(&params, &context, false);
+        assert_eq!(output, false);
+
+        //Rising all values
+        let output = block.process(&params, &context, true);
+        assert_eq!(output, true);
+    }
+
+    #[test]
+    fn test_scalar_bool_rising() {
+        let context = StubContext::default();
+        let params = Parameters::new(true, "Rising");
+        let mut block = ChangeDetectionBlock::<bool>::default();
+
+        // No change
+        let output = block.process(&params, &context, true);
+        assert_eq!(output, false);
+
+        // Falling for all values
+        let output = block.process(&params, &context, false);
+        assert_eq!(output, false);
+
+        //Rising all values
+        let output = block.process(&params, &context, true);
+        assert_eq!(output, true);
+    }
+
+    #[test]
+    fn test_scalar_bool_falling() {
+        let context = StubContext::default();
+        let params = Parameters::new(true, "Falling");
+        let mut block = ChangeDetectionBlock::<bool>::default();
+
+        // No change
+        let output = block.process(&params, &context, true);
+        assert_eq!(output, false);
+
+        // Falling for all values
+        let output = block.process(&params, &context, false);
+        assert_eq!(output, true);
+
+        //Rising all values
+        let output = block.process(&params, &context, true);
+        assert_eq!(output, false);
+    }
 }

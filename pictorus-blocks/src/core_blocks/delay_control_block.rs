@@ -67,7 +67,7 @@ pub trait Apply: Pass {
 
 impl<S: Scalar> Apply for S {
     type State = Option<Duration>;
-    type Output = bool;
+    type Output = f64;
 
     fn init_state() -> Self::State {
         None
@@ -95,7 +95,7 @@ impl<S: Scalar> Apply for S {
 }
 
 impl<S: Scalar, const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, S> {
-    type Output = Matrix<NROWS, NCOLS, bool>;
+    type Output = Matrix<NROWS, NCOLS, f64>;
     type State = [[Option<Duration>; NROWS]; NCOLS];
 
     fn init_state() -> Self::State {
@@ -146,7 +146,7 @@ fn debounce(
     state: &mut Option<Duration>,
     delay: Duration,
     curr_time: Duration,
-) -> bool {
+) -> f64 {
     let mut output = false;
     if input {
         *state = Some(curr_time);
@@ -156,7 +156,11 @@ fn debounce(
             *state = None;
         }
     }
-    output
+    if output {
+        1.0
+    } else {
+        0.0
+    }
 }
 
 /// If state is Some(d) and current_time - d >= delay then set state to None
@@ -167,7 +171,7 @@ fn throttle(
     state: &mut Option<Duration>,
     delay: Duration,
     curr_time: Duration,
-) -> bool {
+) -> f64 {
     let mut output = false;
     if let Some(d) = state {
         if curr_time - *d >= delay {
@@ -178,7 +182,11 @@ fn throttle(
         output = true;
         *state = Some(curr_time);
     }
-    output
+    if output {
+        1.0
+    } else {
+        0.0
+    }
 }
 
 #[derive(strum::EnumString, Clone, Copy, Debug)]

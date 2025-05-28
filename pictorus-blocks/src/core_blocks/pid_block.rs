@@ -87,9 +87,9 @@ where
     DerivativeBlock<T, ND_SAMPLES>:
         ProcessBlock<Output = T, Inputs = T, Parameters = DerivativeParameters<T>>,
     IntegralBlock<T>:
-        ProcessBlock<Output = T, Inputs = (T, bool), Parameters = IntegralParameters<T>>,
+        ProcessBlock<Output = T, Inputs = (T, f64), Parameters = IntegralParameters<T>>,
 {
-    type Inputs = (T, bool);
+    type Inputs = (T, f64);
     type Output = T;
     type Parameters = Parameters<T>;
 
