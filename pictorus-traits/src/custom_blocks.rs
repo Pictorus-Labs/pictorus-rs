@@ -113,6 +113,15 @@ macro_rules! scalar_block_data_read_impl {
                         unimplemented!("Can not get matrix of scalar {} value", stringify!($t))
                     }
                 }
+
+                 impl BlockDataRead for $t {
+                    fn get_scalar(&self) -> f64 {
+                        (*self).into()
+                    }
+                    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+                        unimplemented!("Can not get matrix of scalar {} value", stringify!($t))
+                    }
+                }
             )+
         };
     }

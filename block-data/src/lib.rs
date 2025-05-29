@@ -38,6 +38,16 @@ pub struct BlockData {
     _type: BlockDataType,
 }
 
+impl BlockDataRead for BlockData {
+    fn get_scalar(&self) -> f64 {
+        self.scalar()
+    }
+
+    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+        (self.nrows(), self.ncols(), self._data.as_slice())
+    }
+}
+
 impl BlockDataRead for &BlockData {
     fn get_scalar(&self) -> f64 {
         self.scalar()

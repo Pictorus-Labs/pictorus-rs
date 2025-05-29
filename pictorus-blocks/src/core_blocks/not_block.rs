@@ -61,6 +61,48 @@ pub trait Apply: Pass {
     ) -> PassBy<'s, Self::Output>;
 }
 
+impl Apply for bool {
+    type Output = bool;
+
+    fn apply<'s>(
+        store: &'s mut Option<Self::Output>,
+        input: PassBy<Self>,
+        method: NotMethod,
+    ) -> PassBy<'s, Self::Output> {
+        let output = match method {
+            NotMethod::Logical => !input,
+            NotMethod::Bitwise => !input,
+        };
+        *store = Some(output);
+        output
+    }
+}
+
+impl<const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, bool> {
+    type Output = Matrix<NROWS, NCOLS, bool>;
+
+    fn apply<'s>(
+        store: &'s mut Option<Self::Output>,
+        input: PassBy<Self>,
+        method: NotMethod,
+    ) -> PassBy<'s, Self::Output> {
+        let output = store.insert(Matrix::zeroed());
+        output
+            .data
+            .as_flattened_mut()
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, lhs)| {
+                let input_val = input.data.as_flattened()[i];
+                *lhs = match method {
+                    NotMethod::Logical => !input_val,
+                    NotMethod::Bitwise => !input_val,
+                };
+            });
+        output
+    }
+}
+
 macro_rules! impl_not_apply {
     ($type:ty, $cast_type:ty) => {
         impl Apply for $type {
@@ -225,4 +267,45 @@ mod tests {
 
     test_not_block!(f32);
     test_not_block!(f64);
+
+    #[test]
+    fn test_scalar_bool() {
+        let mut block = NotBlock::<bool>::default();
+        let context = StubContext::default();
+        let parameters = Parameters::new("Logical");
+
+        let res = block.process(&parameters, &context, true);
+        assert!(!res);
+        assert_eq!(block.data.scalar(), 0.0);
+
+        let res = block.process(&parameters, &context, false);
+        assert!(res);
+        assert_eq!(block.data.scalar(), 1.0);
+
+        let parameters = Parameters::new("Bitwise");
+        let res = block.process(&parameters, &context, true);
+        assert!(!res);
+        assert_eq!(block.data.scalar(), 0.0);
+
+        let res = block.process(&parameters, &context, false);
+        assert!(res);
+        assert_eq!(block.data.scalar(), 1.0);
+    }
+
+    #[test]
+    fn test_matrix_bool() {
+        let mut block = NotBlock::<Matrix<2, 2, bool>>::default();
+        let context = StubContext::default();
+        let parameters = Parameters::new("Logical");
+
+        let input = Matrix {
+            data: [[true, false], [false, true]],
+        };
+        let res = block.process(&parameters, &context, &input);
+        assert_eq!(res.data, [[false, true], [true, false]]);
+        assert_eq!(
+            block.data.get_data().as_slice(),
+            [[0.0, 1.0], [1.0, 0.0]].as_flattened()
+        );
+    }
 }
