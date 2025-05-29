@@ -98,7 +98,7 @@ impl BlockDataRead for &bool {
     }
 
     fn get_matrix(&self) -> (usize, usize, &[f64]) {
-        unimplemented!("Can not get matrix of scalar bool value")
+        unimplemented!("Cannot get matrix of scalar bool value")
     }
 }
 
