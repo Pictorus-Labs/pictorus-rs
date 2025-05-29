@@ -175,7 +175,10 @@ impl<C: Scalar, const N: usize> ApplyInto<C, N> for ByteSliceSignal {
             }
         }
         let res = inputs[inputs.len() - 1];
-        dest.copy_from_slice(res);
+        // We use clear and extend rather than copy_from_slice because
+        // copy_from_slice requires the destination to be the same length as the source
+        dest.clear();
+        dest.extend_from_slice(res);
     }
 }
 
@@ -446,6 +449,20 @@ mod tests {
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, b"foo");
         assert_eq!(block.data.raw_string().as_bytes(), b"foo".as_slice());
+    }
+
+    #[test]
+    fn test_switch_block_2_bytes_default() {
+        let ctxt = StubContext::default();
+
+        let mut block = SwitchBlock::<(f64, ByteSliceSignal, ByteSliceSignal)>::default();
+        let parameters = Parameters::new(&OldBlockData::from_vector(&[0.0, 1.0]));
+
+        // Should use the last value by default
+        let input = (1.2345, b"foo".as_slice(), b"bar".as_slice());
+        let output = block.process(&parameters, &ctxt, input);
+        assert_eq!(output, b"bar");
+        assert_eq!(block.data.raw_string().as_bytes(), b"bar".as_slice());
     }
 
     #[test]
