@@ -1,6 +1,9 @@
 use core::time::Duration;
 
-use crate::traits::{Float, MatrixOps};
+use crate::{
+    traits::{Float, MatrixOps},
+    Scalar,
+};
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
@@ -9,33 +12,33 @@ use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 /// element wise integration.
 pub struct IntegralBlock<T: Apply>
 where
-    OldBlockData: FromPass<T>,
+    OldBlockData: FromPass<T::Output>,
 {
-    previous_sample: Option<T>,
-    output: Option<T>,
+    previous_sample: Option<T::Output>,
+    output: Option<T::Output>,
     pub data: OldBlockData,
 }
 
 impl<T: Apply> Default for IntegralBlock<T>
 where
-    OldBlockData: FromPass<T>,
+    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
             previous_sample: None,
             output: None,
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
+            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
 }
 
-impl<F: Float> ProcessBlock for IntegralBlock<F>
+impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)>
 where
     OldBlockData: FromPass<F>,
 {
-    type Inputs = (F, F);
+    type Inputs = (F, R);
     type Output = F;
-    type Parameters = Parameters<F>;
+    type Parameters = Parameters<(F, R)>;
 
     fn process<'b>(
         &'b mut self,
@@ -80,12 +83,12 @@ where
     }
 }
 
-impl<F: Float> HasIc for IntegralBlock<F>
+impl<F: Float, R: Scalar> HasIc for IntegralBlock<(F, R)>
 where
     OldBlockData: FromPass<F>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
-        IntegralBlock::<F> {
+        IntegralBlock::<(F, R)> {
             previous_sample: None,
             output: Some(parameters.ic),
             data: <OldBlockData as FromPass<F>>::from_pass(parameters.ic.as_by()),
@@ -93,14 +96,14 @@ where
     }
 }
 
-impl<F: Float, const NROWS: usize, const NCOLS: usize> ProcessBlock
-    for IntegralBlock<Matrix<NROWS, NCOLS, F>>
+impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
+    for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
 where
     OldBlockData: FromPass<Matrix<NROWS, NCOLS, F>>,
 {
-    type Inputs = (Matrix<NROWS, NCOLS, F>, F);
+    type Inputs = (Matrix<NROWS, NCOLS, F>, R);
     type Output = Matrix<NROWS, NCOLS, F>;
-    type Parameters = Parameters<Matrix<NROWS, NCOLS, F>>;
+    type Parameters = Parameters<(Matrix<NROWS, NCOLS, F>, R)>;
 
     fn process<'b>(
         &'b mut self,
@@ -140,13 +143,13 @@ where
     }
 }
 
-impl<F: Float, const NROWS: usize, const NCOLS: usize> HasIc
-    for IntegralBlock<Matrix<NROWS, NCOLS, F>>
+impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
+    for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
 where
     OldBlockData: FromPass<Matrix<NROWS, NCOLS, F>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
-        IntegralBlock::<Matrix<NROWS, NCOLS, F>> {
+        IntegralBlock::<(Matrix<NROWS, NCOLS, F>, R)> {
             previous_sample: None,
             output: Some(parameters.ic),
             data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, F>>>::from_pass(&parameters.ic),
@@ -156,14 +159,19 @@ where
 
 pub trait Apply: Pass + Default {
     type Float: Float;
+    type Output: Pass + Default;
 }
 
-impl<F: Float> Apply for F {
+impl<F: Float, R: Scalar> Apply for (F, R) {
     type Float = F;
+    type Output = F;
 }
 
-impl<F: Float, const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, F> {
+impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> Apply
+    for (Matrix<NROWS, NCOLS, F>, R)
+{
     type Float = F;
+    type Output = Matrix<NROWS, NCOLS, F>;
 }
 
 /// Controls the method of integration
@@ -177,7 +185,7 @@ pub enum IntgeralMethod {
 
 pub struct Parameters<T: Apply> {
     pub clamp_limit: T::Float,
-    pub ic: T,
+    pub ic: T::Output,
     pub method: IntgeralMethod,
 }
 
@@ -186,7 +194,7 @@ pub struct Parameters<T: Apply> {
 /// clamp_limit: Maximum absolute value of the integral (or each element of the integral in case of matrix input)
 /// method: Method of integration (See [`IntgeralMethod`])
 impl<T: Apply> Parameters<T> {
-    pub fn new(ic: T, clamp_limit: T::Float, method: &str) -> Self {
+    pub fn new(ic: T::Output, clamp_limit: T::Float, method: &str) -> Self {
         Parameters {
             clamp_limit,
             ic,
@@ -207,7 +215,7 @@ mod tests {
     fn test_integral_scalar() {
         let mut runtime = StubRuntime::default();
 
-        let mut block = IntegralBlock::<f64>::default();
+        let mut block = IntegralBlock::<(f64, bool)>::default();
         let parameters = Parameters::new(0.0, 20.0, "Trapezoidal");
 
         let mut sine_wave_block = SinewaveBlock::<f64>::default();
@@ -248,8 +256,9 @@ mod tests {
             Duration::from_secs(1),
         ));
 
-        let mut block = IntegralBlock::<Matrix<1, 3, f64>>::default();
-        let parameters = Parameters::new(
+        let mut block: IntegralBlock<(Matrix<1, 3, f64>, bool)> =
+            IntegralBlock::<(Matrix<1, 3, f64>, bool)>::default();
+        let parameters: Parameters<(Matrix<1, 3, f64>, bool)> = Parameters::new(
             Matrix {
                 data: [[0.0], [0.0], [0.0]],
             },
@@ -282,7 +291,7 @@ mod tests {
         ));
 
         let parameters = Parameters::new(10.0, 50.0, "Rectangle");
-        let mut block = IntegralBlock::<f64>::new(&parameters);
+        let mut block = IntegralBlock::<(f64, bool)>::new(&parameters);
         // Check the initial value is set
         assert_eq!(block.data.scalar(), 10.0);
 
@@ -314,7 +323,7 @@ mod tests {
             50.0,
             "Rectangle",
         );
-        let mut block = IntegralBlock::<Matrix<1, 3, f64>>::new(&parameters);
+        let mut block = IntegralBlock::<(Matrix<1, 3, f64>, bool)>::new(&parameters);
         // Check the initial value is set
         assert_eq!(
             block.data.get_data().as_slice(),

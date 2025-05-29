@@ -182,6 +182,7 @@ impl<T> Parameters<T> {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
+    use crate::traits::Scalar as _;
     use paste::paste;
 
     macro_rules! test_scalars {
@@ -195,15 +196,15 @@ mod tests {
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     //Falling -false
                     let output = block.process(&params, &context, [<0 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     // Rising - true
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
                 }
 
                 #[test]
@@ -214,15 +215,15 @@ mod tests {
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     //Falling -true
                     let output = block.process(&params, &context, [<0 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
 
                     // Rising - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
                 }
 
 
@@ -234,15 +235,15 @@ mod tests {
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     //Falling -true
                     let output = block.process(&params, &context, [<0 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
 
                     // Rising - true
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
                 }
             }
         };
@@ -282,7 +283,7 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
@@ -296,7 +297,7 @@ mod tests {
                     // Falling just one element
                     input.data[3][5] = [<4 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[3][5] = true;
+                    expected_output.data[3][5] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
 
@@ -335,7 +336,7 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
@@ -347,7 +348,7 @@ mod tests {
                     // Rising just one element
                     input.data[6][2] = [<42 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[6][2] = true;
+                    expected_output.data[6][2] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
                 }
@@ -374,7 +375,7 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
@@ -386,21 +387,21 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
                     // Falling just one element
                     input.data[3][5] = [<4 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[3][5] = true;
+                    expected_output.data[3][5] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
 
                     // Rising just one element
                     input.data[6][2] = [<42 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[6][2] = true;
+                    expected_output.data[6][2] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
                 }
@@ -425,15 +426,15 @@ mod tests {
 
         // No change
         let output = block.process(&params, &context, false);
-        assert_eq!(output, true);
+        assert!(output.is_truthy());
 
         // Falling for all values
         let output = block.process(&params, &context, false);
-        assert_eq!(output, false);
+        assert!(!output.is_truthy());
 
         //Rising all values
         let output = block.process(&params, &context, true);
-        assert_eq!(output, true);
+        assert!(output.is_truthy());
     }
 
     #[test]
@@ -444,15 +445,15 @@ mod tests {
 
         // No change
         let output = block.process(&params, &context, true);
-        assert_eq!(output, false);
+        assert!(!output.is_truthy());
 
         // Falling for all values
         let output = block.process(&params, &context, false);
-        assert_eq!(output, false);
+        assert!(!output.is_truthy());
 
         //Rising all values
         let output = block.process(&params, &context, true);
-        assert_eq!(output, true);
+        assert!(output.is_truthy());
     }
 
     #[test]
@@ -463,14 +464,14 @@ mod tests {
 
         // No change
         let output = block.process(&params, &context, true);
-        assert_eq!(output, false);
+        assert!(!output.is_truthy());
 
         // Falling for all values
         let output = block.process(&params, &context, false);
-        assert_eq!(output, true);
+        assert!(output.is_truthy());
 
         //Rising all values
         let output = block.process(&params, &context, true);
-        assert_eq!(output, false);
+        assert!(!output.is_truthy());
     }
 }

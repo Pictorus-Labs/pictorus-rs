@@ -6,7 +6,7 @@ use super::integral_block::{
     Apply as IntegralApply, IntgeralMethod, Parameters as IntegralParameters,
 };
 use crate::traits::{Float, MatrixOps};
-use crate::{DerivativeBlock, IntegralBlock};
+use crate::{DerivativeBlock, IntegralBlock, Scalar};
 
 /// Block for performing PID (Proportional, Integral, Derivative) control
 /// against an error signal. The input signal can either be a scalar or a matrix.
@@ -14,19 +14,21 @@ use crate::{DerivativeBlock, IntegralBlock};
 ///
 /// This block also accepts a second reset input, which can be used to reset the
 /// integrator.
-pub struct PidBlock<T: ComponentOps, const ND_SAMPLES: usize>
+pub struct PidBlock<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize>
 where
     OldBlockData: FromPass<T>,
+    (T, R): IntegralApply<Output = T>,
 {
     pub data: OldBlockData,
     buffer: T,
-    integrator: IntegralBlock<T>,
+    integrator: IntegralBlock<(T, R)>,
     derivative: DerivativeBlock<T, ND_SAMPLES>,
 }
 
-impl<T: ComponentOps, const ND_SAMPLES: usize> Default for PidBlock<T, ND_SAMPLES>
+impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> Default for PidBlock<T, R, ND_SAMPLES>
 where
     OldBlockData: FromPass<T>,
+    (T, R): IntegralApply<Output = T>,
 {
     fn default() -> Self {
         Self {
@@ -42,7 +44,7 @@ where
 /// Parameters for the PID block
 pub struct Parameters<T: IntegralApply> {
     /// Initial condition for the integrator
-    ic: T,
+    ic: T::Output,
     /// Proportional gain
     kp: T::Float,
     /// Integral gain
@@ -54,7 +56,7 @@ pub struct Parameters<T: IntegralApply> {
 }
 
 impl<T: IntegralApply> Parameters<T> {
-    pub fn new(ic: T, kp: T::Float, ki: T::Float, kd: T::Float, i_max: T::Float) -> Self {
+    pub fn new(ic: T::Output, kp: T::Float, ki: T::Float, kd: T::Float, i_max: T::Float) -> Self {
         Self {
             ic,
             kp,
@@ -65,11 +67,12 @@ impl<T: IntegralApply> Parameters<T> {
     }
 }
 
-impl<T: ComponentOps, const ND_SAMPLES: usize> PidBlock<T, ND_SAMPLES>
+impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> PidBlock<T, R, ND_SAMPLES>
 where
     OldBlockData: FromPass<T>,
+    (T, R): IntegralApply<Output = T, Float = T::Float>,
 {
-    fn integrator_params(parameters: &Parameters<T>) -> IntegralParameters<T> {
+    fn integrator_params(parameters: &Parameters<(T, R)>) -> IntegralParameters<(T, R)> {
         IntegralParameters {
             clamp_limit: parameters.i_max,
             ic: parameters.ic,
@@ -77,21 +80,23 @@ where
         }
     }
 
-    fn derivative_params(parameters: &Parameters<T>) -> DerivativeParameters<T> {
+    fn derivative_params(parameters: &Parameters<(T, R)>) -> DerivativeParameters<T> {
         DerivativeParameters { ic: parameters.ic }
     }
 }
-impl<T: ComponentOps, const ND_SAMPLES: usize> ProcessBlock for PidBlock<T, ND_SAMPLES>
+impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> ProcessBlock
+    for PidBlock<T, R, ND_SAMPLES>
 where
     OldBlockData: FromPass<T>,
     DerivativeBlock<T, ND_SAMPLES>:
         ProcessBlock<Output = T, Inputs = T, Parameters = DerivativeParameters<T>>,
-    IntegralBlock<T>:
-        ProcessBlock<Output = T, Inputs = (T, f64), Parameters = IntegralParameters<T>>,
+    IntegralBlock<(T, R)>:
+        ProcessBlock<Output = T, Inputs = (T, R), Parameters = IntegralParameters<(T, R)>>,
+    (T, R): IntegralApply<Output = T, Float = T::Float> + for<'a> Pass<By<'a> = (PassBy<'a, T>, R)>,
 {
-    type Inputs = (T, f64);
+    type Inputs = (T, R);
     type Output = T;
-    type Parameters = Parameters<T>;
+    type Parameters = Parameters<(T, R)>;
 
     fn process<'b>(
         &'b mut self,
@@ -101,7 +106,7 @@ where
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let integrator_params = Self::integrator_params(parameters);
         // Run integrator
-        let (sample, reset) = inputs;
+        let (sample, reset): (PassBy<'_, T>, R) = inputs;
         let i_sample = T::component_mul(sample, parameters.ki);
         let i = ProcessBlock::process(
             &mut self.integrator,
@@ -131,7 +136,7 @@ where
 // block uses a trait-based approach, and derivative block uses macros. I think if we
 // consolidated our approach for these 3 blocks we could make this simpler and more generic.
 // Ideally we could just have a blanket impl for <const ND_SAMPLES: usize, T: ComponentOps>.
-impl<const ND_SAMPLES: usize> HasIc for PidBlock<f64, ND_SAMPLES> {
+impl<const ND_SAMPLES: usize, R: Scalar> HasIc for PidBlock<f64, R, ND_SAMPLES> {
     fn new(parameters: &Self::Parameters) -> Self {
         let integrator_params = Self::integrator_params(parameters);
         let derivative_params = Self::derivative_params(parameters);
@@ -144,8 +149,8 @@ impl<const ND_SAMPLES: usize> HasIc for PidBlock<f64, ND_SAMPLES> {
     }
 }
 
-impl<const ND_SAMPLES: usize, const NROWS: usize, const NCOLS: usize> HasIc
-    for PidBlock<Matrix<NROWS, NCOLS, f64>, ND_SAMPLES>
+impl<const ND_SAMPLES: usize, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
+    for PidBlock<Matrix<NROWS, NCOLS, f64>, R, ND_SAMPLES>
 where
     OldBlockData: FromPass<Matrix<NROWS, NCOLS, f64>>,
 {
@@ -164,12 +169,14 @@ where
 // It would be nice to have these types of common operators defined somewhere reusable
 // I.e. mixed scalar/matrix addition, multiplication, etc. This would reduce a lot
 // of repetition in block implementations
-pub trait ComponentOps: Pass + Default + Copy + IntegralApply {
+pub trait ComponentOps: Pass + Default + Copy {
+    type Float: Float;
     fn component_mul(lhs: PassBy<Self>, rhs: Self::Float) -> Self;
     fn component_add(v1: PassBy<Self>, v2: PassBy<Self>, v3: PassBy<Self>) -> Self;
 }
 
 impl<F: Float> ComponentOps for F {
+    type Float = F;
     fn component_mul(lhs: F, rhs: F) -> Self {
         lhs * rhs
     }
@@ -180,6 +187,7 @@ impl<F: Float> ComponentOps for F {
 }
 
 impl<const NROWS: usize, const NCOLS: usize, F: Float> ComponentOps for Matrix<NROWS, NCOLS, F> {
+    type Float = F;
     fn component_mul(lhs: PassBy<Self>, rhs: Self::Float) -> Self {
         let mut res = Self::default();
         lhs.for_each(|v, c, r| {
@@ -213,7 +221,7 @@ mod tests {
             Duration::from_secs(1),
         ));
         let params = Parameters::new(0.0, 2.0, 0.0, 0.0, 0.0);
-        let mut p_block = PidBlock::<_, 2>::default();
+        let mut p_block = PidBlock::<f64, bool, 2>::default();
 
         // Output should just be double the input
         let res = p_block.process(&params, &runtime.context(), (1.0, false));
@@ -235,7 +243,7 @@ mod tests {
         ));
 
         let params = Parameters::new(0.0, 0.0, 3.0, 0.0, 10.0);
-        let mut i_block = PidBlock::<_, 2>::default();
+        let mut i_block = PidBlock::<f64, bool, 2>::default();
 
         let res = i_block.process(&params, &runtime.context(), (0.0, false));
         assert_eq!(res, 0.0);
@@ -275,7 +283,7 @@ mod tests {
         ));
 
         let params = Parameters::new(0.0, 0.0, 0.0, 1.0, 0.0);
-        let mut d_block = PidBlock::<_, 2>::default();
+        let mut d_block = PidBlock::<f64, bool, 2>::default();
         d_block.process(&params, &runtime.context(), (0.0, false)); // Need at least 2 samples to estimate derivative
         runtime.tick();
 
@@ -291,7 +299,7 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(0.0, 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<_, 2>::default();
+        let mut block = PidBlock::<f64, bool, 2>::default();
 
         let res = block.process(&params, &runtime.context(), (0.0, false));
         assert_relative_eq!(res, 0.0, max_relative = 0.01);
@@ -311,7 +319,7 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(5.0, 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<_, 2>::default();
+        let mut block = PidBlock::<f64, bool, 2>::default();
 
         let res = block.process(&params, &runtime.context(), (0.0, false));
         assert_relative_eq!(res, 5.0, max_relative = 0.01);
@@ -331,7 +339,7 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(Matrix::zeroed(), 2.0, 0.0, 0.0, 0.0);
-        let mut p_block = PidBlock::<_, 2>::default();
+        let mut p_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
 
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
@@ -370,7 +378,7 @@ mod tests {
         ));
 
         let params = Parameters::new(Matrix::zeroed(), 0.0, 3.0, 0.0, 10.0);
-        let mut i_block = PidBlock::<_, 2>::default();
+        let mut i_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
@@ -440,7 +448,7 @@ mod tests {
         ));
 
         let params = Parameters::new(Matrix::zeroed(), 0.0, 0.0, 1.0, 0.0);
-        let mut d_block = PidBlock::<_, 2>::default();
+        let mut d_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
         d_block.process(&params, &runtime.context(), (&Matrix::zeroed(), false)); // Need at least 2 samples to estimate derivative
         runtime.tick();
 
@@ -466,7 +474,7 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(Matrix::zeroed(), 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<_, 2>::default();
+        let mut block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
@@ -507,7 +515,7 @@ mod tests {
             data: [[4.0, 5.0], [6.0, 7.0]],
         };
         let params = Parameters::new(ic, 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<_, 2>::default();
+        let mut block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
