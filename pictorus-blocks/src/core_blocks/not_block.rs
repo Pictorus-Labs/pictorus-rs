@@ -275,20 +275,20 @@ mod tests {
         let parameters = Parameters::new("Logical");
 
         let res = block.process(&parameters, &context, true);
-        assert_eq!(res, false);
+        assert!(!res);
         assert_eq!(block.data.scalar(), 0.0);
 
         let res = block.process(&parameters, &context, false);
-        assert_eq!(res, true);
+        assert!(res);
         assert_eq!(block.data.scalar(), 1.0);
 
         let parameters = Parameters::new("Bitwise");
         let res = block.process(&parameters, &context, true);
-        assert_eq!(res, false);
+        assert!(!res);
         assert_eq!(block.data.scalar(), 0.0);
 
         let res = block.process(&parameters, &context, false);
-        assert_eq!(res, true);
+        assert!(res);
         assert_eq!(block.data.scalar(), 1.0);
     }
 
