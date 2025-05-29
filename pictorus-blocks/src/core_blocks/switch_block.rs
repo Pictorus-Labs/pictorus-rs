@@ -175,6 +175,8 @@ impl<C: Scalar, const N: usize> ApplyInto<C, N> for ByteSliceSignal {
             }
         }
         let res = inputs[inputs.len() - 1];
+        // We use clear and extend rather than copy_from_slice because
+        // copy_from_slice requires the destination to be the same length as the source
         dest.clear();
         dest.extend_from_slice(res);
     }
