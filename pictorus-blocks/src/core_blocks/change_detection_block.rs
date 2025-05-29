@@ -82,7 +82,7 @@ pub trait Apply: Pass + Sized + Copy {
 }
 
 impl<C: ChangeDetect> Apply for C {
-    type Output = bool;
+    type Output = f64;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
@@ -100,7 +100,7 @@ impl<C: ChangeDetect> Apply for C {
 }
 
 impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<NROWS, NCOLS, C> {
-    type Output = Matrix<NROWS, NCOLS, bool>;
+    type Output = Matrix<NROWS, NCOLS, f64>;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
@@ -135,15 +135,21 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
 }
 
 trait ChangeDetect: Scalar + for<'a> Pass<By<'a> = Self> + PartialEq + PartialOrd {
-    fn change_detect(left_hand: PassBy<Self>, right_hand: PassBy<Self>, mode: ChangeMode) -> bool {
-        match mode {
+    fn change_detect(left_hand: PassBy<Self>, right_hand: PassBy<Self>, mode: ChangeMode) -> f64 {
+        let bool_output = match mode {
             ChangeMode::Any => left_hand != right_hand,
             ChangeMode::Rising => left_hand > right_hand,
             ChangeMode::Falling => left_hand < right_hand,
+        };
+        if bool_output {
+            1.0
+        } else {
+            0.0
         }
     }
 }
 
+impl ChangeDetect for bool {}
 impl ChangeDetect for u8 {}
 impl ChangeDetect for i8 {}
 impl ChangeDetect for u16 {}
@@ -176,6 +182,7 @@ impl<T> Parameters<T> {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
+    use crate::traits::Scalar as _;
     use paste::paste;
 
     macro_rules! test_scalars {
@@ -189,15 +196,15 @@ mod tests {
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     //Falling -false
                     let output = block.process(&params, &context, [<0 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     // Rising - true
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
                 }
 
                 #[test]
@@ -208,15 +215,15 @@ mod tests {
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     //Falling -true
                     let output = block.process(&params, &context, [<0 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
 
                     // Rising - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
                 }
 
 
@@ -228,19 +235,20 @@ mod tests {
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(!output);
+                    assert!(!output.is_truthy());
 
                     //Falling -true
                     let output = block.process(&params, &context, [<0 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
 
                     // Rising - true
                     let output = block.process(&params, &context, [<1 $type>]);
-                    assert!(output);
+                    assert!(output.is_truthy());
                 }
             }
         };
     }
+
     test_scalars!(u8);
     test_scalars!(i8);
     test_scalars!(u16);
@@ -275,7 +283,7 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
@@ -289,7 +297,7 @@ mod tests {
                     // Falling just one element
                     input.data[3][5] = [<4 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[3][5] = true;
+                    expected_output.data[3][5] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
 
@@ -328,7 +336,7 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
@@ -340,7 +348,7 @@ mod tests {
                     // Rising just one element
                     input.data[6][2] = [<42 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[6][2] = true;
+                    expected_output.data[6][2] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
                 }
@@ -367,7 +375,7 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
@@ -379,21 +387,21 @@ mod tests {
                     assert_eq!(
                         output,
                         &Matrix {
-                            data: [[true; 8]; 11]
+                            data: [[1.0; 8]; 11]
                         }
                     );
 
                     // Falling just one element
                     input.data[3][5] = [<4 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[3][5] = true;
+                    expected_output.data[3][5] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
 
                     // Rising just one element
                     input.data[6][2] = [<42 $type>];
                     let mut expected_output = Matrix::zeroed();
-                    expected_output.data[6][2] = true;
+                    expected_output.data[6][2] = 1.0;
                     let output = block.process(&params, &context, &input);
                     assert_eq!(output, &expected_output);
                 }
@@ -409,4 +417,61 @@ mod tests {
     test_matrix!(i32);
     test_matrix!(f32);
     test_matrix!(f64);
+
+    #[test]
+    fn test_scalar_bool_any() {
+        let context = StubContext::default();
+        let params = Parameters::new(true, "Any");
+        let mut block = ChangeDetectionBlock::<bool>::default();
+
+        // No change
+        let output = block.process(&params, &context, false);
+        assert!(output.is_truthy());
+
+        // Falling for all values
+        let output = block.process(&params, &context, false);
+        assert!(!output.is_truthy());
+
+        //Rising all values
+        let output = block.process(&params, &context, true);
+        assert!(output.is_truthy());
+    }
+
+    #[test]
+    fn test_scalar_bool_rising() {
+        let context = StubContext::default();
+        let params = Parameters::new(true, "Rising");
+        let mut block = ChangeDetectionBlock::<bool>::default();
+
+        // No change
+        let output = block.process(&params, &context, true);
+        assert!(!output.is_truthy());
+
+        // Falling for all values
+        let output = block.process(&params, &context, false);
+        assert!(!output.is_truthy());
+
+        //Rising all values
+        let output = block.process(&params, &context, true);
+        assert!(output.is_truthy());
+    }
+
+    #[test]
+    fn test_scalar_bool_falling() {
+        let context = StubContext::default();
+        let params = Parameters::new(true, "Falling");
+        let mut block = ChangeDetectionBlock::<bool>::default();
+
+        // No change
+        let output = block.process(&params, &context, true);
+        assert!(!output.is_truthy());
+
+        // Falling for all values
+        let output = block.process(&params, &context, false);
+        assert!(output.is_truthy());
+
+        //Rising all values
+        let output = block.process(&params, &context, true);
+        assert!(!output.is_truthy());
+    }
 }

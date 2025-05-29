@@ -1,6 +1,7 @@
 use block_data::{BlockData as OldBlockData, FromPass};
-use num_traits::{One, Zero};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
+
+use crate::traits::Scalar;
 
 pub struct Parameters {}
 
@@ -21,142 +22,102 @@ impl Parameters {
 /// to reset all counters or a vector/matrix of values that is the same size as the input to
 /// reset individual counters.
 ///
-/// If the reset pin is left unconnected, it is assumed to be 0 and the counter will increment
-/// on each iteration.
-///
-/// T = Input type (e.g. `f64` or `Matrix<R, C, f64>`)
-/// R = Reset type e.g.  (`bool` or `Matrix<R, C, bool>`)
-pub struct CounterBlock<T, R>
+/// The block is generic over a type 'T'. This is expected to be a tuple of two types, the first
+/// is the input type and the second is the reset type. For both types they accepts either a scalar
+/// or a matrix of scalars. However they are interpreted as bools or matrices of bools, where true or
+/// false is determined by whether the value is non-zero or zero respectively. See the [`Scalar::is_truthy`]
+/// function for more details.
+pub struct CounterBlock<T: Apply>
 where
-    R: Pass,
-    T: Default + Pass,
-    OldBlockData: FromPass<T>,
+    OldBlockData: FromPass<T::Counter>,
 {
     pub data: OldBlockData,
-    phantom: core::marker::PhantomData<R>,
-    count: T,
+    counter: T::Counter,
 }
 
-impl<T, R> Default for CounterBlock<T, R>
+impl<T: Apply> ProcessBlock for CounterBlock<T>
 where
-    R: Pass,
-    T: Default + Pass,
-    OldBlockData: FromPass<T>,
+    OldBlockData: FromPass<T::Counter>,
+{
+    type Inputs = T;
+    type Output = T::Counter;
+    type Parameters = Parameters;
+
+    fn process<'b>(
+        &'b mut self,
+        _parameters: &Self::Parameters,
+        _context: &dyn pictorus_traits::Context,
+        inputs: PassBy<'_, Self::Inputs>,
+    ) -> PassBy<'b, Self::Output> {
+        T::apply(&mut self.counter, inputs)
+    }
+}
+
+impl<T: Apply> Default for CounterBlock<T>
+where
+    OldBlockData: FromPass<T::Counter>,
 {
     fn default() -> Self {
+        let counter = T::Counter::default();
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            count: T::default(),
-            phantom: core::marker::PhantomData,
+            data: OldBlockData::from_pass(counter.as_by()),
+            counter,
         }
     }
 }
 
-macro_rules! counter_impl {
-    ($type:ty) => {
-        // A reset line for each counter, must be the same size as the counter
-        impl ProcessBlock for CounterBlock<$type, bool>
-        where
-            OldBlockData: FromPass<$type>,
-        {
-            // The inputs (bool, bool) map to (increment, reset)
-            type Inputs = (bool, bool);
-            type Output = $type;
-            type Parameters = Parameters;
-
-            fn process(
-                &mut self,
-                _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                _inputs: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
-                // Corelib matrices are indexed array[col][row]
-                if _inputs.1 {
-                    // Reset if true
-                    self.count = <$type>::zero();
-                } else if _inputs.0 {
-                    // Increment if true
-                    self.count += <$type>::one();
-                }
-                self.data = OldBlockData::from_scalar(self.count.into());
-                self.count
-            }
-        }
-
-        // A single reset line that resets all of the counters to 0
-        impl<const ROWS: usize, const COLS: usize> ProcessBlock
-            for CounterBlock<Matrix<ROWS, COLS, $type>, bool>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
-        {
-            // The inputs ([bool; N], bool) map to (increment, reset)
-            type Inputs = (Matrix<ROWS, COLS, bool>, bool);
-            type Output = Matrix<ROWS, COLS, $type>;
-            type Parameters = Parameters;
-
-            fn process(
-                &mut self,
-                _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                _inputs: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
-                // Corelib matrices are indexed array[col][row]
-                for i in 0..ROWS {
-                    for j in 0..COLS {
-                        if _inputs.1 {
-                            // Reset if true
-                            self.count.data[j][i] = <$type>::zero();
-                        } else if _inputs.0.data[j][i] {
-                            // Increment if true
-                            self.count.data[j][i] += <$type>::one();
-                        }
-                    }
-                }
-                self.data = OldBlockData::from_pass(&self.count);
-                &self.count
-            }
-        }
-
-        // A reset line for each counter, must be the same size as the counter
-        impl<const ROWS: usize, const COLS: usize> ProcessBlock
-            for CounterBlock<Matrix<ROWS, COLS, $type>, Matrix<ROWS, COLS, bool>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
-        {
-            // The inputs ([bool; N], [bool; N]) map to (increment, reset)
-            type Inputs = (Matrix<ROWS, COLS, bool>, Matrix<ROWS, COLS, bool>);
-            type Output = Matrix<ROWS, COLS, $type>;
-            type Parameters = Parameters;
-
-            fn process(
-                &mut self,
-                _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                _inputs: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
-                // Corelib matrices are indexed array[col][row]
-                for i in 0..ROWS {
-                    for j in 0..COLS {
-                        if _inputs.1.data[j][i] {
-                            // Reset if true
-                            self.count.data[j][i] = <$type>::zero();
-                        } else if _inputs.0.data[j][i] {
-                            self.count.data[j][i] += <$type>::one();
-                        }
-                    }
-                }
-                self.data = OldBlockData::from_pass(&self.count);
-                &self.count
-            }
-        }
-    };
+pub trait Apply: Pass {
+    type Counter: Default + Pass;
+    fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter>;
 }
 
-counter_impl!(u8);
-counter_impl!(u16);
-counter_impl!(u32);
-counter_impl!(f32);
-counter_impl!(f64);
+impl<I: Scalar, R: Scalar> Apply for (I, R) {
+    type Counter = f64;
+    fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter> {
+        if input.1.is_truthy() {
+            *count = 0.0;
+        } else if input.0.is_truthy() {
+            *count += 1.0;
+        }
+        count.as_by()
+    }
+}
+
+impl<I: Scalar, R: Scalar, const NROWS: usize, const NCOLS: usize> Apply
+    for (Matrix<NROWS, NCOLS, I>, R)
+{
+    type Counter = Matrix<NROWS, NCOLS, f64>;
+    fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter> {
+        for i in 0..NROWS {
+            for j in 0..NCOLS {
+                if input.1.is_truthy() {
+                    count.data[j][i] = 0.0;
+                } else if input.0.data[j][i].is_truthy() {
+                    count.data[j][i] += 1.0;
+                }
+            }
+        }
+        count.as_by()
+    }
+}
+
+impl<I: Scalar, R: Scalar, const NROWS: usize, const NCOLS: usize> Apply
+    for (Matrix<NROWS, NCOLS, I>, Matrix<NROWS, NCOLS, R>)
+{
+    type Counter = Matrix<NROWS, NCOLS, f64>;
+    fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter> {
+        for i in 0..NROWS {
+            for j in 0..NCOLS {
+                if input.1.data[j][i].is_truthy() {
+                    count.data[j][i] = 0.0;
+                } else if input.0.data[j][i].is_truthy() {
+                    count.data[j][i] += 1.0;
+                }
+            }
+        }
+        count.as_by()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -167,7 +128,7 @@ mod tests {
     #[test]
     fn test_counter_block_simple_f64() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<Matrix<1, 1, f64>, Matrix<1, 1, bool>>::default();
+        let mut block = CounterBlock::<(Matrix<1, 1, bool>, Matrix<1, 1, bool>)>::default();
         let c = StubContext::default();
 
         let mut increment = Matrix::<1, 1, bool>::zeroed();
@@ -190,7 +151,7 @@ mod tests {
     #[test]
     fn test_counter_block_1x2_f64() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<Matrix<1, 2, f64>, Matrix<1, 2, bool>>::default();
+        let mut block = CounterBlock::<(Matrix<1, 2, bool>, Matrix<1, 2, bool>)>::default();
         let c = StubContext::default();
 
         let mut increment = Matrix::<1, 2, bool>::zeroed();
@@ -216,14 +177,14 @@ mod tests {
     #[test]
     fn test_counter_block_2x2_f64() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<Matrix<2, 2, f64>, Matrix<2, 2, bool>>::default();
+        let mut block = CounterBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, bool>)>::default();
         let c = StubContext::default();
 
-        let mut increment = Matrix::<2, 2, bool>::zeroed();
-        increment.data[0][0] = true;
-        increment.data[1][0] = true;
-        increment.data[0][1] = true;
-        increment.data[1][1] = true;
+        let mut increment = Matrix::<2, 2, f64>::zeroed();
+        increment.data[0][0] = 1.0;
+        increment.data[1][0] = 1.0;
+        increment.data[0][1] = 1.0;
+        increment.data[1][1] = 1.0;
 
         let mut reset = Matrix::<2, 2, bool>::zeroed();
 
@@ -267,14 +228,14 @@ mod tests {
     #[test]
     fn test_counter_block_2x2_single_reset_f64() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<Matrix<2, 2, f64>, bool>::default();
+        let mut block = CounterBlock::<(Matrix<2, 2, f64>, bool)>::default();
         let c = StubContext::default();
 
-        let mut increment = Matrix::<2, 2, bool>::zeroed();
-        increment.data[0][0] = true;
-        increment.data[1][0] = true;
-        increment.data[0][1] = true;
-        increment.data[1][1] = true;
+        let mut increment = Matrix::<2, 2, f64>::zeroed();
+        increment.data[0][0] = 1.0;
+        increment.data[1][0] = 1.0;
+        increment.data[0][1] = 1.0;
+        increment.data[1][1] = 1.0;
 
         let mut reset = false;
 
@@ -314,153 +275,51 @@ mod tests {
     #[test]
     fn test_counter_block_2x2_u8() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<Matrix<2, 2, u8>, Matrix<2, 2, bool>>::default();
+        let mut block = CounterBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, bool>)>::default();
         let c = StubContext::default();
 
-        let mut increment = Matrix::<2, 2, bool>::zeroed();
-        increment.data[0][0] = true;
-        increment.data[1][0] = true;
-        increment.data[0][1] = true;
-        increment.data[1][1] = true;
+        let mut increment = Matrix::<2, 2, u8>::zeroed();
+        increment.data[0][0] = 1;
+        increment.data[1][0] = 1;
+        increment.data[0][1] = 1;
+        increment.data[1][1] = 1;
 
         let mut reset = Matrix::<2, 2, bool>::zeroed();
 
         let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 1);
-        assert_eq!(output.data[1][0], 1);
-        assert_eq!(output.data[0][1], 1);
-        assert_eq!(output.data[1][1], 1);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[1][0], 1.0);
+        assert_eq!(output.data[0][1], 1.0);
+        assert_eq!(output.data[1][1], 1.0);
 
         let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 2);
-        assert_eq!(output.data[1][0], 2);
-        assert_eq!(output.data[0][1], 2);
-        assert_eq!(output.data[1][1], 2);
+        assert_eq!(output.data[0][0], 2.0);
+        assert_eq!(output.data[1][0], 2.0);
+        assert_eq!(output.data[0][1], 2.0);
+        assert_eq!(output.data[1][1], 2.0);
 
         reset.data[0][0] = true;
         let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 0);
-        assert_eq!(output.data[1][0], 3);
-        assert_eq!(output.data[0][1], 3);
-        assert_eq!(output.data[1][1], 3);
+        assert_eq!(output.data[0][0], 0.0);
+        assert_eq!(output.data[1][0], 3.0);
+        assert_eq!(output.data[0][1], 3.0);
+        assert_eq!(output.data[1][1], 3.0);
 
         reset.data[0][0] = false;
         reset.data[1][0] = true;
         let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 1);
-        assert_eq!(output.data[1][0], 0);
-        assert_eq!(output.data[0][1], 4);
-        assert_eq!(output.data[1][1], 4);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[1][0], 0.0);
+        assert_eq!(output.data[0][1], 4.0);
+        assert_eq!(output.data[1][1], 4.0);
 
         reset.data[0][0] = false;
         reset.data[1][0] = false;
         reset.data[0][1] = true;
         let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 2);
-        assert_eq!(output.data[1][0], 1);
-        assert_eq!(output.data[0][1], 0);
-        assert_eq!(output.data[1][1], 5);
-    }
-
-    #[test]
-    fn test_counter_block_2x2_u16() {
-        let p = Parameters::new();
-        let mut block = CounterBlock::<Matrix<2, 2, u16>, Matrix<2, 2, bool>>::default();
-        let c = StubContext::default();
-
-        let mut increment = Matrix::<2, 2, bool>::zeroed();
-        increment.data[0][0] = true;
-        increment.data[1][0] = true;
-        increment.data[0][1] = true;
-        increment.data[1][1] = true;
-
-        let mut reset = Matrix::<2, 2, bool>::zeroed();
-
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 1);
-        assert_eq!(output.data[1][0], 1);
-        assert_eq!(output.data[0][1], 1);
-        assert_eq!(output.data[1][1], 1);
-
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 2);
-        assert_eq!(output.data[1][0], 2);
-        assert_eq!(output.data[0][1], 2);
-        assert_eq!(output.data[1][1], 2);
-
-        reset.data[0][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 0);
-        assert_eq!(output.data[1][0], 3);
-        assert_eq!(output.data[0][1], 3);
-        assert_eq!(output.data[1][1], 3);
-
-        reset.data[0][0] = false;
-        reset.data[1][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 1);
-        assert_eq!(output.data[1][0], 0);
-        assert_eq!(output.data[0][1], 4);
-        assert_eq!(output.data[1][1], 4);
-
-        reset.data[0][0] = false;
-        reset.data[1][0] = false;
-        reset.data[0][1] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 2);
-        assert_eq!(output.data[1][0], 1);
-        assert_eq!(output.data[0][1], 0);
-        assert_eq!(output.data[1][1], 5);
-    }
-
-    #[test]
-    fn test_counter_block_2x2_u32() {
-        let p = Parameters::new();
-        let mut block = CounterBlock::<Matrix<2, 2, u32>, Matrix<2, 2, bool>>::default();
-        let c = StubContext::default();
-
-        let mut increment = Matrix::<2, 2, bool>::zeroed();
-        increment.data[0][0] = true;
-        increment.data[1][0] = true;
-        increment.data[0][1] = true;
-        increment.data[1][1] = true;
-
-        let mut reset = Matrix::<2, 2, bool>::zeroed();
-
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 1);
-        assert_eq!(output.data[1][0], 1);
-        assert_eq!(output.data[0][1], 1);
-        assert_eq!(output.data[1][1], 1);
-
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 2);
-        assert_eq!(output.data[1][0], 2);
-        assert_eq!(output.data[0][1], 2);
-        assert_eq!(output.data[1][1], 2);
-
-        reset.data[0][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 0);
-        assert_eq!(output.data[1][0], 3);
-        assert_eq!(output.data[0][1], 3);
-        assert_eq!(output.data[1][1], 3);
-
-        reset.data[0][0] = false;
-        reset.data[1][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 1);
-        assert_eq!(output.data[1][0], 0);
-        assert_eq!(output.data[0][1], 4);
-        assert_eq!(output.data[1][1], 4);
-
-        reset.data[0][0] = false;
-        reset.data[1][0] = false;
-        reset.data[0][1] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
-        assert_eq!(output.data[0][0], 2);
-        assert_eq!(output.data[1][0], 1);
-        assert_eq!(output.data[0][1], 0);
-        assert_eq!(output.data[1][1], 5);
+        assert_eq!(output.data[0][0], 2.0);
+        assert_eq!(output.data[1][0], 1.0);
+        assert_eq!(output.data[0][1], 0.0);
+        assert_eq!(output.data[1][1], 5.0);
     }
 }

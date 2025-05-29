@@ -22,6 +22,7 @@ pub mod byte_data;
 mod nalgebra_interop;
 mod stale_tracker;
 pub(crate) mod traits;
+pub use traits::Scalar;
 
 #[cfg(any(test, doctest))]
 mod testing;
