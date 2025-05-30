@@ -4,9 +4,9 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 use super::comparison_block::ComparisonType;
 
 pub struct Parameter<S: Scalar> {
-    // The type of comparison to perform.
+    /// The type of comparison to perform.
     pub comparison_type: ComparisonType,
-    // The scalar value to compare against.
+    /// The scalar value to compare against.
     pub value: S,
 }
 
