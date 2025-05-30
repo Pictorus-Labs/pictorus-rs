@@ -66,11 +66,12 @@ impl<T: timer::GeneralInstance4Channel> Pwm for PwmWrapper<'_, T> {
     where
         P: Into<Self::Time>,
     {
-        // save current duty cycle period is in seconds for use later
+        // save current duty cycle period for use later
         let dc1 = self.get_duty_ch1();
         let dc2 = self.get_duty_ch2();
         let dc3 = self.get_duty_ch3();
         let dc4 = self.get_duty_ch4();
+
         // Disable to make changes to the frequency
         self.simple_pwm.disable(Channel::Ch1);
         self.simple_pwm.disable(Channel::Ch2);
@@ -181,7 +182,7 @@ impl<'d, T: timer::GeneralInstance4Channel> PwmWrapper<'d, T> {
 }
 
 impl<T: timer::GeneralInstance4Channel> OutputBlock for PwmWrapper<'_, T> {
-    type Inputs = (f64, f64, f64, f64, f64); // (Frequency, Duty Cycle)
+    type Inputs = (f64, f64, f64, f64, f64); // (Frequency, Duty Cycle Ch1, Duty Cycle Ch2, Duty Cycle Ch3, Duty Cycle Ch4)
 
     type Parameters = PwmBlockParams;
 
