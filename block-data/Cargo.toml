@@ -1,8 +1,13 @@
 [package]
 name = "block-data"
-version = "0.1.0"
 edition = "2021"
-publish = false
+description = "Deprecated block data definitions for maintaining compatibility with older versions of Pictorus."
+version = "0.0.0"
+license-file.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,7 +25,7 @@ nalgebra = { version = "0.33.2", default-features = false, features = [
   "libm",
 ] }
 strum = { version = "0.26.1", default-features = false, features = ["derive"] }
-pictorus-traits = { path = "../pictorus-traits" }
+pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
 
 [features]
 std = ["nalgebra/std", "miniserde/std"]

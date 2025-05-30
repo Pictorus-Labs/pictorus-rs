@@ -16,3 +16,10 @@ default-members = [
   "pictorus-internal",
 ]
 resolver = "3"
+
+[workspace.package]
+license-file = "LICENSE"
+homepage = "https://www.pictor.us/"
+repository = "https://github.com/Pictorus-Labs/pictorus-rs"
+keywords = ["embedded", "modeling", "simulation", "fmi"]
+categories = ["embedded", "hardware-support", "no-std"]
