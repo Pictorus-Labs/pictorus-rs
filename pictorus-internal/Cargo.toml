@@ -3,6 +3,7 @@ name = "pictorus-internal"
 edition = "2024"
 description = "Utilities used by generated code in Pictorus."
 version = "0.0.0"
+license.workspace = true
 license-file.workspace = true
 homepage.workspace = true
 repository.workspace = true
