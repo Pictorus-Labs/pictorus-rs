@@ -66,17 +66,11 @@ impl<T: timer::GeneralInstance4Channel> Pwm for PwmWrapper<'_, T> {
     where
         P: Into<Self::Time>,
     {
-        // save current duty cycle period for use later
-        let dc1 = self.get_duty_ch1();
-        let dc2 = self.get_duty_ch2();
-        let dc3 = self.get_duty_ch3();
-        let dc4 = self.get_duty_ch4();
+        // save current duty cycle to use after frequency change
+        let (dc1, dc2, dc3, dc4) = self.get_duty_cycle_all();
 
         // Disable to make changes to the frequency
-        self.simple_pwm.disable(Channel::Ch1);
-        self.simple_pwm.disable(Channel::Ch2);
-        self.simple_pwm.disable(Channel::Ch3);
-        self.simple_pwm.disable(Channel::Ch4);
+        self.disable_all();
 
         let freq = 1.0 / period.into();
         // Note: the hz function takes a u32 value and set_frequency asserts if freq == 0, the minimum
@@ -84,19 +78,91 @@ impl<T: timer::GeneralInstance4Channel> Pwm for PwmWrapper<'_, T> {
         self.simple_pwm.set_frequency(hz(freq as u32));
 
         // Embassy set frequency requires a duty cycle update, since the max duty cycle changes
-        self.set_duty_ch1(dc1);
-        self.set_duty_ch2(dc2);
-        self.set_duty_ch3(dc3);
-        self.set_duty_ch4(dc4);
+        self.set_duty_cycle_all((dc1, dc2, dc3, dc4));
 
-        self.simple_pwm.enable(Channel::Ch1);
-        self.simple_pwm.enable(Channel::Ch2);
-        self.simple_pwm.enable(Channel::Ch3);
-        self.simple_pwm.enable(Channel::Ch4);
+        self.enable_all();
     }
 }
 
 impl<T: timer::GeneralInstance4Channel> PwmWrapper<'_, T> {
+    fn disable_all(&mut self) {
+        self.disable_ch1();
+        self.disable_ch2();
+        self.disable_ch3();
+        self.disable_ch4();
+    }
+
+    fn enable_all(&mut self) {
+        self.enable_ch1();
+        self.enable_ch2();
+        self.enable_ch3();
+        self.enable_ch4();
+    }
+
+    fn get_duty_cycle_all(&self) -> (f64, f64, f64, f64) {
+        (
+            self.get_duty_ch1(),
+            self.get_duty_ch2(),
+            self.get_duty_ch3(),
+            self.get_duty_ch4(),
+        )
+    }
+
+    fn set_duty_cycle_all(&mut self, duty_cycle: (f64, f64, f64, f64)) {
+        self.set_duty_ch1(duty_cycle.0);
+        self.set_duty_ch2(duty_cycle.1);
+        self.set_duty_ch3(duty_cycle.2);
+        self.set_duty_ch4(duty_cycle.3);
+    }
+
+    fn enable_ch1(&mut self) {
+        if self.ch1.is_some() {
+            self.simple_pwm.enable(self.ch1.unwrap());
+        }
+    }
+
+    fn enable_ch2(&mut self) {
+        if self.ch2.is_some() {
+            self.simple_pwm.enable(self.ch2.unwrap());
+        }
+    }
+
+    fn enable_ch3(&mut self) {
+        if self.ch3.is_some() {
+            self.simple_pwm.enable(self.ch3.unwrap());
+        }
+    }
+
+    fn enable_ch4(&mut self) {
+        if self.ch4.is_some() {
+            self.simple_pwm.enable(self.ch4.unwrap());
+        }
+    }
+
+    fn disable_ch1(&mut self) {
+        if self.ch1.is_some() {
+            self.simple_pwm.disable(self.ch1.unwrap());
+        }
+    }
+
+    fn disable_ch2(&mut self) {
+        if self.ch2.is_some() {
+            self.simple_pwm.disable(self.ch2.unwrap());
+        }
+    }
+
+    fn disable_ch3(&mut self) {
+        if self.ch3.is_some() {
+            self.simple_pwm.disable(self.ch3.unwrap());
+        }
+    }
+
+    fn disable_ch4(&mut self) {
+        if self.ch4.is_some() {
+            self.simple_pwm.disable(self.ch4.unwrap());
+        }
+    }
+
     fn set_duty_ch1(&mut self, duty: f64) {
         if self.ch1.is_some() {
             self.set_duty(self.ch1.unwrap(), duty);
@@ -162,22 +228,18 @@ impl<'d, T: timer::GeneralInstance4Channel> PwmWrapper<'d, T> {
         ch3: Option<Channel>,
         ch4: Option<Channel>,
     ) -> Self {
-        simple_pwm.disable(Channel::Ch1);
-        simple_pwm.disable(Channel::Ch2);
-        simple_pwm.disable(Channel::Ch3);
-        simple_pwm.disable(Channel::Ch4);
-        simple_pwm.set_duty(Channel::Ch1, 0);
-        simple_pwm.set_duty(Channel::Ch2, 0);
-        simple_pwm.set_duty(Channel::Ch3, 0);
-        simple_pwm.set_duty(Channel::Ch4, 0);
-
-        PwmWrapper {
+        let mut wrapper = PwmWrapper {
             simple_pwm,
             ch1,
             ch2,
             ch3,
             ch4,
-        }
+        };
+
+        wrapper.disable_all(); // Disable all channels initially
+        wrapper.set_duty_cycle_all((0.0, 0.0, 0.0, 0.0)); // Set initial duty cycles to 0
+
+        wrapper
     }
 }
 
