@@ -1,6 +1,6 @@
 use core::cmp::Ordering;
 
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, PartialEq)]

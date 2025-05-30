@@ -1,7 +1,7 @@
 extern crate alloc;
 use crate::traits::{Float, Scalar};
 use alloc::vec::Vec;
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 // Ideally this would not have to return a new vec, but that added a lot of complexity

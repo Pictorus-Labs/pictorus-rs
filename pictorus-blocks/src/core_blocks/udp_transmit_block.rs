@@ -3,7 +3,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Parameters for UDP Transmit Block

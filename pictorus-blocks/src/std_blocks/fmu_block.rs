@@ -2,8 +2,8 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 
-use block_data::BlockData as OldBlockData;
 use fmu_runner::{fmi2Type, model_description::ScalarVariable, Fmu, FmuInstance, FmuLibrary};
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{Context, ProcessBlock};
 use std::collections::HashMap;
 

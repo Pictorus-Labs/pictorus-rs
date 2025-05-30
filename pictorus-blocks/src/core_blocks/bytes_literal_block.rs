@@ -1,4 +1,4 @@
-use block_data::BlockData;
+use pictorus_block_data::BlockData;
 use pictorus_traits::{ByteSliceSignal, GeneratorBlock};
 
 pub struct Parameters<const CHARS: usize> {
@@ -46,7 +46,7 @@ mod tests {
     use super::*;
 
     use crate::testing::StubContext;
-    use block_data::ToPass;
+    use pictorus_block_data::ToPass;
     use std::string::String;
 
     #[test]

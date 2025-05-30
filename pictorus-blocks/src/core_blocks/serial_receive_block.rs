@@ -2,8 +2,8 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::{cmp::min, str};
 
-use block_data::BlockData as OldBlockData;
 use log::debug;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 use crate::{

@@ -1,5 +1,5 @@
 use crate::traits::Float;
-use block_data::BlockData;
+use pictorus_block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
 #[derive(Debug, Clone)]

@@ -11,7 +11,7 @@ categories.workspace = true
 
 [dependencies]
 pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
-block-data = { path = "../block-data", version = "0.0.0" }
+pictorus-block-data = { path = "../pictorus-block-data", version = "0.0.0" }
 embedded-hal = "1.0.0"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [
   "unproven",

@@ -2,7 +2,7 @@ extern crate alloc;
 use crate::byte_data::{parse_byte_data_spec, try_pack_data, ByteOrderSpec, DataType};
 use crate::traits::Scalar;
 use alloc::vec::Vec;
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Packs scalar inputs into a byte buffer according to the provided data spec.

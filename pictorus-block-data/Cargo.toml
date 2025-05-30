@@ -1,5 +1,5 @@
 [package]
-name = "block-data"
+name = "pictorus-block-data"
 edition = "2021"
 description = "Deprecated block data definitions for maintaining compatibility with older versions of Pictorus."
 version = "0.0.0"

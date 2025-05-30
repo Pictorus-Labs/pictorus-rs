@@ -1,4 +1,4 @@
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{PassBy, ProcessBlock, Scalar};
 
 #[derive(strum::EnumString)]
