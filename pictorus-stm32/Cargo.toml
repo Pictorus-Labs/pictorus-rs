@@ -3,7 +3,6 @@ name = "pictorus-stm32"
 edition = "2024"
 description = "STM32 implementations of Pictorus traits."
 version = "0.0.0"
-license.workspace = true
 license-file.workspace = true
 homepage.workspace = true
 repository.workspace = true

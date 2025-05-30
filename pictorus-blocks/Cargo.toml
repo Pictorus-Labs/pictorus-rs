@@ -3,7 +3,6 @@ edition = "2021"
 name = "pictorus-blocks"
 description = "Implementations of Pictorus blocks."
 version = "0.0.0"
-license.workspace = true
 license-file.workspace = true
 homepage.workspace = true
 repository.workspace = true

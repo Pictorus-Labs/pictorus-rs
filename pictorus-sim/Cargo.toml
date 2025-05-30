@@ -3,7 +3,6 @@ name = "pictorus-sim"
 edition = "2024"
 description = "Sim implementation of Pictorus traits."
 version = "0.0.0"
-license.workspace = true
 license-file.workspace = true
 homepage.workspace = true
 repository.workspace = true
