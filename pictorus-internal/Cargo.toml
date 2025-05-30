@@ -1,12 +1,17 @@
 [package]
 name = "pictorus-internal"
-version = "0.1.0"
 edition = "2024"
-publish = false
+description = "Utilities used by generated code in Pictorus."
+version = "0.0.0"
+license-file.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
-pictorus-traits = { path = "../pictorus-traits" }
-block-data = { path = "../block-data" }
+pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
+block-data = { path = "../block-data", version = "0.0.0" }
 embedded-hal = "1.0.0"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [
   "unproven",

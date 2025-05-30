@@ -1,7 +1,10 @@
 [package]
 edition = "2021"
 name = "pictorus-traits"
-publish = false          # this is a sketch
-
-[lib]
-doctest = false
+description = "Base traits used to define Pictorus blocks."
+version = "0.0.0"
+license-file.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
