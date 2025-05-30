@@ -4,6 +4,7 @@ pub use abs_block::AbsBlock;
 
 mod adc_block;
 pub use adc_block::AdcBlock;
+#[doc(hidden)]
 pub use adc_block::Parameters as AdcBlockParams;
 
 mod aggregate_block;
@@ -41,10 +42,12 @@ pub use bytes_unpack_block::BytesUnpackBlock;
 
 mod can_receive_block;
 pub use can_receive_block::CanReceiveBlock;
+#[doc(hidden)]
 pub use can_receive_block::Parameters as CanReceiveBlockParams;
 
 mod can_transmit_block;
 pub use can_transmit_block::CanTransmitBlock;
+#[doc(hidden)]
 pub use can_transmit_block::Parameters as CanTransmitBlockParams;
 
 mod change_detection_block;
@@ -70,6 +73,7 @@ pub use cross_product_block::CrossProductBlock;
 
 mod dac_block;
 pub use dac_block::DacBlock;
+#[doc(hidden)]
 pub use dac_block::Parameters as DacBlockParams;
 
 mod deadband_block;
@@ -96,7 +100,11 @@ pub use exponent_block::ExponentBlock;
 // These blocks are special versions of passthrough blocks that are
 // used to handle user-input functions that might return non-finite data
 mod fix_non_finite_block;
+/// Run a basic user-defined Rust function that returns a single value.
+#[doc(inline)]
 pub use fix_non_finite_block::FixNonFiniteBlock as RustCodeBlock;
+/// Run a user-defined equation that returns a single value.
+#[doc(inline)]
 pub use fix_non_finite_block::FixNonFiniteBlock as EquationBlock;
 
 mod frequency_filter_block;
@@ -107,14 +115,17 @@ pub use gain_block::GainBlock;
 
 mod i2c_input_block;
 pub use i2c_input_block::I2cInputBlock;
+#[doc(hidden)]
 pub use i2c_input_block::Parameters as I2cInputBlockParams;
 
 mod i2c_output_block;
 pub use i2c_output_block::I2cOutputBlock;
+#[doc(hidden)]
 pub use i2c_output_block::Parameters as I2cOutputBlockParams;
 
 mod gpio_output_block;
 pub use gpio_output_block::GpioOutputBlock;
+#[doc(hidden)]
 pub use gpio_output_block::Parameters as GpioOutputBlockParams;
 
 mod iir_filter_block;
@@ -150,14 +161,31 @@ pub use not_block::NotBlock;
 // There are several blocks that just compute a value external to the block
 // and pass it through.
 mod passthrough_block;
+#[doc(hidden)]
 pub use passthrough_block::Parameters as GpioInputBlockParams;
+#[doc(hidden)]
 pub use passthrough_block::Parameters as SpiTransmitBlockParams;
+
+/// Formats a string, interpolating input values into it.
+#[doc(inline)]
 pub use passthrough_block::PassthroughBlock as StringFormatBlock;
+/// Used to signify an output port of a component.
+#[doc(inline)]
 pub use passthrough_block::PassthroughBlock as ComponentOutputBlock;
+/// Used to signify an input port of a component.
+#[doc(inline)]
 pub use passthrough_block::PassthroughBlock as ComponentInputBlock;
+/// Reads data from a data store or variable and outputs it as a signal.
+#[doc(inline)]
 pub use passthrough_block::PassthroughBlock as DataReadBlock;
+/// Writes the input data to a data store or variable.
+#[doc(inline)]
 pub use passthrough_block::PassthroughBlock as DataWriteBlock;
+/// Stores the data from a GPIO input pin and outputs it as a signal.
+#[doc(inline)]
 pub use passthrough_block::PassthroughBlock as GpioInputBlock;
+/// Stores data to be sent over SPI and outputs it as a signal.
+#[doc(inline)]
 pub use passthrough_block::PassthroughBlock as SpiTransmitBlock;
 
 mod pid_block;
@@ -167,6 +195,7 @@ mod product_block;
 pub use product_block::{ComponentWise, MatrixMultiply, ProductBlock};
 
 mod pwm_block;
+#[doc(hidden)]
 pub use pwm_block::Parameters as PwmBlockParams;
 pub use pwm_block::PwmBlock;
 
@@ -186,10 +215,12 @@ mod sawtoothwave_block;
 pub use sawtoothwave_block::SawtoothwaveBlock;
 
 mod serial_receive_block;
+#[doc(hidden)]
 pub use serial_receive_block::Parameters as SerialReceiveBlockParams;
 pub use serial_receive_block::SerialReceiveBlock;
 
 mod serial_transmit_block;
+#[doc(hidden)]
 pub use serial_transmit_block::Parameters as SerialTransmitBlockParams;
 pub use serial_transmit_block::SerialTransmitBlock;
 
@@ -200,6 +231,7 @@ mod sliding_window_block;
 pub use sliding_window_block::SlidingWindowBlock;
 
 mod spi_receive_block;
+#[doc(hidden)]
 pub use spi_receive_block::Parameters as SpiReceiveBlockParams;
 pub use spi_receive_block::SpiReceiveBlock;
 
@@ -228,10 +260,12 @@ mod trigonometry_block;
 pub use trigonometry_block::TrigonometryBlock;
 
 mod udp_receive_block;
+#[doc(hidden)]
 pub use udp_receive_block::Parameters as UdpReceiveBlockParams;
 pub use udp_receive_block::UdpReceiveBlock;
 
 mod udp_transmit_block;
+#[doc(hidden)]
 pub use udp_transmit_block::Parameters as UdpTransmitBlockParams;
 pub use udp_transmit_block::UdpTransmitBlock;
 

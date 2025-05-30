@@ -6,6 +6,7 @@ use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 use crate::{stale_tracker::StaleTracker, IsValid};
 
 /// Parameters for UDP Receive Block
+#[doc(hidden)]
 pub struct Parameters {
     pub stale_age_ms: f64,
 }
@@ -16,7 +17,8 @@ impl Parameters {
     }
 }
 
-/// UDP Receive Block buffers data read from a UDP socket.
+/// Buffers data read from a UDP socket.
+///
 /// This block reads data from a Hardware specific UDP `InputBlock` that is added
 /// by codegen. It attempts to read data each timestep and if data is available, it
 /// will update its internal buffer making that data available to blocks connected to it

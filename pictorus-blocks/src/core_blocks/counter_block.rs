@@ -17,8 +17,9 @@ impl Parameters {
     }
 }
 
-/// Counter block increments a counter by 1 each iteration for a scalar, vector, or matrix. The
-/// counters can be reset using non-zero values of either a single scalar to
+/// Increments a counter every time the count input is truthy.
+///
+/// The counters can be reset using non-zero values of either a single scalar to
 /// to reset all counters or a vector/matrix of values that is the same size as the input to
 /// reset individual counters.
 ///

@@ -1,13 +1,18 @@
 [package]
 name = "pictorus-stm32"
-version = "0.1.0"
 edition = "2024"
-publish = false
+description = "STM32 implementations of Pictorus traits."
+version = "0.0.0"
+license-file.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
-pictorus-blocks = { path = "../pictorus-blocks" }
-pictorus-traits = { path = "../pictorus-traits" }
-pictorus-internal = { path = "../pictorus-internal" }
+pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
+pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
+pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }
 embedded-time = "0.12.1"
 embedded-hal = "1.0.0"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [

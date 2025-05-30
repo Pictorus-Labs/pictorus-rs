@@ -9,7 +9,8 @@ use component::ApplyComponentWise;
 mod matrix;
 use matrix::{ApplyMatMul, ParametersMatrixMult};
 
-/// This block can be used to get the product of all of its input signals.
+/// Calculates the product of all of its input signals.
+///
 /// The product can be calculated in two ways:
 /// - ComponentWise: Accepts Scalars, Same Size Matrices, or Scalars and Same Size Matrices
 /// - MatrixMultiply: Accepts all matrices, using standard matrix multiplication sizing rules (i.e. (A, B) * (B, C) = (A, C))
@@ -91,8 +92,11 @@ impl<T: ApplyComponentWise> Apply<ComponentWise> for T {
 
 /// This trait is used as a marker for the two different methods of product calculation.
 pub trait ProductMethod {}
+/// Calculate the product of all input signals component-wise.
 pub struct ComponentWise;
 impl ProductMethod for ComponentWise {}
+
+/// Calculate the product of all input signals using matrix multiplication.
 pub struct MatrixMultiply;
 impl ProductMethod for MatrixMultiply {}
 

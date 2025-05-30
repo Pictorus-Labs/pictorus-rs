@@ -15,7 +15,9 @@ impl<I> Parameters<I> {
     }
 }
 
-/// SlidingWindowBlock concatenates N samples into a single output, with the Parameters. The concatenation is done column wise.
+/// Concatenates samples into a signle output of length N.
+///
+/// The concatenation is done column wise.
 /// SlidingWindowBlock takes 3 compile time arguments:
 /// N = the number of samples to concatenate
 /// I = the input type (i.e. Scalar or Matrix<ROWS, ICOLS, Scalar>)

@@ -5,7 +5,8 @@ use block_data::BlockData as OldBlockData;
 use miniserde::json::{self, Value};
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
-/// This block can be used to take a set of input signals and serialize them into a JSON object.
+/// Serializes a set of input signals into a JSON blob.
+///
 /// That object is then serialized into a byte slice to be returned
 pub struct JsonDumpBlock<T: Apply> {
     pub data: OldBlockData,

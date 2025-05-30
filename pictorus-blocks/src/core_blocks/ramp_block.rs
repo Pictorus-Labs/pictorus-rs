@@ -3,6 +3,7 @@ use block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, Scalar};
 
 #[derive(Debug, Clone)]
+/// Outputs a signal that ramps up linearly from a specified start time at a specified rate.
 pub struct RampBlock<T: Scalar + Float> {
     phantom: core::marker::PhantomData<T>,
     pub data: BlockData,

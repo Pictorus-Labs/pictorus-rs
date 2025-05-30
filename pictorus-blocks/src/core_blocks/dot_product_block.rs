@@ -5,6 +5,7 @@ use crate::traits::Scalar;
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
+/// Calculate the dot product of two same-sized vectors.
 pub struct DotProductBlock<T: Apply> {
     buffer: Option<T::Output>,
     pub data: OldBlockData,

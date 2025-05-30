@@ -16,6 +16,7 @@ use crate::{
 };
 
 /// Parameters for the Serial Receive Block
+#[doc(hidden)]
 pub struct Parameters {
     /// A tuple of values used to scan for the start delimiter
     /// - Vec<u8> - The start delimiter byte string
@@ -58,10 +59,12 @@ impl Parameters {
     }
 }
 
-/// The Serial Receive Block is used to parse incoming serial data by configuring the
-/// start / end delimiters and the number of bytes to read. When fresh data arrives, the `is_valid`
-/// signal will be pulsed high for the duration of the tick. The block caches data until a new message
-/// is received and parsed.
+/// Parses incoming serial data by configuring the start / end delimiters
+/// and the number of bytes to read.
+///
+/// The `is_valid` signal will continue to emit true as long as new
+/// data is received before the specified expiration period elapses.
+/// The block caches data until a new message is received and parsed.
 pub struct SerialReceiveBlock {
     pub data: OldBlockData,
     buffer: Vec<u8>,

@@ -1,6 +1,7 @@
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
+/// Outputs the input data with an added bias (offset).
 pub struct BiasBlock<B, T>
 where
     B: Scalar,

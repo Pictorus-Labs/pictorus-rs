@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
-/// This block accepts up to 8 scalar inputs and packs them into a byte buffer according to the provided data spec.
+/// Packs scalar inputs into a byte buffer according to the provided data spec.
 pub struct BytesPackBlock<T: Apply> {
     pub data: OldBlockData,
     buffer: Vec<u8>,

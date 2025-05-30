@@ -25,7 +25,8 @@ impl Parameters {
     }
 }
 
-/// VectorSortBlock takes an input Matrix, for example a Matrix<3, 3, f64> and an output Matrix, for example a Matrix<1, 9, f64>.
+/// Sorts all elements of the input signal into a vector output.
+///
 /// If the input type is an (M, N) matrix, the output type MUST be a (1, M*N) matrix or a panic will occur.
 ///
 /// This block also accepts scalars, though the output will always be the input.

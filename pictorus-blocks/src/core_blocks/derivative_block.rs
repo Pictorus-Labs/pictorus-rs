@@ -4,6 +4,7 @@ use num_traits::One;
 use paste::paste;
 use pictorus_traits::{HasIc, Matrix, Pass, ProcessBlock};
 
+/// Compute the discrete derivative of a signal using a sliding window of samples.
 pub struct DerivativeBlock<T: Pass + Default + Copy, const N: usize>
 where
     block_data::BlockData: FromPass<T>,

@@ -1,7 +1,13 @@
 [package]
 edition = "2021"
 name = "pictorus-blocks"
-publish = false
+description = "Implementations of Pictorus blocks."
+version = "0.0.0"
+license-file.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 heapless = "0.8.0"
@@ -9,8 +15,8 @@ nalgebra = { version = "0.33.2", default-features = false }
 num-traits = { version = "0.2.19", default-features = false, features = [
   "libm",
 ] }
-block-data = { path = "../block-data" }
-pictorus-traits = { path = "../pictorus-traits" }
+block-data = { path = "../block-data", version = "0.0.0" }
+pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
 embedded-can = "0.4.1"
 rand = { version = "0.8.5", default-features = false, features = ["small_rng"] }
 rand_distr = { version = "0.4.3", default-features = false }

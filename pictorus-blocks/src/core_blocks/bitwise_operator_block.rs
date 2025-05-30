@@ -2,7 +2,8 @@ use crate::traits::{CopyInto, Scalar, SizePromotion};
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
-/// BitwiseOperatorBlock performs a bitwise operation on the input values.
+/// Performs a bitwise operation on the input values.
+///
 /// Float values are transformed to integers using a `floor` operation before
 /// the bitwise operation is applied, and then casted back to float before being returned.
 /// This block accepts 2-8 inputs, they must all be the same size/type.

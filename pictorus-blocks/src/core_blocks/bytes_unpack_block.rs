@@ -8,6 +8,7 @@ use crate::byte_data::{parse_byte_data_spec, try_unpack_data, ByteOrderSpec, Dat
 use block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
+/// Unpacks a byte slice into a specified number of outputs based on the provided data types and byte order.
 pub struct BytesUnpackBlock<T: Apply> {
     pub data: Vec<OldBlockData>,
     buffer: T::Output,

@@ -2,7 +2,8 @@ use block_data::{BlockData as OldBlockData, FromPass};
 use num_traits::{FromPrimitive, Zero};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
-/// This block gets the index of the minimum or maximum value in the input.
+/// Gets the index of the minimum or maximum value in the input.
+///
 /// For multidimensional inputs, the index returned is the linear index (i.e. the column-major order index).
 ///
 /// ## Linear Index Example

@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
-/// A block that joins multiple signals into a single byte slice by
+/// Joins multiple signals into a single byte slice by
 /// serializing each signal and joining them with a delimiter.
 pub struct BytesJoinBlock<T: Apply> {
     pub data: OldBlockData,

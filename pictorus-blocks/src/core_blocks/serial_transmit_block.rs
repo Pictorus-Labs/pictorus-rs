@@ -8,6 +8,7 @@ use crate::byte_data::{parse_string_to_bytes, BUFF_SIZE_BYTES};
 use crate::traits::Serialize;
 
 /// Parameters for the SerialTransmitBlock
+#[doc(hidden)]
 pub struct Parameters {
     /// Start delimiter for the serial transmission, will be prepended to the data
     start_delimiter: Vec<u8>,
@@ -24,9 +25,10 @@ impl Parameters {
     }
 }
 
-/// SerialTransmitBlock prepares data for transmission over the serial interface, by
-/// prepending the start delimiter and appending the end delimiter to the data. Data is
-/// output as a ByteSliceSignal.
+/// Encodes data for transmission over the serial interface, by
+/// prepending the start delimiter and appending the end delimiter to the data.
+///
+/// Data is output as a ByteSliceSignal.
 pub struct SerialTransmitBlock<T: Serialize + Pass> {
     pub data: OldBlockData,
     buffer: Vec<u8>,

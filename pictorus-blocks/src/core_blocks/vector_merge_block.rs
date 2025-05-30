@@ -19,13 +19,14 @@ impl Parameters {
     }
 }
 
-/// VectorMergeBlock merges vectors and scalars into a single vector. Vectors are flattened
-/// before merging and the output is a 1xN matrix where N is the sum of the rows*cols of
+/// Merges vectors and scalars into a single vector.
+///
+/// Vectors are flattened before merging, and the output is a 1xN matrix where N is the sum of the rows*cols of
 /// the inputs. Currently implemented for up to 8 `Scalar` or `Matrix` inputs.
 ///
 /// Generic arguments:
-/// - <O>: The output type of the block
-/// - <I>: A tuple of inputs that will be merged into the output
+/// - \<O\>: The output type of the block
+/// - \<I\>: A tuple of inputs that will be merged into the output
 pub struct VectorMergeBlock<O, I>
 where
     I: Pass + Mergeable<O>,

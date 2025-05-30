@@ -4,6 +4,7 @@ use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 use crate::traits::Float;
 
 /// Parameters for Dac Block
+#[doc(hidden)]
 pub struct Parameters {}
 
 impl Default for Parameters {
@@ -18,8 +19,7 @@ impl Parameters {
     }
 }
 
-/// Dac Block buffers data and passes it on to the hardware protocol that implements the
-/// `OutputBlock` trait.
+/// Buffer data to be sent to a DAC (Digital-to-Analog Converter).
 pub struct DacBlock<O: Pass> {
     pub data: OldBlockData,
     buffer: Option<O>,

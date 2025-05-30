@@ -5,6 +5,7 @@ use rand::{rngs::SmallRng, Rng, SeedableRng};
 use rand_distr::{Distribution, Normal, StandardNormal};
 
 #[derive(Debug, Clone)]
+/// Generates random numbers from a normal distribution with specified mean and standard deviation.
 pub struct RandomNumberBlock<T>
 where
     T: Scalar + Float,

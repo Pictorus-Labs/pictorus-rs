@@ -2,6 +2,7 @@ use crate::traits::Scalar;
 use pictorus_traits::{Context, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the PWM block
+#[doc(hidden)]
 pub struct Parameters {}
 
 impl Default for Parameters {
@@ -16,8 +17,9 @@ impl Parameters {
     }
 }
 
-/// A block buffers frequency and duty cycle to a PWM peripheral as a tuple
-/// (frequency, duty cycle). Duty cycle is a value between 0 and 1 and
+/// Buffers frequency and duty cycle to a PWM peripheral.
+///
+/// Duty cycle is a value between 0 and 1 and
 /// represents the percentage of time the signal is high in a PWM cycle.
 ///
 /// This block automatically clamps the duty cycle to the range [0, 1].

@@ -16,7 +16,8 @@ impl Parameters {
     }
 }
 
-/// VectorReshapeBlock takes an input Matrix, for example a Matrix<3, 3, f64> and an output Matrix, for example a Matrix<1, 9, f64>.
+/// Reshapes an input signal to a specified output shape.
+///
 /// If the input type is an (M, N) matrix, the output type MUST have dimensions such that M_in*N_in == M_out*N_out.
 /// Accepts a scalar input, T, if the output is a Matrix<1, 1, T>.
 pub struct VectorReshapeBlock<I, O> {

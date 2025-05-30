@@ -6,6 +6,7 @@ use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 use crate::{stale_tracker::StaleTracker, IsValid};
 
 /// Parameters for I2C Input Block
+#[doc(hidden)]
 pub struct Parameters {
     /// 8-bit address to read from
     pub address: u8,

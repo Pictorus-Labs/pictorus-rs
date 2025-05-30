@@ -2,10 +2,11 @@ use crate::traits::Float;
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
-/// A block that ensures all data passed into it is finite, replacing non-finite values with zero.
-///
-/// This block is needed to support legacy behavior where we fix values passed in by user-defined functions
-/// i.e. EquationBlock and RustBlock. It's unclear if we want to support this behavior in the future.
+// A block that ensures all data passed into it is finite, replacing non-finite values with zero.
+//
+// This block is needed to support legacy behavior where we fix values passed in by user-defined functions
+// i.e. EquationBlock and RustBlock. It's unclear if we want to support this behavior in the future.
+#[doc(hidden)]
 pub struct FixNonFiniteBlock<T: Pass>
 where
     OldBlockData: FromPass<T>,

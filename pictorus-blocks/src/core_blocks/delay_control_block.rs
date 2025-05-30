@@ -3,9 +3,10 @@ use block_data::{BlockData as OldBlockData, FromPass};
 use core::time::Duration;
 use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 
-/// This block can be used to debounce or throttle a signal
-/// Its output is a boolean but for compatibility reasons it accepts many different scalar types
-/// and determine their "truthiness" based on the scalar's value being non-zero
+/// Debounce or throttle an input signal.
+///
+/// Its output is a boolean, but for compatibility reasons it accepts many different scalar types
+/// and determines their "truthiness" based on the scalar's value being non-zero
 /// The block has two modes: Debounce and Throttle
 ///  - Debounce: Wait until the input signal stops being true for delay_time before emitting true.
 ///  - Throttle: Immediately emit true on first true input, but then wait delay_time before passing through a true input again.
@@ -190,8 +191,11 @@ fn throttle(
 }
 
 #[derive(strum::EnumString, Clone, Copy, Debug)]
+/// The method used to control the delay
 pub enum DelayControlMethod {
+    /// Debounce: Wait until the input signal stops being true for delay_time before emitting true.
     Debounce,
+    /// Throttle: Emit true at most once every delay_time.
     Throttle,
 }
 
