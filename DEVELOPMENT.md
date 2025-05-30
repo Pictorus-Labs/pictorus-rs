@@ -1,6 +1,6 @@
 ## Publishing a new version
 
-We generally follow the [Rust publishing guidelines](https://doc.rust-lang.org/cargo/reference/publishing.html). A general outline of the process is as follows:
+We generally follow the [Rust publishing guidelines](https://doc.rust-lang.org/cargo/reference/publishing.html). Eventually it would be nice to automate some of this process to reduce the number of manual steps required (could try something like [cargo-release](https://crates.io/crates/cargo-release)). A general outline of the process is as follows:
 
 1. Update the version(s) in the `Cargo.toml` file in each crate that will be published.
 1. Update the CHANGELOG.md file for each crate with the changes made since the last version.
