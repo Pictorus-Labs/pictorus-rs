@@ -23,7 +23,7 @@ where
     }
 }
 
-/// The Rate Limit block will emit the input signal, but constraining
+/// Emits the input signal, but constraining
 /// the rate of change of the signal as specified by the Rising and
 /// Falling rates.
 pub struct RateLimitBlock<T> {

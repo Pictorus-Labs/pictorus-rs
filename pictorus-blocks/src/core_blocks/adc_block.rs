@@ -3,6 +3,7 @@ use num_traits::Float;
 use pictorus_traits::{Context, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the ADC block
+#[doc(hidden)]
 pub struct Parameters;
 
 impl Default for Parameters {
@@ -17,8 +18,9 @@ impl Parameters {
     }
 }
 
-/// The ADC block functions as a holding block for data coming from the ADC.
-/// It ensures that the ADC data is cached and the same for all blocks in a state
+/// Store data received from the ADC.
+///
+/// This block ensures that the ADC data is cached and the same for all blocks in a state
 /// for a given tick.
 ///
 /// Each platform will need to implement an `InputBlock` on the ADC hardware

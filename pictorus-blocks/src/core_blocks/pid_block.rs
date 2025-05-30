@@ -8,8 +8,9 @@ use super::integral_block::{
 use crate::traits::{Float, MatrixOps};
 use crate::{DerivativeBlock, IntegralBlock, Scalar};
 
-/// Block for performing PID (Proportional, Integral, Derivative) control
-/// against an error signal. The input signal can either be a scalar or a matrix.
+/// Performs PID (Proportional, Integral, Derivative) control against an error signal.
+///
+/// The input signal can either be a scalar or a matrix.
 /// In the case of a matrix, the PID control is applied element-wise.
 ///
 /// This block also accepts a second reset input, which can be used to reset the

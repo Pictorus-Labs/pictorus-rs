@@ -5,7 +5,8 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
 
-/// A block that performs logical operations on its inputs
+/// Performs logical operations on inputs.
+///
 /// Currently supports the following methods:
 /// - And
 /// - Or
@@ -182,10 +183,15 @@ impl<const R: usize, const C: usize, S: Scalar + One + Sub<Output = S>> Finalize
 }
 
 #[derive(Debug, Clone, Copy, strum::EnumString)]
+/// Logical methods that can be applied
 pub enum LogicalMethod {
+    /// Logical AND operation
     And,
+    /// Logical OR operation
     Or,
+    /// Logical NOR operation (NOT OR)
     Nor,
+    /// Logical NAND operation (NOT AND)
     Nand,
 }
 

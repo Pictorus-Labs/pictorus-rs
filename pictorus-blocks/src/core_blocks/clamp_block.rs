@@ -1,9 +1,10 @@
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
-/// Clamp block parameters, the min and max values to clamp to.
 pub struct Parameters<T> {
+    /// The minimum value to clamp the input to.
     pub min: T,
+    /// The maximum value to clamp the input to.
     pub max: T,
 }
 
@@ -13,7 +14,8 @@ impl<T> Parameters<T> {
     }
 }
 
-/// Clamps an input based on the min and max values provided via the Parameters.
+/// Clamps an input based on the min and max values provided.
+///
 /// If an input is larger than the max value, it will be set to the max value. If
 /// the input is less than the min value, it will be set to the min value.
 pub struct ClampBlock<T> {

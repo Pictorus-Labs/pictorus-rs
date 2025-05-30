@@ -2,8 +2,9 @@ use block_data::{BlockData as OldBlockData, FromPass};
 use num_traits::NumCast;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
-// BitShiftBlock shifts the bits of the input by a specified number of positions to the left or right.
-// For a matrix, the operation is applied component wise to each element.
+/// Shifts the bits of the input by a specified number of positions to the left or right.
+///
+/// For a matrix, the operation is applied component wise to each element.
 pub struct BitShiftBlock<T>
 where
     T: Apply,

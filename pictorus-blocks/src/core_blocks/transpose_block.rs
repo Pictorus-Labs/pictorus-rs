@@ -17,7 +17,8 @@ impl Default for Parameters {
         Self::new()
     }
 }
-/// A block that outputs the transpose of the input
+/// Outputs the transpose of the input signal.
+///
 /// For scalar inputs this is just a pass-through
 pub struct TransposeBlock<T: Apply> {
     pub data: OldBlockData,

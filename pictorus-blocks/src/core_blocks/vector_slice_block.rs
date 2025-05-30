@@ -26,6 +26,7 @@ impl Parameters {
     }
 }
 
+/// Returns a fixed-size slice of the input matrix starting from the specified row and column.
 pub struct VectorSliceBlock<I, O> {
     pub data: OldBlockData,
     buffer: O,

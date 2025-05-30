@@ -16,8 +16,9 @@ impl Parameters {
     }
 }
 
-/// Emits a norm (scalar magnitude) of the input vector. More specifically, it
-/// computes the Frobenius norm of a matrix, which is a generalization of the
+/// Emits a norm (scalar magnitude) of the input vector.
+///
+/// More specifically, it computes the Frobenius norm of a matrix, which is a generalization of the
 /// Euclidean norm for matrices.
 pub struct VectorNormBlock<T>
 where

@@ -5,11 +5,17 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 /// The type of comparison operation to perform
 #[derive(Clone, Copy, Debug, PartialEq, strum::EnumString)]
 pub enum ComparisonType {
+    /// Check if the two inputs are equal
     Equal,
+    /// Check if the two inputs are not equal
     NotEqual,
+    /// Check if the first input is greater than the second
     GreaterThan,
+    /// Check if the first input is greater than or equal to the second
     GreaterOrEqual,
+    /// Check if the first input is less than the second
     LessThan,
+    /// Check if the first input is less than or equal to the second
     LessOrEqual,
 }
 
@@ -29,6 +35,7 @@ impl Parameters {
 }
 
 /// Performs an element-wise comparison operation on two inputs.
+///
 /// Currently supports the following comparison methods:
 /// - Equal
 /// - NotEqual

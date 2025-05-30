@@ -22,6 +22,7 @@ impl<T: Float> Parameters<T> {
     }
 }
 
+/// Outputs a square wave signal with specified amplitude, on duration, off duration, phase, and bias.
 pub struct SquarewaveBlock<T: Float> {
     phantom_output_type: core::marker::PhantomData<T>,
     pub data: BlockData,

@@ -2,9 +2,9 @@ use crate::traits::Scalar;
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
-/// A block that raises the input to a power
-/// and optionally preserves the sign of the input
-/// when performing the exponentiation.
+/// Raises the input to a specified power (coefficient),
+/// and optionally preserves the sign of the input.
+///
 /// It can accept a scalar or a matrix input. If the input is a matrix,
 /// the exponentiation is performed element-wise.
 ///

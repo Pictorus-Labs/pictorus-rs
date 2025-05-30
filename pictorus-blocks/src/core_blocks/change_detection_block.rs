@@ -2,8 +2,9 @@ use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock, Scalar};
 use strum::EnumString;
 
-/// This Block detects change in it input and emits True if change is
-/// detected, False otherwise. It only accepts a single input edge.
+/// Detects whether the input value has changed.
+///
+/// This block only accepts a single input edge.
 /// The edge can optionally be a Matrix, in that case the change detection
 /// operation is performed element wise and the output is a Matrix of the
 /// same size as the input.
@@ -160,9 +161,13 @@ impl ChangeDetect for f32 {}
 impl ChangeDetect for f64 {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]
+/// Represents the mode of change detection.
 pub enum ChangeMode {
+    /// Detects any change, whether rising or falling.
     Any,
+    /// Detects only rising changes (i.e., when the value increases).
     Rising,
+    /// Detects only falling changes (i.e., when the value decreases).
     Falling,
 }
 

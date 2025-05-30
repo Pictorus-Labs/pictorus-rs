@@ -18,7 +18,8 @@ impl<I: Scalar + Float> Parameters<I> {
     }
 }
 
-/// A block that quantizes the input to the nearest integer multiple of the provided interval
+/// Quantizes the input to the nearest integer multiple of the provided interval.
+///
 /// For example, if the interval is 0.5, the input 0.51 will be quantized to 0.5
 /// If the interval is 0.5, the input 0.75 will be quantized to 1.0
 /// For matrices, the process is applied element-wise

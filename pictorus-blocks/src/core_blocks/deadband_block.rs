@@ -19,8 +19,9 @@ impl<T> Parameters<T> {
     }
 }
 
-/// A block that implements a deadband. If the input is within the deadband, the output is zero.
-/// Otherwise, the input value is passed through.
+/// Implements a deadband on the input signal.
+///
+/// If the input is within the deadband, the output is zero. Otherwise, the input value is passed through.
 pub struct DeadbandBlock<T> {
     pub data: OldBlockData,
     buffer: Option<T>,

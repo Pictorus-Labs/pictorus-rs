@@ -5,7 +5,8 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Float;
 
-/// Block for performing a 2D lookup against two sets of break points and a 2D table of data points.
+/// Performs a 2D lookup against two sets of break points and a 2D table of data points.
+///
 /// The lookup can either be performed using bilinear interpolation or nearest neighbor
 /// interpolation, depending on the `interp_method` parameter. For matrix inputs, the
 /// lookup is performed element-wise, treating each pair of elements as (x,y) coordinates.

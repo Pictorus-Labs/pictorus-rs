@@ -5,7 +5,8 @@ use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlo
 
 use crate::traits::Scalar;
 
-/// Block for passing a signal to a GPIO output pin.
+/// Buffer data to be passed to a GPIO pin.
+///
 /// The block itself just handles converting the input to a boolean.
 /// The hardware interaction happens downstream of this block.
 pub struct GpioOutputBlock<T: ToBool> {
@@ -13,6 +14,7 @@ pub struct GpioOutputBlock<T: ToBool> {
     _unused: PhantomData<T>,
 }
 
+#[doc(hidden)]
 pub struct Parameters {}
 impl Default for Parameters {
     fn default() -> Self {

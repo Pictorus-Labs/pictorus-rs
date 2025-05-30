@@ -8,13 +8,15 @@ use block_data::{BlockData as OldBlockData, FromPass};
 use core::time::Duration;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
-/// The Bytes Split Block accepts as input a stream of bytes. The Pictorus UI allows users to
-/// specify up to 7 outputs that they want to parse out of the input bytes. The input parsing consists of
-/// splitting the input bytes based on a specified delimiter and then each output is mapped to a specific
-/// index of the split byte chunks. If parsing fails the output signals will be unchanged on this specific timestep.
-/// In addition to the specified output signals this block outputs a boolean "is_valid" signal. Valid in this context
-/// is determined by the time since the last successful parse. If the time since the last successful parse is
-/// greater than the stale age, the block will output false for the "is_valid" output.
+/// Splits input bytes based on a specified delimiter and maps outputs to specific indices of the split chunks.
+///
+/// The Pictorus UI allows users to specify up to 7 outputs that they want to parse out of the input bytes.
+/// The input parsing consists of splitting the input bytes based on a specified delimiter and then each
+/// output is mapped to a specific index of the split byte chunks. If parsing fails the output signals will
+/// be unchanged on this specific timestep. In addition to the specified output signals this block outputs a
+/// boolean "is_valid" signal. Valid in this context is determined by the time since the last successful parse.
+/// If the time since the last successful parse is greater than the stale age,
+/// the block will output false for the "is_valid" output.
 pub struct BytesSplitBlock<T: Apply> {
     pub data: Vec<OldBlockData>,
     buffer: Option<T::Storage>,

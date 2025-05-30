@@ -3,6 +3,7 @@ use pictorus_traits::{HasIc, Pass, ProcessBlock};
 
 use crate::traits::CopyInto;
 
+/// Delays the input signal by N steps.
 pub struct DelayBlock<T: Pass + Default + Copy, const N: usize>
 where
     block_data::BlockData: FromPass<T>,

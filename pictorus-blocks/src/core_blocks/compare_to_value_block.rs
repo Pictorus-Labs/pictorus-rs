@@ -3,10 +3,10 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 use super::comparison_block::ComparisonType;
 
-/// Parameters for the CompareToValueBlock, which specify the comparison type and
-/// the scalar value to compare to.
 pub struct Parameter<S: Scalar> {
+    // The type of comparison to perform.
     pub comparison_type: ComparisonType,
+    // The scalar value to compare against.
     pub value: S,
 }
 
@@ -24,13 +24,14 @@ where
     }
 }
 
+/// Compares the input to a scalar value.
+///
+/// The output is the same size as the input and each element is the result of the comparison.
 pub struct CompareToValueBlock<T: Pass> {
     pub data: OldBlockData,
     buffer: Option<T>,
 }
 
-/// Compares the input to a scalar value. The output is the same size as the input and each
-/// element is the result of the comparison.
 impl<T> Default for CompareToValueBlock<T>
 where
     T: Pass + Default,

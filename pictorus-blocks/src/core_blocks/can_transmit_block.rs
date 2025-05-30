@@ -9,6 +9,7 @@ use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 type TxCallback<S, C> = fn(&[S], &mut C) -> Result<Vec<u8>, ()>;
 
 /// Parameters for the CanTransmitBlock
+#[doc(hidden)]
 pub struct Parameters {
     // CAN frame ID
     pub frame_id: embedded_can::Id,
@@ -20,13 +21,15 @@ impl Parameters {
     }
 }
 
-/// The CanTransmitBlock converts a single float input or tuple of float inputs
-/// into a ByteSliceSignal of 8 bytes that is passed to the CAN peripheral.
-/// Generics:
-/// - S: The type of the input signal (e.g., f32, f64). Currently either f32 or f64.
-/// - C: The struct type for encoding and decoding the CAN data frame.
-/// - I: A tuple of input data (1 to 8 values of type S) to convert to an 8 byte CAN data payload.
-pub struct CanTransmitBlock<S: Float, C, I: Pass> {
+/// Converts signals (as defined by the associated DBC message) to a CAN data frame.
+pub struct CanTransmitBlock<
+    // The type of the input signal (e.g., f32, f64). Currently either f32 or f64.
+    S: Float,
+    // The struct type for encoding and decoding the CAN data frame.
+    C,
+    // A tuple of input data (1 to 8 values of type S) to convert to an 8 byte CAN data payload.
+    I: Pass,
+> {
     pub data: Vec<OldBlockData>,
     byte_buffer: Vec<u8>,
     _phantom: core::marker::PhantomData<I>,
