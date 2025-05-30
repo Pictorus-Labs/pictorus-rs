@@ -140,7 +140,7 @@
 //! And finally to support blocks with multiple inputs tuples composed of all types that implement `Pass` will also implement `Pass`.
 //! That is:
 //!
-//! ```rust
+//! ```rust ignore
 //! impl<A: Pass> Pass for (A){...}
 //! impl<A: Pass, B: Pass> Pass for (A, B){...}
 //! impl<A: Pass, B: Pass, C: Pass> for (A, B, C) {...}
@@ -151,7 +151,7 @@
 //! The Pass trait allows Scalar types to be passed by value (i.e. by being copied) when being passed between blocks,
 //! while all other types are passed by reference. The trait is defined as:
 //!
-//! ```rust
+//! ```rust ignore
 //! /// Data can be passed between blocks
 //! pub trait Pass: Sealed + 'static {
 //!     /// Whether the data is passed by value or by reference
@@ -161,14 +161,14 @@
 //!
 //! And for convenience we define a type alias `PassBy`:
 //!
-//! ```rust
+//! ```rust ignore
 //! pub type PassBy<'a, T> = <T as Pass>::By<'a>;
 //! ```
 //!
 //! Together these allow us to indicate for any type where that type should be passed by value or by reference when used as an edge.
 //! The following blanket impl indicates that all `Scalar` types will be passed by value
 //!
-//! ```rust
+//! ```rust ignore
 //! impl<T> Pass for T
 //! where
 //!     T: Scalar,
@@ -183,7 +183,7 @@
 //!
 //! And here is an example implementation for `ByteSliceSignal` slices:
 //!
-//! ```rust
+//! ```rust ignore
 //! impl Pass for ByteSliceSignal {
 //!     type By<'a> = &'a [u8];
 //!
@@ -199,7 +199,7 @@
 //! Having `PassBy<'_, T>` available for any type that can be used as edge data allows our block traits to use a definition like
 //! this example from the `ProcessBlock`:
 //!
-//! ```rust
+//! ```rust ignore
 //! fn process<'b>(
 //!     &'b mut self,
 //!     context: &dyn Context,
@@ -209,7 +209,7 @@
 //!
 //! Here you can see that for a block that accepted `DMatrix<f64>` and returned a `ByteSliceSignal` it would desugar into the following:
 //!
-//! ```rust
+//! ```rust ignore
 //! fn process<'b>(
 //!     &'b mut self,
 //!     context: &dyn Context,
@@ -221,7 +221,7 @@
 //!
 //! Finally, this approach scales up naturally when we are using a tuple to accept multiple inputs.
 //! As an example look at this 3 member tuple implementation:
-//! ```rust
+//! ```rust ignore
 //! impl<A, B, C> Pass for (A, B, C)
 //! where
 //!     A: Pass,
@@ -241,7 +241,7 @@
 //! fallible since u64 cannot represent negative values). In order to handle similar cases in our core library we offer the
 //! `Promotion` trait:
 //!
-//! ```rust
+//! ```rust ignore
 //! pub trait Promote<RHS: Scalar>: Scalar {
 //!     type Output: Scalar;
 //!
@@ -255,7 +255,7 @@
 //! defined as `pub type Promotion<L, R> = <L as Promote<R>>::Output;`.
 //! See the below example for how this plays out for the `u8`<->`f32` mapping.
 //!
-//! ```rust
+//! ```rust ignore
 //! <u8 as Promotion<f32>>::Output = f32
 //! <f32 as Promotion<u8>>::Output = f32
 //!
@@ -269,7 +269,7 @@
 //! types while still allowing us to specify that the output of that block will be the type that allows us to apply that gain
 //! without loss of information.
 //!
-//! ```rust
+//! ```rust ignore
 //! impl<const N: usize, G, T> Apply<G> for [T; N]
 //! where
 //!     T: Scalar,
