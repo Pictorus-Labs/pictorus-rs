@@ -6,7 +6,7 @@ use crate::{stale_tracker::StaleTracker, traits::Float, IsValid};
 
 type RxCallback<C, S> = fn(&C, &mut [S]);
 
-/// Parameters for the CanReceiveBlock
+#[doc(hidden)]
 pub struct Parameters {
     /// ID of the CAN frame
     pub frame_id: embedded_can::Id,
@@ -26,15 +26,17 @@ impl Parameters {
     }
 }
 
-/// The CanReceiveBlock takes a ByteSliceSignal that represents a CAN data frame
-/// and converts it into a single float or tuple of floats that map to the quantized
-/// output signals as defined in the CAN DBC file.
-/// Generics:
-/// - N: The number of signals in the CAN frame.
-/// - S: The type of the input signal (e.g., f32, f64). Currently either f32 or f64.
-/// - C: The struct type for encoding and decoding the CAN data frame.
-/// - I: A scalar or tuple of output data (1 to 8 values of type S) quantized based on the CAN DBC file.
-pub struct CanReceiveBlock<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> {
+/// Converts CAN data frames into outputs defined by the associated message in a DBC file.
+pub struct CanReceiveBlock<
+    // The number of signals in the CAN frame
+    const N: usize,
+    // The type of the input signal (e.g., f32, f64). Currently either f32 or f64.
+    S: Float,
+    // The struct type for encoding and decoding the CAN data frame
+    C,
+    // A scalar or tuple of output data (1 to 8 values of type S) quantized based on the CAN DBC file.
+    O: Pass + Default + ToTupleOutput<S>,
+> {
     rx_cb: RxCallback<C, S>,
     stale_check: StaleTracker,
     _phantom: core::marker::PhantomData<O>,

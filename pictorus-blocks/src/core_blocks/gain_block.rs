@@ -1,6 +1,7 @@
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
+/// Multiplies the input by a gain factor.
 pub struct GainBlock<G, T>
 where
     G: Scalar,

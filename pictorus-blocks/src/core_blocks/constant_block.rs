@@ -11,6 +11,7 @@ impl<T> Parameters<T> {
     }
 }
 
+/// Outputs a constant numeric value.
 pub struct ConstantBlock<T>
 where
     T: Apply,

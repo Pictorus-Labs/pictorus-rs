@@ -16,9 +16,11 @@ use crate::traits::{Float, Scalar};
 
 /// Method for selecting which type of matrix inversion to perform.
 pub trait Method {}
+/// Standard matrix inversion for square matrices.
 pub struct Inverse;
 impl Method for Inverse {}
 
+/// Singular Value Decomposition (SVD) for pseudo-inverse of matrices.
 pub struct Svd;
 impl Method for Svd {}
 
@@ -31,7 +33,7 @@ impl Parameters {
     }
 }
 
-/// Block for inverting a matrix.
+/// Inverts a matrix using either a standard inverse or a pseudo-inverse based on the method specified.
 ///
 /// This can either attempt to perform a standard matrix inversion on a square matrix,
 /// or a pseudo-inverse using SVD for matrices that may or may not be square.

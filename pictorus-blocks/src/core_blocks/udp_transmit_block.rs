@@ -7,6 +7,7 @@ use block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Parameters for UDP Transmit Block
+#[doc(hidden)]
 pub struct Parameters {
     /// Destination address for the UDP socket
     /// e.g. "192.168.0.1:12345"
@@ -26,7 +27,8 @@ impl Parameters {
     }
 }
 
-/// UDP Transmit Block sends serial data to a UDP socket.
+/// Buffers data to be sent to a UDP port.
+///
 /// This block sends data to a Hardware specific UDP `OutputBlock` that is added
 /// by codegen
 pub struct UdpTransmitBlock {

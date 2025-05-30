@@ -4,6 +4,7 @@ use block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 /// Parameters for I2C Output Block
+#[doc(hidden)]
 pub struct Parameters {
     /// 8-bit address to write to
     pub address: u8,

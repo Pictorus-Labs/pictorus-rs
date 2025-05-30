@@ -3,6 +3,7 @@ use block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
 #[derive(Debug, Clone)]
+/// Outputs a sinewave signal with specified amplitude, frequency, phase, and bias.
 pub struct SinewaveBlock<T>
 where
     T: Float,

@@ -11,6 +11,7 @@ impl Parameters {
     }
 }
 
+/// Outputs the elapsed application time as a scalar value.
 #[derive(Debug, Clone)]
 pub struct AppTimeBlock<T: Scalar + Float> {
     phantom: core::marker::PhantomData<T>,

@@ -5,7 +5,8 @@ use pictorus_traits::{ByteSliceSignal, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{CopyInto, DefaultStorage, Scalar};
 
-/// Block that allows switching between multiple signals based on a scalar condition.
+/// Switches between multiple input signals based on a condition.
+///
 /// The condition is the first input, and the rest are the signals to switch between.
 /// The block will output the signal that corresponds to the index of the `cases`` parameter
 /// that matches the condition input. If no matches are found, it will output the last input.

@@ -2,6 +2,7 @@ use crate::nalgebra_interop::MatrixExt;
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
+/// Sums (adds or subtracts) all inputs together.
 pub struct SumBlock<T: Summable>
 where
     block_data::BlockData: FromPass<<T as Summable>::Output>,

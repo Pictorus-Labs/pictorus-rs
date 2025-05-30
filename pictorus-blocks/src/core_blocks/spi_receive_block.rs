@@ -6,6 +6,7 @@ use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 use crate::{stale_tracker::StaleTracker, IsValid};
 
 /// Parameters for the SPI receive block
+#[doc(hidden)]
 pub struct Parameters {
     /// Number of bytes to read from the SPI interface
     pub read_bytes: usize,
@@ -22,10 +23,10 @@ impl Parameters {
     }
 }
 
-/// SPI receive block that reads data from the SPI interface
-/// and stores it in a buffer. If data is not received within the
-/// time indicated in the Parameters, the data is considered stale, though
-/// the last valid data is kept in the buffer.
+/// Buffers data received from an SPI interface.
+///
+/// If data is not received within the time indicated in the Parameters, the data is considered stale.
+/// The last valid data is kept in the buffer until new data arrives.
 pub struct SpiReceiveBlock {
     pub data: OldBlockData,
     buffer: Vec<u8>,

@@ -7,7 +7,8 @@ use crate::{
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
-/// Integral Block performs integration of input signal.
+/// Performs a discrete integration of the input signal.
+///
 /// It can accept a scalar or a matrix input, for a matrix input it will do an
 /// element wise integration.
 pub struct IntegralBlock<T: Apply>

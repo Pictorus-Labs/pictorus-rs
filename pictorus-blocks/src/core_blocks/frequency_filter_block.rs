@@ -4,10 +4,10 @@ use block_data::{BlockData as OldBlockData, FromPass};
 use core::time::Duration;
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
-/// Frequency Filter Block
+/// Perform a frequency filter operation on a signal, either as a low pass or high pass filter.
 ///
-/// This block implements a simple low pass or high pass filter. The filter is implemented as a
-/// a first order RC filter. The cutoff frequency and filter type are configurable using the [`Parameters`] struct.
+/// The filter is implemented as a first order RC filter.
+/// The cutoff frequency and filter type are configurable via paramaters.
 ///
 /// This block can accept a scalar or a matrix input. For a matrix input, the filter is applied
 /// independently to each element of the matrix.

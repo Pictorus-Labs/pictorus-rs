@@ -3,6 +3,7 @@ use block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
 #[derive(Debug, Clone)]
+/// Outputs a sawtooth wave signal with specified amplitude, frequency, phase, and bias.
 pub struct SawtoothwaveBlock<T>
 where
     T: Float,

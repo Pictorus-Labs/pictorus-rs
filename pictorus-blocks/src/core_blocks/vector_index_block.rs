@@ -22,8 +22,10 @@ impl<const N: usize> Parameters<N> {
     }
 }
 
-/// A block that extracts a set of values from an input matrix based on the linear index and outputs them in the
-/// order of the indices. The output of the block matches the order of the indices, for example if the indices
+/// Extracts a set of values from an input matrix based on the linear index, and outputs them in the
+/// order of the indices.
+///
+/// The output of the block matches the order of the indices, for example if the indices
 /// are [15, 0], the 0th output of the block will be the 15th element of the input matrix and the 1st output of
 /// the block will be the 0th element of the input matrix.
 ///

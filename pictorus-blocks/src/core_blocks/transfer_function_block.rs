@@ -48,19 +48,20 @@ impl<F: Float, const NUM_SIZE: usize, const DEN_SIZE: usize> Parameters<F, NUM_S
     }
 }
 
-/// The Transfer Function Block implements a transfer function H(z) = Y(z) / X(z). The parameters
-/// for the block require an array of numerator and denominator coefficients used to compute the
+/// Implements a transfer function `H(z) = Y(z) / X(z)` over the input signal.
+///
+/// The parameters for the block require an array of numerator and denominator coefficients used to compute the
 /// output of the block:
-/// y[n] = b[0] * x[n] + b[1] * x[n-1] + ... + b[n] * x[n-n] - a[1] * y[n-1] - a[2] * y[n-2] + ...
+/// `y[n] = b[0] * x[n] + b[1] * x[n-1] + ... + b[n] * x[n-n] - a[1] * y[n-1] - a[2] * y[n-2] + ...`
 ///
 /// A transfer function that represents an decay of 1/2 each sample can be represented as:
-/// H(z) = Y(z) / X(z) = z / (z - 0.5).
+/// `H(z) = Y(z) / X(z) = z / (z - 0.5)`
 ///
-/// The numerator would be [1] and the denominator would be [1, -0.5].
+/// The numerator would be `[1]` and the denominator would be `[1, -0.5]`.
 ///
 /// The numerator and denominator must have dimensions of at least 1 and the 0th value of the
 /// denominator will be skipped (but must still be present), as it represents the coefficient
-/// for y[n], the current output.
+/// for `y[n]`, the current output.
 pub struct TransferFunctionBlock<const NUM_SIZE: usize, const DEN_SIZE: usize, F: Float, I>
 where
     I: Default,

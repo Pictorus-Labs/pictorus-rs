@@ -10,8 +10,9 @@ use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlo
 
 use crate::{stale_tracker::StaleTracker, traits::DefaultStorage, IsValid};
 
-/// JSON Load Block attempts to deserialize bytes encoded as JSON into
-/// the specified output signals. If select_data is provided in the parameters,
+/// Deserializes bytes encoded as JSON into the specified output signals.
+///
+/// If select_data is provided in the parameters,
 /// we assume that the passed in bytes represent an object where each key of the
 /// select_data is a key in the object. If select_data is not provided, we assume
 /// that the passed in bytes represent a single value (either scalar or matrix).

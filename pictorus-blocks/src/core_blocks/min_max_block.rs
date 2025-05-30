@@ -5,8 +5,11 @@ use nalgebra::SMatrix;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Copy, Clone)]
+/// The method to use for the MinMaxBlock
 pub enum MinMaxMethod {
+    /// Calculate the minimum of the inputs
     Min,
+    /// Calculate the maximum of the inputs
     Max,
 }
 
@@ -23,7 +26,8 @@ impl Parameters {
     }
 }
 
-/// A block that calculates the minimum or maximum of the input data
+/// Calculates the minimum or maximum of the inputs.
+///
 /// If inputs are all scalars, the output will be a scalar
 /// Otherwise the output will be the component-wise minimum or maximum of the inputs
 pub struct MinMaxBlock<T: Apply<Parameters>>

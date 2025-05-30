@@ -1,6 +1,8 @@
 use crate::nalgebra_interop::MatrixExt;
 use block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
+
+/// Block for performing an aggregation operation (i.e. sum, min, max) on input data.
 pub struct AggregateBlock<T: Apply> {
     pub data: OldBlockData,
     buffer: Option<T::Output>,
@@ -113,12 +115,18 @@ macro_rules! float_matrix_impl {
 float_matrix_impl!(f64);
 float_matrix_impl!(f32);
 
+/// Represents the method of aggregation to be performed.
 #[derive(Debug, Clone, Copy, PartialEq, strum::EnumString)]
 pub enum AggregateMethod {
+    /// Sum of all elements.
     Sum,
+    /// Mean (average) of all elements.
     Mean,
+    /// Median of all elements.
     Median,
+    /// Minimum value among all elements.
     Min,
+    /// Maximum value among all elements.
     Max,
 }
 

@@ -11,6 +11,7 @@ impl<const CHARS: usize> Parameters<CHARS> {
     }
 }
 
+/// Output a constant byte slice as a signal.
 pub struct BytesLiteralBlock<const CHARS: usize> {
     buffer: [u8; CHARS],
     pub data: BlockData,

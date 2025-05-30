@@ -5,7 +5,8 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Float, MatrixOps};
 
-/// Block for performing a 1D lookup against a set of break points and data points
+/// Performs a 1D lookup against a set of break points and data points.
+///
 /// The lookup can either be performed using linear interpolation or nearest neighbor
 /// interpolation, depending on the `interp_method` parameter. For matrix inputs, the
 /// lookup is performed element-wise.
