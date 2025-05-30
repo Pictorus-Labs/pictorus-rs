@@ -1,4 +1,4 @@
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
 /// Outputs the input data with an added bias (offset).
@@ -137,7 +137,7 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
-    use block_data::ToPass;
+    use pictorus_block_data::ToPass;
 
     #[test]
     fn test_bias_scalar() {

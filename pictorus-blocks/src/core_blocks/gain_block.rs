@@ -1,4 +1,4 @@
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
 /// Multiplies the input by a gain factor.
@@ -132,7 +132,7 @@ impl<G: Scalar> Parameters<G> {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use block_data::ToPass;
+    use pictorus_block_data::ToPass;
 
     #[test]
     fn test_gain_scalar() {

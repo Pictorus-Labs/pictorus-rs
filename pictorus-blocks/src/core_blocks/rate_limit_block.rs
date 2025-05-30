@@ -1,6 +1,6 @@
 use crate::traits::{Float, MatrixOps};
-use block_data::{BlockData as OldBlockData, FromPass};
 use num_traits::Zero;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Rate limit block parameters
@@ -134,9 +134,9 @@ mod tests {
 
     use super::*;
     use crate::testing::StubRuntime;
-    use block_data::BlockData as OldBlockData;
     use core::time::Duration;
     use paste::paste;
+    use pictorus_block_data::BlockData as OldBlockData;
 
     macro_rules! impl_rate_limit_test {
         ($type:ty) => {

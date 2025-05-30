@@ -2,7 +2,7 @@ use core::ops::{AddAssign, Mul, MulAssign};
 
 use crate::nalgebra_interop::MatrixExt;
 use crate::traits::Scalar;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Calculate the dot product of two same-sized vectors.

@@ -2,7 +2,7 @@ extern crate alloc;
 use crate::byte_data::parse_string_to_bytes;
 use crate::traits::Serialize;
 use alloc::vec::Vec;
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Joins multiple signals into a single byte slice by

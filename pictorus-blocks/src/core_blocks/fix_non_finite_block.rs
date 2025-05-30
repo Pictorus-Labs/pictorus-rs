@@ -1,5 +1,5 @@
 use crate::traits::Float;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
 // A block that ensures all data passed into it is finite, replacing non-finite values with zero.

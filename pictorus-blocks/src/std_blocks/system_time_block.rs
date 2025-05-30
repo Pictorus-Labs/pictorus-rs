@@ -1,5 +1,5 @@
-use block_data::BlockData as OldBlockData;
 use chrono::{DateTime, Datelike, Local, Timelike};
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::GeneratorBlock;
 
 /// This block can be used in `std` environments to get the current system time.

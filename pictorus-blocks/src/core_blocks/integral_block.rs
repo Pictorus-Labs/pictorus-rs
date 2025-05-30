@@ -4,7 +4,7 @@ use crate::{
     traits::{Float, MatrixOps},
     Scalar,
 };
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Performs a discrete integration of the input signal.

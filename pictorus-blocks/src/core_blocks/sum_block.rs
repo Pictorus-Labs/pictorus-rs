@@ -1,11 +1,11 @@
 use crate::nalgebra_interop::MatrixExt;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Sums (adds or subtracts) all inputs together.
 pub struct SumBlock<T: Summable>
 where
-    block_data::BlockData: FromPass<<T as Summable>::Output>,
+    pictorus_block_data::BlockData: FromPass<<T as Summable>::Output>,
 {
     store: Option<T::Output>,
     pub data: OldBlockData,
@@ -13,7 +13,7 @@ where
 
 impl<T: Summable> Default for SumBlock<T>
 where
-    block_data::BlockData: FromPass<<T as Summable>::Output>,
+    pictorus_block_data::BlockData: FromPass<<T as Summable>::Output>,
 {
     fn default() -> Self {
         Self {

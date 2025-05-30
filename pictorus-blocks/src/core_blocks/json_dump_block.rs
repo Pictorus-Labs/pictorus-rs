@@ -1,8 +1,8 @@
 extern crate alloc;
 use crate::traits::serialize::{ByteSliceFormat, Serialize};
 use alloc::{string::String, vec::Vec};
-use block_data::BlockData as OldBlockData;
 use miniserde::json::{self, Value};
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Serializes a set of input signals into a JSON blob.

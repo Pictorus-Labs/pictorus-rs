@@ -1,5 +1,5 @@
-use block_data::{BlockData as OldBlockData, FromPass};
 use core::marker::PhantomData;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
 // This Block is essentially two blocks hiding in a trench coat; Matrix Multiplication and Component Wise Multiplication.

@@ -5,9 +5,9 @@ use alloc::vec::Vec;
 use core::{convert::Infallible, time::Duration};
 use num_traits::{AsPrimitive, Float};
 
-use block_data::{BlockData, BlockDataType};
 use log::debug;
 use miniserde::{Deserialize, Serialize};
+use pictorus_block_data::{BlockData, BlockDataType};
 
 pub struct PictorusVars {
     pub run_path: String,

@@ -1,7 +1,7 @@
 use crate::traits::Float;
 use crate::traits::{MatrixOps, Scalar};
-use block_data::{BlockData as OldBlockData, FromPass};
 use core::time::Duration;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Perform a frequency filter operation on a signal, either as a low pass or high pass filter.

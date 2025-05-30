@@ -1,4 +1,4 @@
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{GeneratorBlock, Matrix, Pass, PassBy, Scalar};
 
 pub struct Parameters<T> {
@@ -93,7 +93,7 @@ where
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use block_data::{BlockData, ToPass};
+    use pictorus_block_data::{BlockData, ToPass};
 
     #[test]
     fn test_constant_scalar() {

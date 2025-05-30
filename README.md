@@ -20,7 +20,7 @@ These are the primary public-facing crates that are likely to be used by most us
 These crates are not intended to be consumed by external users and are likely to change without notice.
 
 - [pictorus-internal](./pictorus-internal/) - This crate contains other traits/structs/utilities referenced by generated code.
-- [block-data](./block-data/) - This crate contains legacy code for passing data between blocks. This will be removed in the future.
+- [pictorus-block-data](./pictorus-block-data/) - This crate contains legacy code for passing data between blocks. This will be removed in the future.
 
 #### Platform-specific crates
 

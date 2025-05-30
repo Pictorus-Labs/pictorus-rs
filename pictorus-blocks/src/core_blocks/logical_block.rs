@@ -1,6 +1,6 @@
-use block_data::{BlockData as OldBlockData, FromPass};
 use core::ops::Sub;
 use num_traits::One;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};

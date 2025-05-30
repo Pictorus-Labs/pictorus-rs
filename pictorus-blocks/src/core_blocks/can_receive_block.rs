@@ -1,5 +1,5 @@
 extern crate alloc;
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, traits::Float, IsValid};

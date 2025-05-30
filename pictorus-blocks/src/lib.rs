@@ -15,7 +15,7 @@
 //! If you are implementing a custom block for a specific case, you can likely create a much simpler implementation
 //! by restricting the input/output types you need to support. We will be adding more examples of simple custom blocks in the future.
 #![no_std]
-use block_data::BlockData;
+use pictorus_block_data::BlockData;
 
 #[cfg(any(feature = "std", test))]
 extern crate std;

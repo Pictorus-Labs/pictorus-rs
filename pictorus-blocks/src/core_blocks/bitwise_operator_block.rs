@@ -1,5 +1,5 @@
 use crate::traits::{CopyInto, Scalar, SizePromotion};
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Performs a bitwise operation on the input values.

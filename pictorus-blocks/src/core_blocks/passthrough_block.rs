@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use crate::traits::DefaultStorage;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{PassBy, ProcessBlock};
 
 // A block that passes through the input data, storing it in a buffer.

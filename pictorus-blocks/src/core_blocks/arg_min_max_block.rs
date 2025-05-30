@@ -1,5 +1,5 @@
-use block_data::{BlockData as OldBlockData, FromPass};
 use num_traits::{FromPrimitive, Zero};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Gets the index of the minimum or maximum value in the input.

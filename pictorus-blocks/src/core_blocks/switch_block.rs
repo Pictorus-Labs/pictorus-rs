@@ -1,6 +1,6 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{ByteSliceSignal, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{CopyInto, DefaultStorage, Scalar};
@@ -15,7 +15,7 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 /// use core::time::Duration;
 /// use pictorus_blocks::SwitchBlock;
 /// use pictorus_traits::ProcessBlock;
-/// use block_data::BlockData as OldBlockData;
+/// use pictorus_block_data::BlockData as OldBlockData;
 /// use pictorus_traits::Context;
 ///
 /// #[derive(Default)]

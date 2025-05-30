@@ -1,13 +1,13 @@
 use crate::nalgebra_interop::MatrixExt;
-use block_data::{BlockData as OldBlockData, FromPass};
 use num_traits::One;
 use paste::paste;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, ProcessBlock};
 
 /// Compute the discrete derivative of a signal using a sliding window of samples.
 pub struct DerivativeBlock<T: Pass + Default + Copy, const N: usize>
 where
-    block_data::BlockData: FromPass<T>,
+    pictorus_block_data::BlockData: FromPass<T>,
 {
     samples: [T; N],
     sample_index: usize,
@@ -18,7 +18,7 @@ where
 
 impl<const N: usize, T: Pass + Default + Copy> Default for DerivativeBlock<T, N>
 where
-    block_data::BlockData: FromPass<T>,
+    pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {

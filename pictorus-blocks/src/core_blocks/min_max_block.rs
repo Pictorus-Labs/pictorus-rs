@@ -1,7 +1,7 @@
 use crate::nalgebra_interop::MatrixExt;
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
-use block_data::{BlockData as OldBlockData, FromPass};
 use nalgebra::SMatrix;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Copy, Clone)]
