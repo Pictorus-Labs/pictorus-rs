@@ -21,10 +21,10 @@
 //! - Generators: Take no inputs and provide output
 //! - Process: Take input and provide output
 //! - Input: Take no input in the system graph and provide output, their output is expected
-//! to be a result of their interaction with external interfaces (e.g. UDP stream, SPI Device, UART stream, etc.)
+//!   to be a result of their interaction with external interfaces (e.g. UDP stream, SPI Device, UART stream, etc.)
 //! - Output: Takes input and doesn't provide an output to the model graph. Similar to Input blocks,
-//! these provide no output to the system graph but are expected to have some sort of side-effect or external output as telemetry,
-//! hardware interaction, etc.
+//!   these provide no output to the system graph but are expected to have some sort of side-effect or external output as telemetry,
+//!   hardware interaction, etc.
 //!
 //! Any block that has an output edge (i.e. all but `Output` blocks) must store a copy of its output as a member of the block itself
 //! (or at the very least somewhere with the same lifetime as the block itself). This is because output from a block is distributed
@@ -131,11 +131,11 @@
 //!
 //! The following types can be used as edge data:
 //! - `Scalar`s: The `Scalar` trait is implemented for; `f32`, `f64`, `u8`, `u16`, and `bool`.
-//! They represent the individual values in the system
+//!   They represent the individual values in the system
 //! - [`ByteSliceSignal`]: Used for byte streams, this is essentially a stand-in for `[u8]`.
-//! This is necessary because `[u8]` is not a `Sized` type and therefore there are constraints on where it can show up in types definitions.
+//!   This is necessary because `[u8]` is not a `Sized` type and therefore there are constraints on where it can show up in types definitions.
 //! - `Matrix<const NROWS: usize, const NCOLS: usize, T: Scalar>`: This type is used to model matrices of a singular scalar type
-//! (as well as vectors; being a special case of matrices where one dimension has a size of 1). They have a fixed size that must be known at compile time and don't require on `alloc`. Every element of a given matrix must be the same scalar type
+//!   (as well as vectors; being a special case of matrices where one dimension has a size of 1). They have a fixed size that must be known at compile time and don't require on `alloc`. Every element of a given matrix must be the same scalar type
 //!
 //! And finally to support blocks with multiple inputs tuples composed of all types that implement `Pass` will also implement `Pass`.
 //! That is:
