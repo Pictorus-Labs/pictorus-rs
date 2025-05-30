@@ -43,7 +43,7 @@ impl<T: timer::GeneralInstance4Channel> Pwm for PwmWrapper<'_, T> {
     }
 
     /// Gets the duty cycle from 0 to 1
-    fn get_duty(&self, _channel: Self::Channel) -> Self::Duty {
+    fn get_duty(&self, channel: Self::Channel) -> Self::Duty {
         let max_dc = self.simple_pwm.get_max_duty() as f64;
         let dc = self.simple_pwm.get_duty(channel) as f64;
         dc / max_dc
