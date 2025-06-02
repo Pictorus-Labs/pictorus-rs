@@ -1,9 +1,7 @@
 use core::ops::Mul;
 use embassy_stm32::time::hz;
 use embassy_stm32::timer::simple_pwm::SimplePwm;
-use embassy_stm32::timer::{
-    self, Channel
-};
+use embassy_stm32::timer::{self, Channel};
 use embedded_hal_02::Pwm;
 use pictorus_blocks::PwmBlockParams;
 use pictorus_internal::protocols::{
@@ -84,136 +82,64 @@ impl<T: timer::GeneralInstance4Channel> Pwm for PwmWrapper<'_, T> {
 
 impl<T: timer::GeneralInstance4Channel> PwmWrapper<'_, T> {
     fn disable_all(&mut self) {
-        self.disable_ch1();
-        self.disable_ch2();
-        self.disable_ch3();
-        self.disable_ch4();
+        self.disable_channel(self.ch1);
+        self.disable_channel(self.ch2);
+        self.disable_channel(self.ch3);
+        self.disable_channel(self.ch4);
     }
 
     fn enable_all(&mut self) {
-        self.enable_ch1();
-        self.enable_ch2();
-        self.enable_ch3();
-        self.enable_ch4();
+        self.enable_channel(self.ch1);
+        self.enable_channel(self.ch2);
+        self.enable_channel(self.ch3);
+        self.enable_channel(self.ch4);
     }
 
     fn get_duty_cycle_all(&self) -> (f64, f64, f64, f64) {
         (
-            self.get_duty_ch1(),
-            self.get_duty_ch2(),
-            self.get_duty_ch3(),
-            self.get_duty_ch4(),
+            self.get_duty_cycle(self.ch1),
+            self.get_duty_cycle(self.ch2),
+            self.get_duty_cycle(self.ch3),
+            self.get_duty_cycle(self.ch4),
         )
     }
 
     fn set_duty_cycle_all(&mut self, duty_cycle: (f64, f64, f64, f64)) {
-        self.set_duty_ch1(duty_cycle.0);
-        self.set_duty_ch2(duty_cycle.1);
-        self.set_duty_ch3(duty_cycle.2);
-        self.set_duty_ch4(duty_cycle.3);
+        self.set_duty_cycle(self.ch1, duty_cycle.0);
+        self.set_duty_cycle(self.ch2, duty_cycle.1);
+        self.set_duty_cycle(self.ch3, duty_cycle.2);
+        self.set_duty_cycle(self.ch4, duty_cycle.3);
     }
 
-    fn enable_ch1(&mut self) {
-        if self.ch1.is_some() {
-            self.simple_pwm.enable(self.ch1.unwrap());
+    fn enable_channel(&mut self, channel: Option<Channel>) {
+        if let Some(ch) = channel {
+            self.simple_pwm.enable(ch);
         }
     }
 
-    fn enable_ch2(&mut self) {
-        if self.ch2.is_some() {
-            self.simple_pwm.enable(self.ch2.unwrap());
+    fn disable_channel(&mut self, channel: Option<Channel>) {
+        if let Some(ch) = channel {
+            self.simple_pwm.disable(ch);
         }
     }
 
-    fn enable_ch3(&mut self) {
-        if self.ch3.is_some() {
-            self.simple_pwm.enable(self.ch3.unwrap());
+    fn set_duty_cycle(&mut self, channel: Option<Channel>, duty: f64) {
+        if let Some(ch) = channel {
+            self.set_duty(ch, duty);
         }
     }
 
-    fn enable_ch4(&mut self) {
-        if self.ch4.is_some() {
-            self.simple_pwm.enable(self.ch4.unwrap());
-        }
-    }
-
-    fn disable_ch1(&mut self) {
-        if self.ch1.is_some() {
-            self.simple_pwm.disable(self.ch1.unwrap());
-        }
-    }
-
-    fn disable_ch2(&mut self) {
-        if self.ch2.is_some() {
-            self.simple_pwm.disable(self.ch2.unwrap());
-        }
-    }
-
-    fn disable_ch3(&mut self) {
-        if self.ch3.is_some() {
-            self.simple_pwm.disable(self.ch3.unwrap());
-        }
-    }
-
-    fn disable_ch4(&mut self) {
-        if self.ch4.is_some() {
-            self.simple_pwm.disable(self.ch4.unwrap());
-        }
-    }
-
-    fn set_duty_ch1(&mut self, duty: f64) {
-        if self.ch1.is_some() {
-            self.set_duty(self.ch1.unwrap(), duty);
-        }
-    }
-
-    fn set_duty_ch2(&mut self, duty: f64) {
-        if self.ch2.is_some() {
-            self.set_duty(self.ch2.unwrap(), duty);
-        }
-    }
-
-    fn set_duty_ch3(&mut self, duty: f64) {
-        if self.ch3.is_some() {
-            self.set_duty(self.ch3.unwrap(), duty);
-        }
-    }
-
-    fn set_duty_ch4(&mut self, duty: f64) {
-        if self.ch4.is_some() {
-            self.set_duty(self.ch4.unwrap(), duty);
-        }
-    }
-
-    fn get_duty_ch1(&self) -> f64 {
-        if self.ch1.is_some() {
-            self.get_duty(self.ch1.unwrap())
+    fn get_duty_cycle(&self, channel: Option<Channel>) -> f64 {
+        if let Some(ch) = channel {
+            self.get_duty(ch)
         } else {
             0.0
         }
     }
 
-    fn get_duty_ch2(&self) -> f64 {
-        if self.ch2.is_some() {
-            self.get_duty(self.ch2.unwrap())
-        } else {
-            0.0
-        }
-    }
-
-    fn get_duty_ch3(&self) -> f64 {
-        if self.ch3.is_some() {
-            self.get_duty(self.ch3.unwrap())
-        } else {
-            0.0
-        }
-    }
-
-    fn get_duty_ch4(&self) -> f64 {
-        if self.ch4.is_some() {
-            self.get_duty(self.ch4.unwrap())
-        } else {
-            0.0
+    fn maybe_update_duty_cycle(&mut self, channel: Option<Channel>, duty: f64) {
+        if (self.get_duty_cycle(channel) - duty).abs() >= PWM_DUTY_CYCLE_TOLERANCE_16_BIT {
+            self.set_duty_cycle(channel, duty);
         }
     }
 }
@@ -260,20 +186,9 @@ impl<T: timer::GeneralInstance4Channel> OutputBlock for PwmWrapper<'_, T> {
             self.set_period(period);
         }
 
-        if (self.get_duty_ch1() - duty_cycle1).abs() >= PWM_DUTY_CYCLE_TOLERANCE_16_BIT {
-            self.set_duty_ch1(duty_cycle1);
-        }
-
-        if (self.get_duty_ch2() - duty_cycle2).abs() >= PWM_DUTY_CYCLE_TOLERANCE_16_BIT {
-            self.set_duty_ch2(duty_cycle2);
-        }
-
-        if (self.get_duty_ch3() - duty_cycle3).abs() >= PWM_DUTY_CYCLE_TOLERANCE_16_BIT {
-            self.set_duty_ch3(duty_cycle3);
-        }
-
-        if (self.get_duty_ch4() - duty_cycle4).abs() >= PWM_DUTY_CYCLE_TOLERANCE_16_BIT {
-            self.set_duty_ch4(duty_cycle4);
-        }
+        self.maybe_update_duty_cycle(self.ch1, duty_cycle1);
+        self.maybe_update_duty_cycle(self.ch2, duty_cycle2);
+        self.maybe_update_duty_cycle(self.ch3, duty_cycle3);
+        self.maybe_update_duty_cycle(self.ch4, duty_cycle4);
     }
 }
