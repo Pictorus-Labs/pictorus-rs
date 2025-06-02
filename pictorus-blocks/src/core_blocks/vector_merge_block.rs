@@ -1,4 +1,4 @@
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
@@ -72,7 +72,8 @@ where
         let mut offset = 0;
         let output = I::get_merge(input, &mut offset, &mut self.buffer);
         self.data = OldBlockData::from_pass(output);
-        self.data.set_type(block_data::BlockDataType::Vector);
+        self.data
+            .set_type(pictorus_block_data::BlockDataType::Vector);
         output
     }
 }
@@ -340,7 +341,7 @@ where
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use block_data::{BlockData as OldBlockData, BlockDataType, ToPass};
+    use pictorus_block_data::{BlockData as OldBlockData, BlockDataType, ToPass};
 
     #[test]
     fn test_vector_merge_block_scalar_original_test() {

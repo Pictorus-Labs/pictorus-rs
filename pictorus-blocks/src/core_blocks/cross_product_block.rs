@@ -1,5 +1,5 @@
 use crate::nalgebra_interop::MatrixExt;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy};
 
 pub struct Parameters {
@@ -107,7 +107,7 @@ float_matrix_impl!(f32);
 mod tests {
 
     use crate::testing::StubContext;
-    use block_data::{BlockData, ToPass};
+    use pictorus_block_data::{BlockData, ToPass};
     use pictorus_traits::ProcessBlock;
 
     use super::*;

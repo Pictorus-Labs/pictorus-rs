@@ -1,9 +1,9 @@
 use crate::{nalgebra_interop::MatrixExt, IsValid};
-use block_data::{BlockData as OldBlockData, FromPass};
 use nalgebra::{
     allocator::Allocator, ArrayStorage, Const, DefaultAllocator, DimDiff, DimMin, DimMinimum,
     DimSub, SMatrix, SquareMatrix, ToTypenum, SVD, U1,
 };
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Float, Scalar};

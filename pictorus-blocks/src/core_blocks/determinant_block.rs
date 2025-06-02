@@ -1,5 +1,5 @@
-use block_data::{BlockData as OldBlockData, FromPass};
 use nalgebra::{ArrayStorage, Const, DimMin, SquareMatrix, ToTypenum};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 pub struct Parameters {}
@@ -91,8 +91,8 @@ impl_determinant_block!(f64);
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use block_data::BlockDataType;
     use paste::paste;
+    use pictorus_block_data::BlockDataType;
 
     macro_rules! impl_determinant_tests {
         ($type:ty) => {

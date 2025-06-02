@@ -1,5 +1,5 @@
-use block_data::BlockData as OldBlockData;
 use num_traits::Float;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{Context, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the ADC block

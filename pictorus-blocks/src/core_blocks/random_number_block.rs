@@ -1,5 +1,5 @@
-use block_data::BlockData;
 use num_traits::Float;
+use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, Scalar};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use rand_distr::{Distribution, Normal, StandardNormal};

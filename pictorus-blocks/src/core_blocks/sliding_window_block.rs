@@ -1,6 +1,6 @@
-use block_data::{BlockData as OldBlockData, FromPass};
 use core::fmt::Debug;
 use heapless::Deque;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the SlidingWindowBlock consist of the initial condition of the output. This is only
@@ -189,7 +189,7 @@ where
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use block_data::BlockData as OldBlockData;
+    use pictorus_block_data::BlockData as OldBlockData;
     use pictorus_traits::{Matrix, ProcessBlock};
 
     #[test]

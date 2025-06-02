@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "block-data",
+  "pictorus-block-data",
   "pictorus-traits",
   "pictorus-blocks",
   "pictorus-internal",
@@ -10,7 +10,7 @@ members = [
 ]
 # Exclude platform-specific crates from the default crates
 default-members = [
-  "block-data",
+  "pictorus-block-data",
   "pictorus-traits",
   "pictorus-blocks",
   "pictorus-internal",
@@ -18,7 +18,7 @@ default-members = [
 resolver = "3"
 
 [workspace.package]
-license-file = "LICENSE"
+license = "BUSL-1.1"
 homepage = "https://www.pictor.us/"
 repository = "https://github.com/Pictorus-Labs/pictorus-rs"
 keywords = ["embedded", "modeling", "simulation", "fmi"]

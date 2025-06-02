@@ -1,6 +1,6 @@
 use crate::traits::Scalar;
-use block_data::{BlockData as OldBlockData, FromPass};
 use core::time::Duration;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Debounce or throttle an input signal.

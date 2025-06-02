@@ -1,5 +1,5 @@
 use alloc::{vec, vec::Vec};
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{
     tuple_array_interop::TupleEquivalent, Matrix, Pass, PassBy, ProcessBlock, Scalar,
 };
@@ -96,7 +96,7 @@ mod tests {
     use super::*;
     use crate::std::string::ToString;
     use crate::testing::StubContext;
-    use block_data::BlockData;
+    use pictorus_block_data::BlockData;
     use pictorus_traits::{Matrix, ProcessBlock};
     use std::string::String;
     use std::vec;

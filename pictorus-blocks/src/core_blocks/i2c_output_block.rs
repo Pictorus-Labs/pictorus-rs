@@ -1,6 +1,6 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 /// Parameters for I2C Output Block

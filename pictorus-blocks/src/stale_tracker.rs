@@ -1,5 +1,5 @@
-use block_data::BlockData;
 use embedded_time::{duration::*, fraction::Fraction, Clock, Instant};
+use pictorus_block_data::BlockData;
 
 struct GenericClock;
 impl Clock for GenericClock {
