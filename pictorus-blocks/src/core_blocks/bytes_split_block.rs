@@ -4,8 +4,8 @@ use crate::traits::{DefaultStorage, Scalar};
 use crate::IsValid;
 use alloc::borrow::ToOwned;
 use alloc::{string::String, vec, vec::Vec};
-use block_data::{BlockData as OldBlockData, FromPass};
 use core::time::Duration;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Splits input bytes based on a specified delimiter and maps outputs to specific indices of the split chunks.

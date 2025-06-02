@@ -1,6 +1,6 @@
 use crate::traits::MatrixOps;
-use block_data::{BlockData as OldBlockData, FromPass};
 use num_traits::{ToPrimitive, Zero};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the VectorSliceBlock

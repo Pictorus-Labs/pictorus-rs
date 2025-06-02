@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;

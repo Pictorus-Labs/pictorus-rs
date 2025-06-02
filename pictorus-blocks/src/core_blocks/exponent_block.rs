@@ -1,5 +1,5 @@
 use crate::traits::Scalar;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Raises the input to a specified power (coefficient),

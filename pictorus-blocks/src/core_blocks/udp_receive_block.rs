@@ -1,6 +1,6 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use block_data::BlockData as OldBlockData;
+use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, IsValid};

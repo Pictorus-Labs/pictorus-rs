@@ -1,5 +1,5 @@
 use crate::traits::Float;
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, ProcessBlock};
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
 use std::sync::Arc;

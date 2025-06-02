@@ -1,7 +1,7 @@
 use crate::nalgebra_interop::MatrixExt;
 use crate::traits::Float;
-use block_data::{BlockData as OldBlockData, FromPass};
 use core::time::Duration;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Block for applying an Infinite Impulse Response (IIR) filter to an input signal.

@@ -2,9 +2,9 @@ use core::ops::MulAssign;
 
 use crate::nalgebra_interop::MatrixExt;
 use crate::traits::{MatrixOps, Scalar};
-use block_data::{BlockData as OldBlockData, FromPass};
 use nalgebra::ClosedDivAssign;
 use num_traits::Float;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters<I: Scalar + Float> {

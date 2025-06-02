@@ -1,7 +1,7 @@
 use crate::traits::{Float, MatrixOps};
-use block_data::{BlockData as OldBlockData, FromPass};
 use heapless::Deque;
 use num_traits::Zero;
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the TransferFunctionBlock
@@ -258,7 +258,7 @@ mod tests {
     use super::Parameters;
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
-    use block_data::BlockData;
+    use pictorus_block_data::BlockData;
     use pictorus_traits::{Matrix, ProcessBlock};
 
     use crate::TransferFunctionBlock;

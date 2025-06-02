@@ -1,4 +1,4 @@
-use block_data::{BlockData as OldBlockData, FromPass};
+use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters<T> {
@@ -99,9 +99,9 @@ impl_clamp_block!(f64);
 #[cfg(test)]
 mod test {
     use crate::testing::StubContext;
-    use block_data::ToPass;
     use num_traits::{One, Zero};
     use paste::paste;
+    use pictorus_block_data::ToPass;
 
     use super::*;
 
