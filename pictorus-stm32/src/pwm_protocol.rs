@@ -1,10 +1,8 @@
 use core::ops::Mul;
-use embassy_stm32::Peripheral;
-use embassy_stm32::gpio::OutputType;
 use embassy_stm32::time::hz;
-use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
+use embassy_stm32::timer::simple_pwm::SimplePwm;
 use embassy_stm32::timer::{
-    self, Channel, Channel::Ch1, Channel1Pin, Channel2Pin, Channel3Pin, Channel4Pin,
+    self, Channel
 };
 use embedded_hal_02::Pwm;
 use pictorus_blocks::PwmBlockParams;
@@ -222,7 +220,7 @@ impl<T: timer::GeneralInstance4Channel> PwmWrapper<'_, T> {
 
 impl<'d, T: timer::GeneralInstance4Channel> PwmWrapper<'d, T> {
     pub fn new(
-        mut simple_pwm: SimplePwm<'d, T>,
+        simple_pwm: SimplePwm<'d, T>,
         ch1: Option<Channel>,
         ch2: Option<Channel>,
         ch3: Option<Channel>,
