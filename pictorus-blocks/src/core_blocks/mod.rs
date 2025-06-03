@@ -166,9 +166,6 @@ pub use passthrough_block::Parameters as GpioInputBlockParams;
 #[doc(hidden)]
 pub use passthrough_block::Parameters as SpiTransmitBlockParams;
 
-/// Formats a string, interpolating input values into it.
-#[doc(inline)]
-pub use passthrough_block::PassthroughBlock as StringFormatBlock;
 /// Used to signify an output port of a component.
 #[doc(inline)]
 pub use passthrough_block::PassthroughBlock as ComponentOutputBlock;
@@ -237,6 +234,9 @@ pub use spi_receive_block::SpiReceiveBlock;
 
 mod squarewave_block;
 pub use squarewave_block::SquarewaveBlock;
+
+mod string_format_block;
+pub use string_format_block::StringFormatBlock;
 
 mod sum_block;
 pub use sum_block::SumBlock;
