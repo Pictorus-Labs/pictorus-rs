@@ -13,6 +13,11 @@ impl<const N: usize> Parameters<N> {
 }
 
 /// Formats the input data into a string using the provided formatter function.
+///
+/// If a ByteSliceSignal is provided, it will be converted to a UTF-8 string.
+/// Other data types are serialized to their equivalent JSON strings.
+/// For numbers this is just the number as a string. For matrices, this will
+/// be the matrix data in row-major order.
 pub struct StringFormatBlock<T: Apply> {
     phantom_output_type: core::marker::PhantomData<T>,
     pub data: Vec<u8>,
@@ -286,7 +291,29 @@ mod tests {
         let context = StubContext::default();
         let output = block.process(&parameters, &context, input);
 
-        assert_eq!(output, "42.0 Foo [[0.0,0.0],[0.0,0.0]]".as_bytes());
+        assert_eq!(
+            std::str::from_utf8(output).unwrap(),
+            "42.0 Foo [[0.0,0.0],[0.0,0.0]]"
+        );
+    }
+
+    #[test]
+    fn test_string_format_block_matrix() {
+        let formatter = |inputs: &[&str; 1]| format!("Matrix: {}", inputs[0]);
+        let parameters = Parameters::new(formatter);
+        let mut block = StringFormatBlock::<Matrix<2, 2, f64>>::default();
+
+        let input = Matrix {
+            // Input data is col-major. We expect the output to be row-major.
+            data: [[1.0, 3.0], [2.0, 4.0]],
+        };
+        let context = StubContext::default();
+        let output = block.process(&parameters, &context, &input);
+
+        assert_eq!(
+            std::str::from_utf8(output).unwrap(),
+            "Matrix: [[1.0,2.0],[3.0,4.0]]"
+        );
     }
 
     #[test]
