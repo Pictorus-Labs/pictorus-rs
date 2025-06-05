@@ -455,7 +455,7 @@ pub struct Parameters<const NUM_INPUTS: usize> {
 }
 
 impl<const NUM_INPUTS: usize> Parameters<NUM_INPUTS> {
-    /// This new function accepts a fixed size arrays of f64 because that is what codgen hands it currently
+    /// This new function accepts a fixed size arrays of f64 because that is what codegen hands it currently
     /// It should be revisited when we tackle codegen changes
     pub fn new(input: [f64; NUM_INPUTS]) -> Self {
         let mut operations = [SumType::Addition; NUM_INPUTS];
