@@ -42,10 +42,10 @@ impl UdpLogger {
 }
 
 impl PictorusLogger for UdpLogger {
-    fn add_samples(&mut self, log_data: &impl miniserde::Serialize, app_time: Duration) {
+    fn add_samples(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            let log_str = miniserde::json::to_string(log_data);
-            self.log(app_time, &log_str);
+            let log_str = serde_json::to_string(log_data).unwrap();
+            self.log(app_time, log_str.as_bytes());
         }
     }
 }
@@ -59,13 +59,13 @@ impl Logger for UdpLogger {
             }
     }
 
-    fn log(&mut self, app_time: Duration, data: &str) {
+    fn log(&mut self, app_time: Duration, data: &[u8]) {
         if let Some(socket) = &mut self.socket {
             let time_since_last_udp_publish = match self.last_udp_publish_time {
                 Some(last_publish_time) => app_time - last_publish_time,
                 None => app_time,
             };
-            match socket.send_to(data.as_bytes(), &self.publish_socket) {
+            match socket.send_to(data, &self.publish_socket) {
                 Ok(_) => {
                     self.last_udp_publish_time = Some(app_time);
                     if !self.has_udp_connection {
@@ -92,7 +92,7 @@ impl Logger for UdpLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use miniserde::Serialize;
+    use serde::Serialize;
 
     #[derive(Serialize)]
     struct LogData {

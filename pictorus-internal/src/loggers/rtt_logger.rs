@@ -1,9 +1,10 @@
 use super::{Logger, PictorusLogger};
 use core::time::Duration;
-use miniserde::Serialize;
-use rtt_target::rprintln;
+use crate::encoders::{postcard_encoder::PostcardEncoder, PictorusEncoder};
 
 const LOG_HEAP_MIN_PERIOD: Duration = Duration::from_secs(1);
+
+const RTT_BUFFER_SIZE: usize = 1024;
 
 /// RttLogger transmits data over the RTT protocol. Has an additional
 /// method to log heap changes.
@@ -12,15 +13,29 @@ pub struct RttLogger {
     last_broadcast_time: Option<Duration>,
     previous_heap_used: usize,
     last_heap_log_time: Duration,
+    upchannel: Option<rtt_target::UpChannel>,
+    buffer: alloc::vec::Vec<u8>,
 }
 
 impl RttLogger {
     pub fn new(publish_period: Duration) -> RttLogger {
+        let channels = rtt_target::rtt_init!(
+            up: {
+                0: {
+                    size: RTT_BUFFER_SIZE,
+                    mode: rtt_target::ChannelMode::NoBlockSkip,
+                    name: "Terminal",
+                }
+            }
+        );
+
         RttLogger {
             publish_period,
             last_broadcast_time: None,
             previous_heap_used: 0,
             last_heap_log_time: Duration::ZERO,
+            upchannel: Some(channels.up.0),
+            buffer: alloc::vec::Vec::with_capacity(RTT_BUFFER_SIZE),
         }
     }
 
@@ -50,10 +65,13 @@ impl RttLogger {
 }
 
 impl PictorusLogger for RttLogger {
-    fn add_samples(&mut self, log_data: &impl Serialize, app_time: Duration) {
+    fn add_samples(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            let sample = miniserde::json::to_string(log_data);
-            self.log(app_time, &sample);
+            //let sample = miniserde::json::to_string(log_data);
+            let mut encoder = PostcardEncoder {};
+            encoder.encode(log_data, &mut self.buffer);
+            self.upchannel.as_mut().expect("msg: RTT channel not initialized").write(&self.buffer);
+            self.last_broadcast_time = Some(app_time);
         }
     }
 }
@@ -67,8 +85,8 @@ impl Logger for RttLogger {
             }
     }
 
-    fn log(&mut self, app_time: Duration, data: &str) {
-        rprintln!("{}", data);
+    fn log(&mut self, app_time: Duration, data: &[u8]) {
+        self.upchannel.as_mut().expect("msg: RTT channel not initialized").write(data);
         self.last_broadcast_time = Some(app_time);
     }
 }

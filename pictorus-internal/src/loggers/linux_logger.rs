@@ -25,7 +25,7 @@ impl LinuxLogger {
 }
 
 impl PictorusLogger for LinuxLogger {
-    fn add_samples(&mut self, log_data: &impl miniserde::Serialize, app_time: Duration) {
+    fn add_samples(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         self.udp_logger.add_samples(log_data, app_time);
         self.csv_logger.add_samples(log_data, app_time);
     }

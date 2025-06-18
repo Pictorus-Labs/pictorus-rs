@@ -1,5 +1,5 @@
 use core::time::Duration;
-use miniserde::Serialize;
+use serde::Serialize;
 #[cfg(feature = "std")]
 pub mod csv_logger;
 
@@ -34,5 +34,5 @@ pub trait Logger {
     /// logging to a CSV file, a packet header, or comments. Calling this function should always
     /// result in data being logged. Use `should_log` to see if the logger should log data before
     /// calling this function.
-    fn log(&mut self, app_time: Duration, data: &str);
+    fn log(&mut self, app_time: Duration, data: &[u8]);
 }

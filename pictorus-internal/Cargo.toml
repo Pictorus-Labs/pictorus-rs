@@ -22,17 +22,21 @@ num-traits = { version = "0.2.19", default-features = false, features = [
   "libm",
 ] }
 log = "0.4.21"
-miniserde = { version = "0.1.42", default-features = false }
 cfg-if = "1.0.0"
 embedded-can = "0.4.1"
 nb = "1.1.0"
 chrono = { version = "0.4.40", optional = true }
 env_logger = { version = "0.11.8", optional = true }
 rtt-target = { git = "https://github.com/Pictorus-Labs/rtt-target", branch = "alignment-fix", optional = true }
+postcard = { version = "1.1.1", features = ["alloc"] }
+serde = { version = "1.0.*", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc", "preserve_order"] }
+heapless = "0.8.0"
 
 [dev-dependencies]
 temp-env = "0.3"
 
 [features]
-std = ["miniserde/std", "dep:env_logger", "dep:chrono"]
+default = ["rtt"]
+std = ["serde/std", "dep:env_logger", "dep:chrono"]
 rtt = ["dep:rtt-target"]

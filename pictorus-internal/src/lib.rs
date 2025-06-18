@@ -19,3 +19,4 @@ pub mod loggers;
 pub mod protocols;
 pub mod timing;
 pub mod utils;
+pub mod encoders;
