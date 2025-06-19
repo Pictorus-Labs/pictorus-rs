@@ -5,7 +5,7 @@ use log::info;
 use std::io::Write;
 use std::{fs::File, string::String};
 
-use super::{Logger, PictorusLogger};
+use super::{Logger};
 
 /// CsvLogger logs data to a file in CSV format.
 ///
@@ -46,19 +46,6 @@ impl CsvLogger {
     }
 }
 
-impl PictorusLogger for CsvLogger {
-    fn add_samples(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
-        if self.should_log(app_time) {
-            let sample = format_samples_csv(log_data);
-            if self.last_csv_log_time.is_none() {
-                let header = format_header_csv(log_data);
-                self.log(app_time, header.as_bytes());
-            }
-            self.log(app_time, sample.as_bytes());
-        }
-    }
-}
-
 impl Logger for CsvLogger {
     fn should_log(&mut self, app_time: Duration) -> bool {
         self.csv_log_period > Duration::ZERO
@@ -68,9 +55,16 @@ impl Logger for CsvLogger {
             }
     }
 
-    fn log(&mut self, app_time: Duration, data: &[u8]) {
-        writeln!(self.file, "{:?}", data).ok();
-        self.last_csv_log_time = Some(app_time);
+    fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
+        if self.should_log(app_time) {
+            let sample = format_samples_csv(log_data);
+            if self.last_csv_log_time.is_none() {
+                let header = format_header_csv(log_data);
+                writeln!(self.file, "{:?}", header).ok();
+            }
+            writeln!(self.file, "{:?}", sample).ok();
+            self.last_csv_log_time = Some(app_time);
+        }
     }
 }
 
@@ -90,24 +84,6 @@ pub fn format_header_csv(data: &impl serde::Serialize) -> String {
         header.pop(); // Remove the trailing comma
     }
 
-    // match data.begin() {
-    //     Fragment::Map(mut fields) => {
-    //         // We are manually updating `field` with calls to `fields.next()` so
-    //         // that we can avoid adding a trailing comma to the last field.
-    //         let mut field = fields.next();
-    //         while let Some(ref field_inner) = field {
-    //             header.push_str(&field_inner.0);
-    //             field = fields.next();
-    //             if field.is_some() {
-    //                 // Add a comma between fields
-    //                 header.push(',');
-    //             }
-    //         }
-    //     }
-    //     _ => {
-    //         panic!("Unsupported data format for CSV header");
-    //     }
-    // }
     header
 }
 
@@ -136,7 +112,7 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
                     sample.push_str(&serde_json::to_string(values).unwrap());
                     sample.push('"');
                 },
-                serde_json::Value::Object(map) => {
+                serde_json::Value::Object(_map) => {
                     // We don't support this or expect to see it
                     panic!("Unsupported data format for CSV samples");
                 },
@@ -150,45 +126,6 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
     }
 
     sample
-
-    // match data.begin() {
-    //     Fragment::Map(mut fields) => {
-    //         // We do the same trick as in `format_header_csv` to avoid a trailing comma.
-    //         let mut field = fields.next();
-    //         while let Some(ref field_inner) = field {
-    //             match field_inner.1.begin() {
-    //                 Fragment::Null => {} // This indicates a None value, we just have it be empty
-    //                 Fragment::Seq(_) => {
-    //                     // This indicates an array, need to add `"` to avoid parsers splitting the array up incorrectly
-    //                     sample.push('"');
-    //                     sample.push_str(&serde_json::to_string(field_inner.1).unwrap());
-    //                     sample.push('"');
-    //                 }
-    //                 Fragment::Map(_) => {
-    //                     // We don't support this or expect to see it
-    //                     panic!("Unsupported data format for CSV samples");
-    //                 }
-    //                 Fragment::Bool(_)
-    //                 | Fragment::F64(_)
-    //                 | Fragment::I64(_)
-    //                 | Fragment::U64(_)
-    //                 | Fragment::Str(_) => {
-    //                     // Simple scalar values don't need any special formatting
-    //                     sample.push_str(&serde_json::to_string(field_inner.1).unwrap());
-    //                 }
-    //             }
-    //             field = fields.next();
-    //             if field.is_some() {
-    //                 // Add a comma between fields
-    //                 sample.push(',');
-    //             }
-    //         }
-    //     }
-    //     _ => {
-    //         panic!("Unsupported data format for CSV samples");
-    //     }
-    // }
-    // sample
 }
 
 #[cfg(test)]
@@ -276,15 +213,15 @@ mod tests {
         // last CSV write initialized to u64::MAX
         assert_eq!(dl.last_csv_log_time, None);
 
-        dl.add_samples(&log_data, Duration::ZERO);
+        dl.log(&log_data, Duration::ZERO);
         assert_eq!(dl.last_csv_log_time, Some(Duration::ZERO));
 
         // Won't log again for 0.10s (10 hz)
-        dl.add_samples(&log_data, Duration::from_millis(1));
+        dl.log(&log_data, Duration::from_millis(1));
         assert_eq!(dl.last_csv_log_time, Some(Duration::ZERO));
 
         // This should update
-        dl.add_samples(&log_data, Duration::from_millis(123));
+        dl.log(&log_data, Duration::from_millis(123));
         assert_eq!(dl.last_csv_log_time, Some(Duration::from_millis(123)));
     }
 }

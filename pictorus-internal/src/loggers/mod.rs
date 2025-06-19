@@ -12,12 +12,6 @@ pub mod udp_logger;
 #[cfg(feature = "rtt")]
 pub mod rtt_logger;
 
-/// The PictorusLogger trait is used to serialize logged data passed to it and then forward it to various logging backends.
-pub trait PictorusLogger {
-    /// Trait method to add samples to the logger. Data is typically logged or broadcast here.
-    fn add_samples(&mut self, log_data: &impl Serialize, app_time: Duration);
-}
-
 /// The Logger trait is used to log data to a file or transmit via telemetry.
 ///
 /// Current implementations:
@@ -34,5 +28,5 @@ pub trait Logger {
     /// logging to a CSV file, a packet header, or comments. Calling this function should always
     /// result in data being logged. Use `should_log` to see if the logger should log data before
     /// calling this function.
-    fn log(&mut self, app_time: Duration, data: &[u8]);
+    fn log(&mut self, log_data: &impl Serialize, app_time: Duration);
 }
