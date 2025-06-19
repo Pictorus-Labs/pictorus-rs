@@ -28,13 +28,13 @@ nb = "1.1.0"
 chrono = { version = "0.4.40", optional = true }
 env_logger = { version = "0.11.8", optional = true }
 rtt-target = { git = "https://github.com/Pictorus-Labs/rtt-target", branch = "alignment-fix", optional = true }
-postcard = { version = "1.1.1", features = ["alloc"] }
-serde = { version = "1.0.*", default-features = false, features = ["derive", "alloc"] }
+postcard = { version = "1.1.1", features = ["alloc"], optional = true }
+serde = { version = "1.0.*", default-features = false, features = ["derive", "alloc"], optional = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc", "preserve_order"], optional = true }
 
 [dev-dependencies]
 temp-env = "0.3"
 
 [features]
-std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json"]
-rtt = ["dep:rtt-target"]
+std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json", "dep:postcard"]
+rtt = ["dep:rtt-target", "dep:postcard", "dep:serde"]
