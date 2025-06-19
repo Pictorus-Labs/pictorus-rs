@@ -1,11 +1,11 @@
 use chrono::Utc;
 use core::time::Duration;
-use std::string::ToString;
 use log::info;
 use std::io::Write;
+use std::string::ToString;
 use std::{fs::File, string::String};
 
-use super::{Logger};
+use super::Logger;
 
 /// CsvLogger logs data to a file in CSV format.
 ///
@@ -60,9 +60,9 @@ impl Logger for CsvLogger {
             let sample = format_samples_csv(log_data);
             if self.last_csv_log_time.is_none() {
                 let header = format_header_csv(log_data);
-                writeln!(self.file, "{:?}", header).ok();
+                writeln!(self.file, "{}", header).ok();
             }
-            writeln!(self.file, "{:?}", sample).ok();
+            writeln!(self.file, "{}", sample).ok();
             self.last_csv_log_time = Some(app_time);
         }
     }
@@ -98,29 +98,29 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
                 serde_json::Value::Bool(_) => {
                     // This indicates a boolean value, we just have it be empty
                     sample.push_str(&serde_json::to_string(value).unwrap());
-                },
+                }
                 serde_json::Value::Number(number) => {
                     // This indicates a number value, we just have it be empty
                     sample.push_str(&number.to_string());
-                },
+                }
                 serde_json::Value::String(_) => {
                     // This indicates a string value, we just have it be empty
                     sample.push_str(&serde_json::to_string(value).unwrap());
-                },
+                }
                 serde_json::Value::Array(values) => {
                     sample.push('"');
                     sample.push_str(&serde_json::to_string(values).unwrap());
                     sample.push('"');
-                },
+                }
                 serde_json::Value::Object(_map) => {
                     // We don't support this or expect to see it
                     panic!("Unsupported data format for CSV samples");
-                },
+                }
             }
             sample.push(',');
         }
     }
-    
+
     if sample.ends_with(',') {
         sample.pop(); // Remove the trailing comma
     }

@@ -1,6 +1,6 @@
 use crate::encoders::PictorusEncoder;
-use serde::Serialize;
 use alloc::vec::Vec;
+use serde::Serialize;
 
 pub struct PostcardEncoder {}
 
@@ -10,8 +10,8 @@ impl PictorusEncoder for PostcardEncoder {
         match postcard::to_allocvec_cobs(data) {
             Ok(data) => {
                 buffer.extend(data);
-            },
-            Err(_) => {}, // Clear the buffer if encoding fails
+            }
+            Err(_) => {} // Clear the buffer if encoding fails
         }
     }
 }
@@ -28,11 +28,9 @@ mod tests {
 
     #[test]
     fn test_postcard_encoder() {
-        let log_data = LogData {
-            app_time: 1.0,
-        };
+        let log_data = LogData { app_time: 1.0 };
 
-        let mut encoder = PostcardEncoder{};
+        let mut encoder = PostcardEncoder {};
         let mut buffer = alloc::vec::Vec::<u8>::new(); // Buffer size should be large enough for the encoded data
         encoder.encode(&log_data, &mut buffer);
 

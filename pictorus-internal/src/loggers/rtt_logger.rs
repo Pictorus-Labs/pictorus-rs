@@ -1,8 +1,8 @@
-use rtt_target::{UpChannel};
+use rtt_target::UpChannel;
 
-use super::{Logger};
+use super::Logger;
+use crate::encoders::{PictorusEncoder, postcard_encoder::PostcardEncoder};
 use core::time::Duration;
-use crate::encoders::{postcard_encoder::PostcardEncoder, PictorusEncoder};
 
 const LOG_HEAP_MIN_PERIOD: Duration = Duration::from_secs(1);
 
@@ -26,7 +26,7 @@ pub fn pictorus_rtt_init() -> UpChannel {
         }
     };
 
-    // Sets the print channel to the second up channel, rprint! (and log::debug, warn, etc) 
+    // Sets the print channel to the second up channel, rprint! (and log::debug, warn, etc)
     // will use this channel
     rtt_target::set_print_channel(channels.up.1);
 
@@ -53,7 +53,7 @@ impl RttLogger {
             previous_heap_used: 0,
             last_heap_log_time: Duration::ZERO,
             buffer: alloc::vec::Vec::with_capacity(RTT_DATA_BUFFER_SIZE),
-            data_channel
+            data_channel,
         }
     }
 

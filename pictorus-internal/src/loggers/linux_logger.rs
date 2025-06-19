@@ -1,6 +1,6 @@
+use crate::loggers::Logger;
 use core::time::Duration;
 use std::path::PathBuf;
-use crate::loggers::Logger;
 
 use super::{csv_logger::CsvLogger, udp_logger::UdpLogger};
 

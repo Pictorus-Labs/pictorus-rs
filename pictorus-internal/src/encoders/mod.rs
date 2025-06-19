@@ -1,5 +1,5 @@
-use serde::Serialize;
 use alloc::vec::Vec;
+use serde::Serialize;
 
 pub mod postcard_encoder;
 

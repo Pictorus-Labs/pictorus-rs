@@ -15,8 +15,8 @@ pub use execution_controller::ExecutionController;
 pub mod runtime_context;
 pub use runtime_context::RuntimeContext;
 
+pub mod encoders;
 pub mod loggers;
 pub mod protocols;
 pub mod timing;
 pub mod utils;
-pub mod encoders;

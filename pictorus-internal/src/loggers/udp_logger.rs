@@ -5,7 +5,7 @@ use std::{
     string::{String, ToString},
 };
 
-use super::{Logger};
+use super::Logger;
 
 /// The UdpLogger is used to transmit data over the UDP protocol to the device manager.
 pub struct UdpLogger {
@@ -52,7 +52,7 @@ impl Logger for UdpLogger {
 
     fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            // TODO: Replace with Postcard + COBS, how to ensure the data is 
+            // TODO: Replace with Postcard + COBS, how to ensure the data is
             // separated by a sentinel bytes?
             let log_str = serde_json::to_string(log_data).unwrap();
             if let Some(socket) = &mut self.socket {

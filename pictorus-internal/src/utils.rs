@@ -6,8 +6,8 @@ use core::{convert::Infallible, time::Duration};
 use num_traits::{AsPrimitive, Float};
 
 use log::debug;
-use serde::{Deserialize, Serialize};
 use pictorus_block_data::{BlockData, BlockDataType};
+use serde::{Deserialize, Serialize};
 
 pub struct PictorusVars {
     pub run_path: String,
