@@ -36,5 +36,5 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc", "
 temp-env = "0.3"
 
 [features]
-std = ["serde/std", "dep:env_logger", "dep:chrono"]
+std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json"]
 rtt = ["dep:rtt-target"]
