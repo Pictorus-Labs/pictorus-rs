@@ -37,5 +37,5 @@ heapless = { version = "0.7.0" }
 temp-env = "0.3"
 
 [features]
-std = ["dep:serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json", "dep:postcard"]
+std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json", "dep:postcard"]
 rtt = ["dep:rtt-target", "dep:postcard", "dep:serde"]
