@@ -1,8 +1,7 @@
-use alloc::vec::Vec;
 use serde::Serialize;
 
 pub mod postcard_encoder;
 
 pub trait PictorusEncoder {
-    fn encode<'a>(&mut self, data: &impl Serialize, buffer: &mut Vec<u8>);
+    fn encode<const N: usize>(&mut self, data: &impl Serialize) -> heapless::Vec<u8, N>;
 }

@@ -1,17 +1,18 @@
 use crate::encoders::PictorusEncoder;
-use alloc::vec::Vec;
 use serde::Serialize;
 
-pub struct PostcardEncoder {}
+pub struct PostcardEncoderCOBS {}
 
-impl PictorusEncoder for PostcardEncoder {
-    fn encode(&mut self, data: &impl Serialize, buffer: &mut Vec<u8>) {
-        buffer.clear();
-        match postcard::to_allocvec_cobs(data) {
-            Ok(data) => {
-                buffer.extend(data);
+impl PictorusEncoder for PostcardEncoderCOBS {
+    fn encode<const N: usize>(&mut self, data: &impl Serialize) -> heapless::Vec<u8, N> {
+        match postcard::to_vec_cobs(data) {
+            Ok(encoded) => encoded,
+            Err(_) => {
+                log::warn!(
+                    "Failed to encode data with Postcard, possibly too much data for the buffer."
+                );
+                heapless::Vec::<u8, N>::new()
             }
-            Err(_) => {} // Clear the buffer if encoding fails
         }
     }
 }
@@ -30,12 +31,11 @@ mod tests {
     fn test_postcard_encoder() {
         let log_data = LogData { app_time: 1.0 };
 
-        let mut encoder = PostcardEncoder {};
-        let mut buffer = alloc::vec::Vec::<u8>::new(); // Buffer size should be large enough for the encoded data
-        encoder.encode(&log_data, &mut buffer);
+        let mut encoder = PostcardEncoderCOBS {};
+        let encoded = encoder.encode::<64>(&log_data);
 
         // COBS encoding removes zero bytes and adds a sentinel byte, so the length of an 8 byte float
         // with some 0's in it will be 10 bytes.
-        assert!(buffer.len() == 10);
+        assert!(encoded.len() == 10);
     }
 }

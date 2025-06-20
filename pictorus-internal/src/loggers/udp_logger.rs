@@ -5,6 +5,8 @@ use std::{
     string::{String, ToString},
 };
 
+use crate::encoders::{PictorusEncoder, postcard_encoder};
+
 use super::Logger;
 
 /// The UdpLogger is used to transmit data over the UDP protocol to the device manager.
@@ -52,15 +54,15 @@ impl Logger for UdpLogger {
 
     fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            // TODO: Replace with Postcard + COBS, how to ensure the data is
-            // separated by a sentinel bytes?
-            let log_str = serde_json::to_string(log_data).unwrap();
+            let mut encoder = postcard_encoder::PostcardEncoderCOBS {};
+            let encoded_data = encoder.encode::<1024>(log_data);
+
             if let Some(socket) = &mut self.socket {
                 let time_since_last_udp_publish = match self.last_udp_publish_time {
                     Some(last_publish_time) => app_time - last_publish_time,
                     None => app_time,
                 };
-                match socket.send_to(log_str.as_bytes(), &self.publish_socket) {
+                match socket.send_to(&encoded_data, &self.publish_socket) {
                     Ok(_) => {
                         self.last_udp_publish_time = Some(app_time);
                         if !self.has_udp_connection {

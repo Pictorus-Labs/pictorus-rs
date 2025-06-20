@@ -1,7 +1,7 @@
 use rtt_target::UpChannel;
 
 use super::Logger;
-use crate::encoders::{PictorusEncoder, postcard_encoder::PostcardEncoder};
+use crate::encoders::{PictorusEncoder, postcard_encoder::PostcardEncoderCOBS};
 use core::time::Duration;
 
 const LOG_HEAP_MIN_PERIOD: Duration = Duration::from_secs(1);
@@ -40,7 +40,6 @@ pub struct RttLogger {
     last_broadcast_time: Option<Duration>,
     previous_heap_used: usize,
     last_heap_log_time: Duration,
-    buffer: alloc::vec::Vec<u8>,
     data_channel: UpChannel,
 }
 
@@ -52,7 +51,6 @@ impl RttLogger {
             last_broadcast_time: None,
             previous_heap_used: 0,
             last_heap_log_time: Duration::ZERO,
-            buffer: alloc::vec::Vec::with_capacity(RTT_DATA_BUFFER_SIZE),
             data_channel,
         }
     }
@@ -93,10 +91,9 @@ impl Logger for RttLogger {
 
     fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            let mut encoder = PostcardEncoder {};
-            encoder.encode(log_data, &mut self.buffer);
-            //rprint!("{:?}\0", self.buffer);
-            self.data_channel.write(&self.buffer);
+            let mut encoder = PostcardEncoderCOBS {};
+            let encoded = encoder.encode::<RTT_DATA_BUFFER_SIZE>(log_data);
+            self.data_channel.write(&encoded);
             self.last_broadcast_time = Some(app_time);
         }
     }
