@@ -24,8 +24,7 @@ pub trait Logger {
     /// time.
     fn should_log(&mut self, app_time: Duration) -> bool;
 
-    /// Trait method to log data, with an option header parameter, for example, when first
-    /// logging to a CSV file, a packet header, or comments. Calling this function should always
+    /// Trait method to log data on a Serializable object. Calling this function should always
     /// result in data being logged. Use `should_log` to see if the logger should log data before
     /// calling this function.
     fn log(&mut self, log_data: &impl Serialize, app_time: Duration);

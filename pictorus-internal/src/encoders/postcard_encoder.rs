@@ -1,10 +1,9 @@
-use crate::encoders::PictorusEncoder;
 use serde::Serialize;
 
 pub struct PostcardEncoderCOBS {}
 
-impl PictorusEncoder for PostcardEncoderCOBS {
-    fn encode<const N: usize>(&mut self, data: &impl Serialize) -> heapless::Vec<u8, N> {
+impl PostcardEncoderCOBS {
+    pub fn encode<const N: usize>(&mut self, data: &impl Serialize) -> heapless::Vec<u8, N> {
         match postcard::to_vec_cobs(data) {
             Ok(encoded) => encoded,
             Err(_) => {

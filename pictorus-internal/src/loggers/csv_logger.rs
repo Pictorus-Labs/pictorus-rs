@@ -2,7 +2,6 @@ use chrono::Utc;
 use core::time::Duration;
 use log::info;
 use std::io::Write;
-use std::string::ToString;
 use std::{fs::File, string::String};
 
 use super::Logger;
@@ -73,15 +72,15 @@ impl Logger for CsvLogger {
 pub fn format_header_csv(data: &impl serde::Serialize) -> String {
     let mut header = String::new();
     let json = serde_json::to_value(data).unwrap();
+    let mut first_entry = true;
     if let Some(json_map) = json.as_object() {
         for (key, _) in json_map {
+            if !first_entry {
+                header.push(',');
+            }
             header.push_str(key);
-            header.push(','); // Add a comma after each field name
+            first_entry = false;
         }
-    }
-
-    if header.ends_with(',') {
-        header.pop(); // Remove the trailing comma
     }
 
     header
@@ -91,20 +90,22 @@ pub fn format_header_csv(data: &impl serde::Serialize) -> String {
 pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
     let mut sample = String::new();
     let json = serde_json::to_value(data).unwrap();
+    let mut first_entry = true;
     if let Some(json_map) = json.as_object() {
         for (_, value) in json_map {
+            if !first_entry {
+                sample.push(',');
+            }
+
             match value {
                 serde_json::Value::Null => {}
                 serde_json::Value::Bool(_) => {
-                    // This indicates a boolean value, we just have it be empty
                     sample.push_str(&serde_json::to_string(value).unwrap());
                 }
-                serde_json::Value::Number(number) => {
-                    // This indicates a number value, we just have it be empty
-                    sample.push_str(&number.to_string());
+                serde_json::Value::Number(_) => {
+                    sample.push_str(&serde_json::to_string(value).unwrap());
                 }
                 serde_json::Value::String(_) => {
-                    // This indicates a string value, we just have it be empty
                     sample.push_str(&serde_json::to_string(value).unwrap());
                 }
                 serde_json::Value::Array(values) => {
@@ -113,16 +114,11 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
                     sample.push('"');
                 }
                 serde_json::Value::Object(_map) => {
-                    // We don't support this or expect to see it
                     panic!("Unsupported data format for CSV samples");
                 }
             }
-            sample.push(',');
+            first_entry = false;
         }
-    }
-
-    if sample.ends_with(',') {
-        sample.pop(); // Remove the trailing comma
     }
 
     sample
