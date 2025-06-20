@@ -5,7 +5,7 @@ use std::{
     string::{String, ToString},
 };
 
-use crate::encoders::{postcard_encoder::PostcardEncoderCOBS};
+use crate::encoders::postcard_encoder::PostcardEncoderCOBS;
 
 use super::Logger;
 

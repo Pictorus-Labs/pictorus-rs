@@ -1,7 +1,7 @@
 use rtt_target::UpChannel;
 
 use super::Logger;
-use crate::encoders::{PictorusEncoder, postcard_encoder::PostcardEncoderCOBS};
+use crate::encoders::postcard_encoder::PostcardEncoderCOBS;
 use core::time::Duration;
 
 const LOG_HEAP_MIN_PERIOD: Duration = Duration::from_secs(1);
