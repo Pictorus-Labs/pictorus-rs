@@ -41,6 +41,7 @@ pub struct RttLogger {
     previous_heap_used: usize,
     last_heap_log_time: Duration,
     data_channel: UpChannel,
+    encoder: PostcardEncoderCOBS,
 }
 
 impl RttLogger {
@@ -52,6 +53,7 @@ impl RttLogger {
             previous_heap_used: 0,
             last_heap_log_time: Duration::ZERO,
             data_channel,
+            encoder: PostcardEncoderCOBS {},
         }
     }
 
@@ -91,8 +93,7 @@ impl Logger for RttLogger {
 
     fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            let mut encoder = PostcardEncoderCOBS {};
-            let encoded = encoder.encode::<RTT_DATA_BUFFER_SIZE>(log_data);
+            let encoded = self.encoder.encode::<RTT_DATA_BUFFER_SIZE>(log_data);
             self.data_channel.write(&encoded);
             self.last_broadcast_time = Some(app_time);
         }

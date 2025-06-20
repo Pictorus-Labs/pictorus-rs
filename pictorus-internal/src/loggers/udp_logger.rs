@@ -5,9 +5,11 @@ use std::{
     string::{String, ToString},
 };
 
-use crate::encoders::{PictorusEncoder, postcard_encoder};
+use crate::encoders::{PictorusEncoder, postcard_encoder::PostcardEncoderCOBS};
 
 use super::Logger;
+
+const UDP_ENCODER_BUFFER_SIZE: usize = 1024;
 
 /// The UdpLogger is used to transmit data over the UDP protocol to the device manager.
 pub struct UdpLogger {
@@ -17,6 +19,7 @@ pub struct UdpLogger {
     publish_socket: String,
     last_udp_publish_time: Option<Duration>,
     has_udp_connection: bool,
+    encoder: PostcardEncoderCOBS,
 }
 
 // Wait this long to re-establish connection to telemetry manager before giving up
@@ -39,6 +42,7 @@ impl UdpLogger {
             publish_socket: publish_socket.to_string(),
             last_udp_publish_time: None,
             has_udp_connection: true,
+            encoder: PostcardEncoderCOBS {},
         }
     }
 }
@@ -54,8 +58,7 @@ impl Logger for UdpLogger {
 
     fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            let mut encoder = postcard_encoder::PostcardEncoderCOBS {};
-            let encoded_data = encoder.encode::<1024>(log_data);
+            let encoded_data = self.encoder.encode::<UDP_ENCODER_BUFFER_SIZE>(log_data);
 
             if let Some(socket) = &mut self.socket {
                 let time_since_last_udp_publish = match self.last_udp_publish_time {
