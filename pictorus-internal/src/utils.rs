@@ -256,7 +256,8 @@ cfg_if::cfg_if! {
         pub fn dump_error(err: &PictorusError, run_path: &str) {
             let path = std::path::PathBuf::from(run_path).join("pictorus_errors.json");
             info!("Error log path: {:?}", path);
-            fs::write(path, serde_json::to_string(err).unwrap()).ok();
+            fs::write(path, serde_json::to_string(err)
+                .expect("Serde JSON Could not parse string")).ok();
         }
 
         pub fn custom_panic_handler(panic_info: &PanicHookInfo, run_path: &str) {
