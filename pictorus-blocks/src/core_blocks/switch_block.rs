@@ -316,10 +316,11 @@ impl<C: Scalar, T: Pass + DefaultStorage + ApplyInto<C, 7>> Apply for (C, T, T, 
 
 #[cfg(test)]
 mod tests {
-    use crate::traits::MatrixOps;
-
     use super::*;
     use crate::testing::StubContext;
+    use crate::traits::MatrixOps;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
 
     #[test]
     fn test_switch_block_2_scalars() {

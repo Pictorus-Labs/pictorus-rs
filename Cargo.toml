@@ -15,7 +15,7 @@ default-members = [
   "pictorus-blocks",
   "pictorus-internal",
 ]
-resolver = "3"
+resolver = "2"
 
 [workspace.package]
 license = "BUSL-1.1"

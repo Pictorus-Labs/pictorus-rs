@@ -14,7 +14,7 @@ pub use embedded_io::{Read, Write};
 pub use embedded_time::Clock;
 
 // CAN protocol
-pub use embedded_can::{Frame, nb::Can};
+pub use embedded_can::{nb::Can, Frame};
 
 /// Tolerance for PWM period up to 10MHz
 pub const PWM_PERIOD_TOLERANCE_POINT_1_US: f64 = 1e-7; // .1 microseconds

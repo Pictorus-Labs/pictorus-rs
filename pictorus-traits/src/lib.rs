@@ -305,6 +305,11 @@ use core::time::Duration;
 mod sealed;
 use sealed::Sealed;
 
+#[cfg(feature = "tricore")]
+mod flattened_backport;
+#[cfg(feature = "tricore")]
+pub use flattened_backport::FlattenSlice;
+
 pub mod custom_blocks;
 pub use custom_blocks::*;
 

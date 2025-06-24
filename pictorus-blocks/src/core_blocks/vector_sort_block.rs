@@ -1,6 +1,8 @@
 use core::cmp::Ordering;
 
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, PartialEq)]

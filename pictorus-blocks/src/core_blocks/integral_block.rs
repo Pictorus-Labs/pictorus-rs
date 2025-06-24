@@ -210,6 +210,8 @@ mod tests {
     use crate::testing::{StubContext, StubRuntime};
     use crate::SinewaveBlock;
     use approx::assert_relative_eq;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
     use pictorus_traits::GeneratorBlock;
 
     #[test]

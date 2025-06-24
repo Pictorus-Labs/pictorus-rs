@@ -1,5 +1,7 @@
 use alloc::{vec, vec::Vec};
 use pictorus_block_data::BlockData as OldBlockData;
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{
     tuple_array_interop::TupleEquivalent, Matrix, Pass, PassBy, ProcessBlock, Scalar,
 };

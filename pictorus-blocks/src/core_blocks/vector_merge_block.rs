@@ -2,6 +2,8 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 
 /// Parameters for VectorMergeBlock
 #[derive(Clone, Copy)]

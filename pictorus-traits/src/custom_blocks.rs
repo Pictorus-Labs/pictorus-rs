@@ -1,4 +1,6 @@
 //! Public interfaces defining Pictorus block interactions
+#[cfg(feature = "tricore")]
+use crate::FlattenSlice as _;
 use crate::{Matrix, Scalar};
 use core::ops::Index;
 

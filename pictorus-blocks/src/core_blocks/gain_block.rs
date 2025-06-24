@@ -1,4 +1,6 @@
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
 /// Multiplies the input by a gain factor.

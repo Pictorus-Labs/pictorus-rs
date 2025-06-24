@@ -259,6 +259,8 @@ mod tests {
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
     use pictorus_block_data::BlockData;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
     use pictorus_traits::{Matrix, ProcessBlock};
 
     use crate::TransferFunctionBlock;

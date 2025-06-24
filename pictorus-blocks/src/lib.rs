@@ -15,6 +15,8 @@
 //! If you are implementing a custom block for a specific case, you can likely create a much simpler implementation
 //! by restricting the input/output types you need to support. We will be adding more examples of simple custom blocks in the future.
 #![no_std]
+#![cfg_attr(feature = "tricore", feature(inline_const))]
+
 use pictorus_block_data::BlockData;
 
 #[cfg(any(feature = "std", test))]

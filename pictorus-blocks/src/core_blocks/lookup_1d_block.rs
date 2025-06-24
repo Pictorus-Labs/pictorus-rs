@@ -183,6 +183,8 @@ fn nearest_interpolation<const N: usize, S: Float>(
 #[cfg(test)]
 mod tests {
     use crate::testing::StubContext;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
 
     use super::*;
 

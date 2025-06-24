@@ -135,6 +135,8 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use paste::paste;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
 
     macro_rules! test_bit_shift {
         ($type:ty) => {

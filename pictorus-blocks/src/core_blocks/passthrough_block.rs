@@ -68,6 +68,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::testing::StubContext;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
     use pictorus_traits::{ByteSliceSignal, Matrix, Pass};
 
     use super::*;

@@ -1,6 +1,8 @@
 use crate::traits::Scalar;
 use core::time::Duration;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Debounce or throttle an input signal.

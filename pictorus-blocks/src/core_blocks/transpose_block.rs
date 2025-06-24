@@ -95,6 +95,8 @@ impl<const NROWS: usize, const NCOLS: usize, S: Scalar> Apply for Matrix<NROWS, 
 #[cfg(test)]
 mod tests {
     use crate::testing::StubContext;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
 
     use super::*;
 

@@ -3,6 +3,8 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::time::Duration;
 use nalgebra::{ComplexField, RealField, SimdPartialOrd};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{ByteSliceSignal, Matrix, Pass, PassBy};
 
 pub mod serialize;

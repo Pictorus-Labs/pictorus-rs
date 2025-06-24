@@ -121,6 +121,8 @@ mod tests {
 
     use crate::testing::StubContext;
     use paste::paste;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
 
     use super::*;
 

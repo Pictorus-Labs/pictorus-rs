@@ -213,6 +213,8 @@ mod tests {
     use super::*;
     use crate::testing::{StubContext, StubRuntime};
     use approx::assert_relative_eq;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
 
     #[test]
     fn test_p_scalar() {

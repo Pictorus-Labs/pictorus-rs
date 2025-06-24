@@ -133,6 +133,8 @@ mod tests {
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
     use core::f64::consts::PI;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
     use rstest::rstest;
 
     #[rstest]

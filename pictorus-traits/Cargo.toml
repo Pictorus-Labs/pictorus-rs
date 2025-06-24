@@ -8,3 +8,7 @@ homepage.workspace = true
 repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
+
+
+[features]
+tricore = []

@@ -1,6 +1,8 @@
 use core::ops::Sub;
 use num_traits::One;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};

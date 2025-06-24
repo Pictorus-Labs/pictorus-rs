@@ -160,6 +160,8 @@ impl<const R: usize, const C: usize, S: Scalar> ApplyInto<Matrix<R, C, S>, Param
 mod tests {
 
     use crate::testing::StubContext;
+    #[cfg(feature = "tricore")]
+    use pictorus_traits::FlattenSlice as _;
 
     use super::*;
 

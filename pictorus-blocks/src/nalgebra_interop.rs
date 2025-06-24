@@ -2,6 +2,8 @@
 
 // NOTE this only supports nalgebra 0.33.x
 use nalgebra::{Const, Dim, MatrixView, MatrixViewMut};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::Matrix;
 
 pub trait MatrixExt {

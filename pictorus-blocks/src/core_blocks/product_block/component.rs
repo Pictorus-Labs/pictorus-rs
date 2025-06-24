@@ -1,5 +1,7 @@
 /// Functionality for componentwise mode of the ProductBlock.
 use crate::traits::{ApplyInto, MatrixOps, Scalar, SizePromotion};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{Matrix, Pass, PassBy};
 
 // For the ComponentWise method the PArameters needs a multiply/divide parameter for each

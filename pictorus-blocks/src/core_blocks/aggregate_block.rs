@@ -1,5 +1,7 @@
 use crate::nalgebra_interop::MatrixExt;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
+#[cfg(feature = "tricore")]
+use pictorus_traits::FlattenSlice as _;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Block for performing an aggregation operation (i.e. sum, min, max) on input data.

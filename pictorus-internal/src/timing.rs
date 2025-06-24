@@ -1,6 +1,6 @@
 use embedded_hal::delay::DelayNs;
 use embedded_time::TimeInt;
-use embedded_time::{Clock, Instant, duration::*};
+use embedded_time::{duration::*, Clock, Instant};
 use log::info;
 use num_traits::AsPrimitive;
 
@@ -115,8 +115,8 @@ impl<C: Clock<T = u64>, D: DelayNs> Timing<C, D> {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
-    use embedded_time::Clock;
     use embedded_time::fraction::Fraction;
+    use embedded_time::Clock;
 
     // MockClock now takes a mutable reference to simulate advancing time in no_std.
     struct MockClock<'a> {

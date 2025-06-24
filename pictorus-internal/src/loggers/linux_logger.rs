@@ -1,7 +1,7 @@
 use core::time::Duration;
 use std::path::PathBuf;
 
-use super::{PictorusLogger, csv_logger::CsvLogger, udp_logger::UdpLogger};
+use super::{csv_logger::CsvLogger, udp_logger::UdpLogger, PictorusLogger};
 
 /// LinuxLogger for Linux systems that logs data via UDP telemetry using
 /// the device manager as well as a CSV file.
