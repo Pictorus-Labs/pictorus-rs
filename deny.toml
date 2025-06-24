@@ -72,7 +72,7 @@ unmaintained = 'all'
 # output a note when they are encountered.
 ignore = [
     { id = "RUSTSEC-2024-0436", reason = "Waiting for alternative to paste to be stabilized" },
-    { id = "RUSTSEC-2023-0089", reason = "Postcard used heapless 0.7.0 which uses deprecated atomic-polyfill"},
+    { id = "RUSTSEC-2023-0089", reason = "Postcard uses heapless 0.7.0 which uses deprecated atomic-polyfill"},
 ]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.
