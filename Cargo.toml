@@ -6,7 +6,8 @@ members = [
   "pictorus-internal",
   "pictorus-linux",
   "pictorus-sim",
-  "pictorus-stm32",
+  "pictorus-stm32", 
+  "pictorus-embedded", "pictorus-renesas",
 ]
 # Exclude platform-specific crates from the default crates
 default-members = [

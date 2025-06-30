@@ -1,0 +1,13 @@
+[package]
+name = "pictorus-embedded"
+version = "0.0.0"
+edition = "2024"
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+rtt-target = { git = "https://github.com/Pictorus-Labs/rtt-target", branch = "alignment-fix" }
+log = "0.4.21"
