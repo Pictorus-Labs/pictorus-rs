@@ -136,7 +136,7 @@ impl OutputBlock for CanConnection<'_> {
 
         let res = self.transmit(&frame);
         if let Err(e) = res {
-            log::warn!("Failed to transmit frame: {:?}", e);
+            log::warn!("Failed to transmit frame: {e:?}");
         }
     }
 }
