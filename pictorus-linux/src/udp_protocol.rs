@@ -20,9 +20,9 @@ fn create_udp_socket(
 
     let socket = UdpSocket::bind(address).map_err(|err| {
         let message = match err.kind() {
-            ErrorKind::InvalidInput => format!("Couldn't bind UDP receiver at invalid address: {} - Is this address valid?", address),
-            ErrorKind::AddrInUse => format!("Couldn't bind UDP receiver at already bound address: {} - Is another process currently bound here?", address),
-            _ => format!("Unknown error! Couldn't bind UDP receiver at address: {} ({})", address, err),
+            ErrorKind::InvalidInput => format!("Couldn't bind UDP receiver at invalid address: {address} - Is this address valid?"),
+            ErrorKind::AddrInUse => format!("Couldn't bind UDP receiver at already bound address: {address} - Is another process currently bound here?"),
+            _ => format!("Unknown error! Couldn't bind UDP receiver at address: {address} ({err})"),
         };
         PictorusError::new(
             ERR_TYPE.into(),
@@ -34,8 +34,7 @@ fn create_udp_socket(
         PictorusError::new(
             ERR_TYPE.into(),
             format!(
-                "Failed to set nonblocking on UDP port at address: {}",
-                address
+                "Failed to set nonblocking on UDP port at address: {address}",
             ),
         )
     })?;
@@ -65,7 +64,7 @@ impl UdpConnection {
                 num_bytes_read = n;
             }
 
-            debug!("Received {} bytes", num_bytes_read);
+            debug!("Received {num_bytes_read} bytes");
             output.resize(num_bytes_read, 0);
             Ok(output)
         } else {

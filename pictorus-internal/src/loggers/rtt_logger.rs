@@ -73,10 +73,7 @@ impl RttLogger {
             let used_f32 = used as f32 / 1000.0;
             let percent_used = (used_f32 / (used_f32 + free_f32)) * 100.0;
             log::info!(
-                "Heap Used: {:.3}kB, Heap Free: {:.3}kB, Heap Usage: {:.3}%",
-                used_f32,
-                free_f32,
-                percent_used
+                "Heap Used: {used_f32:.3}kB, Heap Free: {free_f32:.3}kB, Heap Usage: {percent_used:.3}%",
             );
             self.previous_heap_used = used;
             self.last_heap_log_time = app_time;
