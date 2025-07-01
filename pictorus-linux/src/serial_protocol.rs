@@ -135,7 +135,7 @@ impl pictorus_traits::OutputBlock for SerialConnection {
 
 impl Drop for SerialConnection {
     fn drop(&mut self) {
-        debug!("Closing serial port {self.port_addr}");
+        debug!("Closing serial port {0}", self.port_addr);
         if let Some(port) = &mut self.port {
             let _ = port.flush();
         }
