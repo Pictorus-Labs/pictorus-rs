@@ -22,16 +22,12 @@ pub fn create_serial_port(
     let port = serialport::new(port, baud_rate).open().map_err(|err| {
                 let message = match err.kind() {
                     serialport::ErrorKind::NoDevice => {
-                        format!("Failed to bind to serial port: {} - This could indicate that the device is in use by another process or was disconnected while performing I/O.", port)
+                        format!("Failed to bind to serial port: {port} - This could indicate that the device is in use by another process or was disconnected while performing I/O.")
                     }
                     serialport::ErrorKind::Io(_) => {
-                        format!("Failed to bind to serial port: {} - Does it exist?", port)
+                        format!("Failed to bind to serial port: {port} - Does it exist?")
                     }
-                    _ => format!(
-                        "Unknown error! Unable to connect to serial port: {} ({})",
-                        port,
-                        err
-                    ),
+                    _ => format!("Unknown error! Unable to connect to serial port: {port} ({err})"),
                 };
                 PictorusError::new("SerialProtocol".into(), message)
             })?;
@@ -47,7 +43,7 @@ pub struct SerialConnection {
 
 impl SerialConnection {
     pub fn new(port: &str, baud: f64, transmit_enabled: bool) -> Result<Self, PictorusError> {
-        info!("Opening serial port {} with baud {}", port, baud);
+        info!("Opening serial port {port} with baud {baud}");
         Ok(SerialConnection {
             port: create_serial_port(port, baud, transmit_enabled)?,
             cache: Vec::new(),
@@ -139,7 +135,7 @@ impl pictorus_traits::OutputBlock for SerialConnection {
 
 impl Drop for SerialConnection {
     fn drop(&mut self) {
-        debug!("Closing serial port {}", self.port_addr);
+        debug!("Closing serial port {self.port_addr}");
         if let Some(port) = &mut self.port {
             let _ = port.flush();
         }

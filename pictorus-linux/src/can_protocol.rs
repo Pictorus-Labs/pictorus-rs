@@ -22,8 +22,7 @@ impl CanConnection {
             PictorusError::new(
                 ERR_TYPE.into(),
                 format!(
-                    "Failed to open CAN socket on interface: {} ({})",
-                    iface, err
+                    "Failed to open CAN socket on interface: {iface} ({err})",
                 ),
             )
         })?;
@@ -32,8 +31,7 @@ impl CanConnection {
             PictorusError::new(
                 ERR_TYPE.into(),
                 format!(
-                    "Failed to set CAN socket to non-blocking mode: {} ({})",
-                    iface, err
+                    "Failed to set CAN socket to non-blocking mode: {iface} ({err})",
                 ),
             )
         })?;
@@ -97,7 +95,7 @@ impl OutputBlock for CanConnection {
 
         let res = self.transmit(&frame);
         if let Err(e) = res {
-            log::warn!("Failed to transmit frame: {:?}", e);
+            log::warn!("Failed to transmit frame: {e:?}");
         }
     }
 }
