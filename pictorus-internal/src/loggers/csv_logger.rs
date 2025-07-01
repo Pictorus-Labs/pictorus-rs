@@ -24,7 +24,7 @@ impl CsvLogger {
     pub fn new(csv_log_period: Duration, output_path: std::path::PathBuf) -> Self {
         let mut file_obj = File::create("/dev/null").unwrap();
         if !csv_log_period.is_zero() {
-            info!("DataLogger CSV output period: {:?}", csv_log_period);
+            info!("DataLogger CSV output period: {csv_log_period:?}");
             info!("Streaming data output to file: {}", output_path.display());
             file_obj = File::create(std::path::PathBuf::from(&output_path)).unwrap();
         } else {
@@ -69,7 +69,7 @@ impl Logger for CsvLogger {
     }
 
     fn log(&mut self, app_time: Duration, data: &str) {
-        writeln!(self.file, "{}", data).ok();
+        writeln!(self.file, "{data}").ok();
         self.last_csv_log_time = Some(app_time);
     }
 }

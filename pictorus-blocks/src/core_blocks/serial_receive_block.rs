@@ -240,9 +240,9 @@ impl ProcessBlock for SerialReceiveBlock {
 
         if let Ok((start_idx, end_idx)) = self.parse_data(parameters) {
             let val = &self.buffer[start_idx..end_idx];
-            debug!("Parsed value: {:?}", val);
+            debug!("Parsed value: {val:?}");
             if start_idx != 0 {
-                debug!("Discarding {} bytes", start_idx);
+                debug!("Discarding {start_idx} bytes");
             }
             self.data.set_bytes(val);
             self.output = val.to_vec();
