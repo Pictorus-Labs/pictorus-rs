@@ -1,5 +1,5 @@
 use core::time::Duration;
-use miniserde::Serialize;
+use serde::Serialize;
 #[cfg(feature = "std")]
 pub mod csv_logger;
 
@@ -11,12 +11,6 @@ pub mod udp_logger;
 
 #[cfg(feature = "rtt")]
 pub mod rtt_logger;
-
-/// The PictorusLogger trait is used to serialize logged data passed to it and then forward it to various logging backends.
-pub trait PictorusLogger {
-    /// Trait method to add samples to the logger. Data is typically logged or broadcast here.
-    fn add_samples(&mut self, log_data: &impl Serialize, app_time: Duration);
-}
 
 /// The Logger trait is used to log data to a file or transmit via telemetry.
 ///
@@ -30,9 +24,8 @@ pub trait Logger {
     /// time.
     fn should_log(&mut self, app_time: Duration) -> bool;
 
-    /// Trait method to log data, with an option header parameter, for example, when first
-    /// logging to a CSV file, a packet header, or comments. Calling this function should always
+    /// Trait method to log data on a Serializable object. Calling this function should always
     /// result in data being logged. Use `should_log` to see if the logger should log data before
     /// calling this function.
-    fn log(&mut self, app_time: Duration, data: &str);
+    fn log(&mut self, log_data: &impl Serialize, app_time: Duration);
 }

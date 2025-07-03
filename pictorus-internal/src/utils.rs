@@ -6,8 +6,8 @@ use core::{convert::Infallible, time::Duration};
 use num_traits::{AsPrimitive, Float};
 
 use log::debug;
-use miniserde::{Deserialize, Serialize};
 use pictorus_block_data::{BlockData, BlockDataType};
+use serde::{Deserialize, Serialize};
 
 pub struct PictorusVars {
     pub run_path: String,
@@ -115,7 +115,6 @@ cfg_if::cfg_if! {
         use std::prelude::rust_2021::*;
 
         use log::{info, warn, LevelFilter};
-        use miniserde::json;
         use chrono::Local;
         use env_logger::Builder;
 
@@ -228,7 +227,7 @@ cfg_if::cfg_if! {
                     String::from("{}")
                 }
             };
-            json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
+            serde_json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
                 warn!("Error parsing params file, using empty params map.");
                 HashMap::<String, HashMap<String, String>>::new()
             })
@@ -254,7 +253,8 @@ cfg_if::cfg_if! {
         pub fn dump_error(err: &PictorusError, run_path: &str) {
             let path = std::path::PathBuf::from(run_path).join("pictorus_errors.json");
             info!("Error log path: {path:?}");
-            fs::write(path, json::to_string(err)).ok();
+            fs::write(path, serde_json::to_string(err)
+                .expect("Serde JSON Could not parse string")).ok();
         }
 
         pub fn custom_panic_handler(panic_info: &PanicHookInfo, run_path: &str) {

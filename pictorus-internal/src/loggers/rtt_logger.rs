@@ -1,26 +1,61 @@
-use super::{Logger, PictorusLogger};
+use rtt_target::UpChannel;
+
+use super::Logger;
+use crate::encoders::postcard_encoder::PostcardEncoderCOBS;
 use core::time::Duration;
-use miniserde::Serialize;
-use rtt_target::rprintln;
 
 const LOG_HEAP_MIN_PERIOD: Duration = Duration::from_secs(1);
 
-/// RttLogger transmits data over the RTT protocol. Has an additional
-/// method to log heap changes.
+const RTT_DATA_BUFFER_SIZE: usize = 1024;
+
+const RTT_LOG_SIZE: usize = 256;
+
+pub fn pictorus_rtt_init() -> UpChannel {
+    let channels = rtt_target::rtt_init! {
+        up: {
+            0: {
+                size: RTT_DATA_BUFFER_SIZE,
+                mode: rtt_target::ChannelMode::NoBlockSkip,
+                name: "Data",
+            }
+            1: {
+                size: RTT_LOG_SIZE,
+                mode: rtt_target::ChannelMode::NoBlockSkip,
+                name: "Log",
+            }
+        }
+    };
+
+    // Sets the print channel to the second up channel, rprint! (and log::debug, warn, etc)
+    // will use this channel
+    rtt_target::set_print_channel(channels.up.1);
+
+    channels.up.0
+}
+
+/// RttLogger configures two RTT up channels named `Data` (1,024 bytes, NoBlockSkip) and 
+/// `Log` (256 bytes, NoBlockSkip). `Data` transmits u8 byte streams, while `Log` is
+/// used for human readable messages using rprint! and rprintln! macros.
+/// Has an additional method to log heap changes.
 pub struct RttLogger {
     publish_period: Duration,
     last_broadcast_time: Option<Duration>,
     previous_heap_used: usize,
     last_heap_log_time: Duration,
+    data_channel: UpChannel,
+    encoder: PostcardEncoderCOBS,
 }
 
 impl RttLogger {
     pub fn new(publish_period: Duration) -> RttLogger {
+        let data_channel = pictorus_rtt_init();
         RttLogger {
             publish_period,
             last_broadcast_time: None,
             previous_heap_used: 0,
             last_heap_log_time: Duration::ZERO,
+            data_channel,
+            encoder: PostcardEncoderCOBS {},
         }
     }
 
@@ -46,15 +81,6 @@ impl RttLogger {
     }
 }
 
-impl PictorusLogger for RttLogger {
-    fn add_samples(&mut self, log_data: &impl Serialize, app_time: Duration) {
-        if self.should_log(app_time) {
-            let sample = miniserde::json::to_string(log_data);
-            self.log(app_time, &sample);
-        }
-    }
-}
-
 impl Logger for RttLogger {
     fn should_log(&mut self, app_time: Duration) -> bool {
         self.publish_period > Duration::ZERO
@@ -64,8 +90,11 @@ impl Logger for RttLogger {
             }
     }
 
-    fn log(&mut self, app_time: Duration, data: &str) {
-        rprintln!("{}", data);
-        self.last_broadcast_time = Some(app_time);
+    fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
+        if self.should_log(app_time) {
+            let encoded = self.encoder.encode::<RTT_DATA_BUFFER_SIZE>(log_data);
+            self.data_channel.write(&encoded);
+            self.last_broadcast_time = Some(app_time);
+        }
     }
 }
