@@ -35,6 +35,7 @@ heapless = { version = "0.7.0" }
 
 [dev-dependencies]
 temp-env = "0.3"
+cobs = "0.4.0"
 
 [features]
 std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json"]
