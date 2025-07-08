@@ -13,7 +13,6 @@ categories.workspace = true
 pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
 pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
 pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }
-pictorus-embedded = { path = "../pictorus-embedded", version = "0.0.0" }
 embedded-time = "0.12.1"
 embedded-hal = "1.0.0"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [

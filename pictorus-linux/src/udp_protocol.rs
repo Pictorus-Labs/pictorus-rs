@@ -33,9 +33,7 @@ fn create_udp_socket(
     socket.set_nonblocking(true).map_err(|_| {
         PictorusError::new(
             ERR_TYPE.into(),
-            format!(
-                "Failed to set nonblocking on UDP port at address: {address}",
-            ),
+            format!("Failed to set nonblocking on UDP port at address: {address}",),
         )
     })?;
     Ok(Some(socket))
