@@ -6,8 +6,8 @@ use core::{convert::Infallible, time::Duration};
 use num_traits::{AsPrimitive, Float};
 
 use log::debug;
-use miniserde::{Deserialize, Serialize};
 use pictorus_block_data::{BlockData, BlockDataType};
+use serde::{Deserialize, Serialize};
 
 pub struct PictorusVars {
     pub run_path: String,
@@ -19,13 +19,13 @@ pub struct PictorusVars {
 // TODO Can we create an error type for these functions? Could we use Option<> instead?
 #[allow(clippy::result_unit_err)]
 pub fn buffer_to_scalar(buf: &[u8]) -> Result<f64, ()> {
-    debug!("Converting buffer to scalar: {:?}", buf);
+    debug!("Converting buffer to scalar: {buf:?}");
     string_to_scalar(str::from_utf8(buf).or(Err(()))?)
 }
 
 #[allow(clippy::result_unit_err)]
 pub fn string_to_scalar(val: &str) -> Result<f64, ()> {
-    debug!("Converting string to scalar: {:?}", val);
+    debug!("Converting string to scalar: {val:?}");
     val.trim().parse().or(Err(()))
 }
 
@@ -115,7 +115,6 @@ cfg_if::cfg_if! {
         use std::prelude::rust_2021::*;
 
         use log::{info, warn, LevelFilter};
-        use miniserde::json;
         use chrono::Local;
         use env_logger::Builder;
 
@@ -169,7 +168,7 @@ cfg_if::cfg_if! {
             // Try loading from ENV
             if let Ok(env_var) = std::env::var(&env_var_name) {
                 if let Some(parsed) = T::parse(&env_var, Some(&default)) {
-                    info!("Found env variable {} with value '{:?}'", env_var_name, parsed);
+                    info!("Found env variable {env_var_name} with value '{parsed:?}'");
                     return parsed;
                 }
             }
@@ -177,10 +176,7 @@ cfg_if::cfg_if! {
             // Try loading from DiagramParams
             if let Some(params_map) = blocks_map.get(block_name).and_then(|map| map.get(var_name)) {
                 if let Some(parsed) = T::parse(params_map, Some(&default)) {
-                    info!(
-                        "Parsing and loading {}_{} from params file with value {:?}",
-                        block_name, var_name, parsed
-                    );
+                    info!("Parsing and loading {block_name}_{var_name} from params file with value {parsed:?}");
                     return parsed;
                 }
             }
@@ -231,7 +227,7 @@ cfg_if::cfg_if! {
                     String::from("{}")
                 }
             };
-            json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
+            serde_json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
                 warn!("Error parsing params file, using empty params map.");
                 HashMap::<String, HashMap<String, String>>::new()
             })
@@ -256,8 +252,9 @@ cfg_if::cfg_if! {
 
         pub fn dump_error(err: &PictorusError, run_path: &str) {
             let path = std::path::PathBuf::from(run_path).join("pictorus_errors.json");
-            info!("Error log path: {:?}", path);
-            fs::write(path, json::to_string(err)).ok();
+            info!("Error log path: {path:?}");
+            fs::write(path, serde_json::to_string(err)
+                .expect("Serde JSON Could not parse string")).ok();
         }
 
         pub fn custom_panic_handler(panic_info: &PanicHookInfo, run_path: &str) {
@@ -297,7 +294,7 @@ cfg_if::cfg_if! {
                 })
                 .filter(None, log_level)
                 .init();
-            log::info!("Log level: {}", log_level);
+            log::info!("Log level: {log_level}");
         }
     }
 }

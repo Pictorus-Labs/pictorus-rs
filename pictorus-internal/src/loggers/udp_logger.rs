@@ -5,7 +5,11 @@ use std::{
     string::{String, ToString},
 };
 
-use super::{Logger, PictorusLogger};
+use crate::encoders::postcard_encoder::PostcardEncoderCOBS;
+
+use super::Logger;
+
+const UDP_ENCODER_BUFFER_SIZE: usize = 1024;
 
 /// The UdpLogger is used to transmit data over the UDP protocol to the device manager.
 pub struct UdpLogger {
@@ -15,6 +19,7 @@ pub struct UdpLogger {
     publish_socket: String,
     last_udp_publish_time: Option<Duration>,
     has_udp_connection: bool,
+    encoder: PostcardEncoderCOBS,
 }
 
 // Wait this long to re-establish connection to telemetry manager before giving up
@@ -37,15 +42,7 @@ impl UdpLogger {
             publish_socket: publish_socket.to_string(),
             last_udp_publish_time: None,
             has_udp_connection: true,
-        }
-    }
-}
-
-impl PictorusLogger for UdpLogger {
-    fn add_samples(&mut self, log_data: &impl miniserde::Serialize, app_time: Duration) {
-        if self.should_log(app_time) {
-            let log_str = miniserde::json::to_string(log_data);
-            self.log(app_time, &log_str);
+            encoder: PostcardEncoderCOBS {},
         }
     }
 }
@@ -59,29 +56,33 @@ impl Logger for UdpLogger {
             }
     }
 
-    fn log(&mut self, app_time: Duration, data: &str) {
-        if let Some(socket) = &mut self.socket {
-            let time_since_last_udp_publish = match self.last_udp_publish_time {
-                Some(last_publish_time) => app_time - last_publish_time,
-                None => app_time,
-            };
-            match socket.send_to(data.as_bytes(), &self.publish_socket) {
-                Ok(_) => {
-                    self.last_udp_publish_time = Some(app_time);
-                    if !self.has_udp_connection {
-                        info!("Regained UDP connection.");
-                        self.has_udp_connection = true;
+    fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
+        if self.should_log(app_time) {
+            let encoded_data = self.encoder.encode::<UDP_ENCODER_BUFFER_SIZE>(log_data);
+
+            if let Some(socket) = &mut self.socket {
+                let time_since_last_udp_publish = match self.last_udp_publish_time {
+                    Some(last_publish_time) => app_time - last_publish_time,
+                    None => app_time,
+                };
+                match socket.send_to(&encoded_data, &self.publish_socket) {
+                    Ok(_) => {
+                        self.last_udp_publish_time = Some(app_time);
+                        if !self.has_udp_connection {
+                            info!("Regained UDP connection.");
+                            self.has_udp_connection = true;
+                        }
                     }
-                }
-                Err(_) => {
-                    if self.has_udp_connection {
-                        warn!("Lost UDP connection! Skipping telemetry transmit...");
-                        self.has_udp_connection = false;
-                    } else if time_since_last_udp_publish > UDP_TIMEOUT {
-                        panic!(
-                            "Unable to connect to telemetry manager after {:?}, aborting.",
-                            UDP_TIMEOUT
-                        );
+                    Err(_) => {
+                        if self.has_udp_connection {
+                            warn!("Lost UDP connection! Skipping telemetry transmit...");
+                            self.has_udp_connection = false;
+                        } else if time_since_last_udp_publish > UDP_TIMEOUT {
+                            panic!(
+                                "Unable to connect to telemetry manager after {:?}, aborting.",
+                                UDP_TIMEOUT
+                            );
+                        }
                     }
                 }
             }
@@ -92,7 +93,7 @@ impl Logger for UdpLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use miniserde::Serialize;
+    use serde::Serialize;
 
     #[derive(Serialize)]
     struct LogData {
@@ -119,6 +120,6 @@ mod tests {
         let mut dl = UdpLogger::new(log_period, publish_socket);
         let app_time = Duration::from_micros(1_234_000);
         // Verify we can pass it samples to log without errors
-        dl.add_samples(&log_data, app_time);
+        dl.log(&log_data, app_time);
     }
 }

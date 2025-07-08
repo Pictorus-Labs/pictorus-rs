@@ -53,8 +53,7 @@ impl<C: Clock<T = u64>, D: DelayNs> Timing<C, D> {
         delay: D,
     ) -> Timing<C, D> {
         info!(
-            "Timing settings: Run time: {:?}, frequency: {} hz, realtime: {}",
-            run_time, hertz, use_realtime
+            "Timing settings: Run time: {run_time:?}, frequency: {hertz} hz, realtime: {use_realtime}",
         );
         let now = clock.try_now().unwrap();
         Timing {

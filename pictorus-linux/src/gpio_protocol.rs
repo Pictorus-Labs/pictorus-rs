@@ -44,7 +44,7 @@ fn create_error(message: String) -> PictorusError {
 }
 
 fn create_pin_error(pin: u32) -> PictorusError {
-    create_error(format!("Failed to bind to GPIO pin: {}", pin))
+    create_error(format!("Failed to bind to GPIO pin: {pin}"))
 }
 
 fn create_cdev_pin(
@@ -55,8 +55,7 @@ fn create_cdev_pin(
     let pin_line = pin_line as u32;
     let mut chip = Chip::new(chip).map_err(|_| {
         create_error(format!(
-            "Failed to bind to GPIO bus {} for pin: {}",
-            chip, pin_line
+            "Failed to bind to GPIO bus {chip} for pin: {pin_line}",
         ))
     })?;
     let handle = chip
