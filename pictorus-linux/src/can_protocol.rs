@@ -21,18 +21,14 @@ impl CanConnection {
         let socket = CanSocket::open(iface).map_err(|err| {
             PictorusError::new(
                 ERR_TYPE.into(),
-                format!(
-                    "Failed to open CAN socket on interface: {iface} ({err})",
-                ),
+                format!("Failed to open CAN socket on interface: {iface} ({err})",),
             )
         })?;
 
         socket.set_nonblocking(true).map_err(|err| {
             PictorusError::new(
                 ERR_TYPE.into(),
-                format!(
-                    "Failed to set CAN socket to non-blocking mode: {iface} ({err})",
-                ),
+                format!("Failed to set CAN socket to non-blocking mode: {iface} ({err})",),
             )
         })?;
 
