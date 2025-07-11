@@ -235,6 +235,8 @@ allow-git = [
     "https://github.com/Pictorus-Labs/rtt-target",
     "https://github.com/embassy-rs/embassy.git",
     "https://github.com/embassy-rs/stm32-data-generated",
+    "https://github.com/Pictorus-Labs/ra4m2-hal",
+    "https://github.com/amcelroy/ra-pac",
 ]
 
 [sources.allow-org]
