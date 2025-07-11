@@ -113,6 +113,7 @@ exceptions = [
     { allow = ["BUSL-1.1"], crate = "pictorus-internal" },
     { allow = ["BUSL-1.1"], crate = "pictorus-sim" },
     { allow = ["BUSL-1.1"], crate = "pictorus-stm32" },
+    { allow = ["BUSL-1.1"], crate = "pictorus-renesas" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,
