@@ -19,9 +19,6 @@ pub use can_protocol::*;
 mod pwm_protocol;
 pub use pwm_protocol::*;
 
-mod logger;
-pub use logger::*;
-
 mod i2c_protocol;
 pub use i2c_protocol::*;
 

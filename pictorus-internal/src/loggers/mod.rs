@@ -12,6 +12,9 @@ pub mod udp_logger;
 #[cfg(feature = "rtt")]
 pub mod rtt_logger;
 
+#[cfg(feature = "rtt")]
+pub mod logger;
+
 /// The Logger trait is used to log data to a file or transmit via telemetry.
 ///
 /// Current implementations:
