@@ -32,7 +32,10 @@ impl InputBlock for I2cWrapper {
         // Write register, then read data
         let result = self.i2c.transaction(
             parameters.address,
-            &mut [Operation::Write(&[parameters.command]), Operation::Read(&mut self.buffer[..size])],
+            &mut [
+                Operation::Write(&[parameters.command]),
+                Operation::Read(&mut self.buffer[..size]),
+            ],
         );
 
         if result.is_err() {
