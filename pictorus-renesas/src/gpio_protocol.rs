@@ -1,4 +1,4 @@
-use embedded_hal_02::digital::v2::{InputPin, OutputPin};
+use embedded_hal::digital::{InputPin, OutputPin};
 use pictorus_traits::{InputBlock, OutputBlock};
 use ra4m2_hal::gpio::{Input, Output, PullDown, PushPull};
 

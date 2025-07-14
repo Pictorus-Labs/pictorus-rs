@@ -1,5 +1,5 @@
 use alloc::vec::Vec;
-use embedded_hal_02::blocking::i2c::WriteRead;
+use embedded_hal::i2c::{I2c, Operation};
 use pictorus_blocks::I2cInputBlockParams;
 use pictorus_traits::{ByteSliceSignal, InputBlock, OutputBlock};
 
@@ -29,10 +29,10 @@ impl InputBlock for I2cWrapper {
         let size = parameters.read_bytes;
         self.buffer.resize(size, 0);
 
-        let result = self.i2c.write_read(
+        // Write register, then read data
+        let result = self.i2c.transaction(
             parameters.address,
-            &[parameters.command],
-            &mut self.buffer[..size],
+            &mut [Operation::Write(&[parameters.command]), Operation::Read(&mut self.buffer[..size])],
         );
 
         if result.is_err() {
@@ -56,6 +56,14 @@ impl OutputBlock for I2cWrapper {
         let mut tx_buffer = Vec::new();
         tx_buffer.push(parameters.command);
         tx_buffer.extend_from_slice(inputs);
-        self.i2c.write(parameters.address, &tx_buffer).ok();
+
+        let result = self.i2c.transaction(
+            parameters.address,
+            &mut [Operation::Write(tx_buffer.as_slice())],
+        );
+
+        if result.is_err() {
+            // Handle error case
+        }
     }
 }

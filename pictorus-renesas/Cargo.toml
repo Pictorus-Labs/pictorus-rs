@@ -15,11 +15,12 @@ pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
 pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }
 embedded-time = "0.12.1"
 embedded-hal = "1.0.0"
-embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [
-  "unproven",
-] }
 embedded-io = "0.6.1"
-embassy-time = { git = "https://github.com/embassy-rs/embassy.git", rev = "68c8238" }
 heapless = "0.8.0"
 log = "0.4.21"
 ra4m2-hal = { git = "https://github.com/Pictorus-Labs/ra4m2-hal" }
+
+[features]
+default = ["ra4m2"]
+
+ra4m2 = []
