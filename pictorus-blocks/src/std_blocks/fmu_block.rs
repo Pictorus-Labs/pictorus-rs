@@ -13,6 +13,7 @@ use std::collections::HashMap;
 pub struct FmuBlock<const N_IN: usize, const N_OUT: usize> {
     pub data: Vec<OldBlockData>,
     fm_cs: Option<FmuInstance<FmuLibrary>>,
+    buffer: [f64; N_OUT],
 }
 
 impl<const N_IN: usize, const N_OUT: usize> Default for FmuBlock<N_IN, N_OUT> {
@@ -20,6 +21,7 @@ impl<const N_IN: usize, const N_OUT: usize> Default for FmuBlock<N_IN, N_OUT> {
         Self {
             data: vec![OldBlockData::from_scalar(0.0); N_OUT],
             fm_cs: None,
+            buffer: [0.0; N_OUT],
         }
     }
 }
@@ -138,116 +140,30 @@ impl From<fmu_runner::FmuUnpackError> for FmuErrors {
     }
 }
 
-/// Macro that Implements the `ProcessBlock` trait for the FMU block
-/// for a given number of inputs and outputs.
-/// This is a macro because the number of inputs and outputs can be anywhere from 0 to 8
-/// which means 9^2 = 81 different implementations of the trait.
-/// Each call to the macro will implement the trait for one specific number of inputs and outputs.
-///
-/// Some examples of the macro expansion:
-///  - Note that the `#[allow(unused_variables)]` is required to prevent the compiler from complaining about unused variables when the number of inputs is 0. You can see this in the first example, where `inputs` is not used.
-///
-/// ```ignore
-/// impl ProcessBlock for FmuBlock<0, 3> {
-///     type Parameters = Parameters;
-///     type Inputs = ();
-///     type Output = (f64, f64, f64);
-///     #[allow(unused_variables)]
-///     fn process<'b>(
-///         &'b mut self,
-///         parameters: &Self::Parameters,
-///         context: &dyn Context,
-///         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
-///     ) -> pictorus_traits::PassBy<'b, Self::Output> {
-///         let output: [f64; 3] = self.run_time_step(parameters, context, &[]);
-///         self.data.clear();
-///         self.data = output.iter().map(|&x| OldBlockData::from_scalar(x)).collect();
-///         output.try_into().expect("This is a known size")
-///     }
-/// }
-///
-/// impl ProcessBlock for FmuBlock<6, 1> {
-///     type Parameters = Parameters;
-///     type Inputs = (f64, f64, f64, f64, f64, f64);
-///     type Output = f64;
-///     #[allow(unused_variables)]
-///     fn process<'b>(
-///         &'b mut self,
-///         parameters: &Self::Parameters,
-///         context: &dyn Context,
-///         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
-///     ) -> pictorus_traits::PassBy<'b, Self::Output> {
-///         let output: [f64; 1] = self
-///             .run_time_step(
-///                 parameters,
-///                 context,
-///                 &inputs.try_into().expect("This is a known size"),
-///             );
-///         self.data.clear();
-///         self.data = output.iter().map(|&x| OldBlockData::from_scalar(x)).collect();
-///         output[0]
-///     }
-/// }
-/// ```
-macro_rules! impl_process_block {
-    ($n_in:tt, $n_out:tt) => {
-        impl ProcessBlock for FmuBlock<$n_in, $n_out> {
-            type Parameters = Parameters;
-            type Inputs = impl_process_block!(@tuple_type, f64, $n_in);
-            type Output = impl_process_block!(@tuple_type, f64, $n_out);
-            #[allow(unused_variables)]
-            fn process<'b>(
-                &'b mut self,
-                parameters: &Self::Parameters,
-                context: &dyn Context,
-                inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
-            ) -> pictorus_traits::PassBy<'b, Self::Output> {
-                let output: [f64; $n_out] = self.run_time_step(
-                    parameters,
-                    context,
-                    impl_process_block!(@input_spec, $n_in, inputs),
-                );
-                self.data.clear();
-                self.data = output
-                    .iter()
-                    .map(|&x| OldBlockData::from_scalar(x))
-                    .collect();
-                impl_process_block!(@output_spec, $n_out, output)
-            }
-        }
-    };
+impl<const N_IN: usize, const N_OUT: usize> ProcessBlock for FmuBlock<N_IN, N_OUT> {
+    type Parameters = Parameters;
+    // We use homogeneous arrays for inputs and outputs to avoid the limits/complexity
+    // of mixed data types. This is safe to do because we only support FMI 2.0 which
+    // only supports scalar values. If we add support for FMI 3.0 we will need to revisit this.
+    type Inputs = [f64; N_IN];
+    type Output = [f64; N_OUT];
 
-    // Special casing here for passing length 0 and length 1 inputs to `run_time_step`
-    (@input_spec, 0, $name:expr) => {&[]};
-    (@input_spec, 1, $name:expr) => {&[$name]};
-    (@input_spec, $n:expr, $name:expr) => {&$name.try_into().expect("This is a known size")};
-
-    // Special casing here for returning length 0 and length 1 outputs
-    (@output_spec, 0, $name:expr) => {()};
-    (@output_spec, 1, $name:expr) => {$name[0]};
-    (@output_spec, $n:expr, $name:expr) => {
-        $name.try_into().expect("This is a known size")
-    };
-
-
-    // These just allow one to refer to the tuple type by its length
-    (@tuple_type, $type:ty, 0) => {()};
-    (@tuple_type, $type:ty, 1) => {$type};
-    (@tuple_type, $type:ty, 2) => {($type, $type)};
-    (@tuple_type, $type:ty, 3) => {($type, $type, $type)};
-    (@tuple_type, $type:ty, 4) => {($type, $type, $type, $type)};
-    (@tuple_type, $type:ty, 5) => {($type, $type, $type, $type, $type)};
-    (@tuple_type, $type:ty, 6) => {($type, $type, $type, $type, $type, $type)};
-    (@tuple_type, $type:ty, 7) => {($type, $type, $type, $type, $type, $type, $type)};
-    (@tuple_type, $type:ty, 8) => {($type, $type, $type, $type, $type, $type, $type, $type)};
+    fn process<'b>(
+        &'b mut self,
+        parameters: &Self::Parameters,
+        context: &dyn Context,
+        inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
+    ) -> pictorus_traits::PassBy<'b, Self::Output> {
+        self.buffer = self.run_time_step(parameters, context, inputs);
+        self.data.clear();
+        self.data = self
+            .buffer
+            .iter()
+            .map(|&x| OldBlockData::from_scalar(x))
+            .collect();
+        &self.buffer
+    }
 }
-
-// Call the macro we define above for all combinations of number of inputs and outputs
-seq_macro::seq!(N in 0..=8 {
-    seq_macro::seq!(M in 0..=8 {
-        impl_process_block!(N, M);
-    });
-});
 
 /// Parameters for the FMU block.
 pub struct Parameters {
@@ -290,34 +206,34 @@ mod tests {
     #[test]
     fn test_impls_associated_types() {
         // Cover edge cases and the start of the range
-        let _: <FmuBlock<0, 0> as pictorus_traits::ProcessBlock>::Inputs = ();
-        let _: <FmuBlock<0, 0> as pictorus_traits::ProcessBlock>::Output = ();
-        let _: <FmuBlock<1, 0> as pictorus_traits::ProcessBlock>::Inputs = 0.0;
-        let _: <FmuBlock<1, 0> as pictorus_traits::ProcessBlock>::Output = ();
-        let _: <FmuBlock<1, 1> as pictorus_traits::ProcessBlock>::Inputs = 0.0;
-        let _: <FmuBlock<1, 1> as pictorus_traits::ProcessBlock>::Output = 0.0;
-        let _: <FmuBlock<2, 0> as pictorus_traits::ProcessBlock>::Inputs = (0.0, 1.0);
-        let _: <FmuBlock<2, 0> as pictorus_traits::ProcessBlock>::Output = ();
-        let _: <FmuBlock<2, 1> as pictorus_traits::ProcessBlock>::Inputs = (0.0, 1.0);
-        let _: <FmuBlock<2, 1> as pictorus_traits::ProcessBlock>::Output = 0.0;
-        let _: <FmuBlock<2, 2> as pictorus_traits::ProcessBlock>::Inputs = (0.0, 1.0);
-        let _: <FmuBlock<2, 2> as pictorus_traits::ProcessBlock>::Output = (0.0, 1.0);
-        let _: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Inputs = (0.0, 1.0);
-        let _: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Output = (0.0, 1.0, 2.0);
-        let _inputs: <FmuBlock<3, 0> as pictorus_traits::ProcessBlock>::Inputs = (0.0, 1.0, 2.0);
-        let _output: <FmuBlock<3, 0> as pictorus_traits::ProcessBlock>::Output = ();
-        let _inputs: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Inputs = (1.0, 2.0);
-        let _output: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Output = (3.0, 4.0, 5.0);
+        let _: <FmuBlock<0, 0> as pictorus_traits::ProcessBlock>::Inputs = [];
+        let _: <FmuBlock<0, 0> as pictorus_traits::ProcessBlock>::Output = [];
+        let _: <FmuBlock<1, 0> as pictorus_traits::ProcessBlock>::Inputs = [0.0];
+        let _: <FmuBlock<1, 0> as pictorus_traits::ProcessBlock>::Output = [];
+        let _: <FmuBlock<1, 1> as pictorus_traits::ProcessBlock>::Inputs = [0.0];
+        let _: <FmuBlock<1, 1> as pictorus_traits::ProcessBlock>::Output = [0.0];
+        let _: <FmuBlock<2, 0> as pictorus_traits::ProcessBlock>::Inputs = [0.0, 1.0];
+        let _: <FmuBlock<2, 0> as pictorus_traits::ProcessBlock>::Output = [];
+        let _: <FmuBlock<2, 1> as pictorus_traits::ProcessBlock>::Inputs = [0.0, 1.0];
+        let _: <FmuBlock<2, 1> as pictorus_traits::ProcessBlock>::Output = [0.0];
+        let _: <FmuBlock<2, 2> as pictorus_traits::ProcessBlock>::Inputs = [0.0, 1.0];
+        let _: <FmuBlock<2, 2> as pictorus_traits::ProcessBlock>::Output = [0.0, 1.0];
+        let _: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Inputs = [0.0, 1.0];
+        let _: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Output = [0.0, 1.0, 2.0];
+        let _inputs: <FmuBlock<3, 0> as pictorus_traits::ProcessBlock>::Inputs = [0.0, 1.0, 2.0];
+        let _output: <FmuBlock<3, 0> as pictorus_traits::ProcessBlock>::Output = [];
+        let _inputs: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Inputs = [1.0, 2.0];
+        let _output: <FmuBlock<2, 3> as pictorus_traits::ProcessBlock>::Output = [3.0, 4.0, 5.0];
 
         // cover a smattering of random cases
-        let _: <FmuBlock<3, 4> as pictorus_traits::ProcessBlock>::Inputs = (0.0, 1.0, 2.0);
-        let _: <FmuBlock<3, 4> as pictorus_traits::ProcessBlock>::Output = (0.0, 1.0, 2.0, 3.0);
+        let _: <FmuBlock<3, 4> as pictorus_traits::ProcessBlock>::Inputs = [0.0, 1.0, 2.0];
+        let _: <FmuBlock<3, 4> as pictorus_traits::ProcessBlock>::Output = [0.0, 1.0, 2.0, 3.0];
         let _: <FmuBlock<8, 8> as pictorus_traits::ProcessBlock>::Inputs =
-            (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0);
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
         let _: <FmuBlock<8, 8> as pictorus_traits::ProcessBlock>::Output =
-            (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0);
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
         let _: <FmuBlock<7, 2> as pictorus_traits::ProcessBlock>::Inputs =
-            (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
-        let _: <FmuBlock<7, 2> as pictorus_traits::ProcessBlock>::Output = (0.0, 1.0);
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let _: <FmuBlock<7, 2> as pictorus_traits::ProcessBlock>::Output = [0.0, 1.0];
     }
 }

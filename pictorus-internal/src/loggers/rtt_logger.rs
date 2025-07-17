@@ -33,7 +33,7 @@ pub fn pictorus_rtt_init() -> UpChannel {
     channels.up.0
 }
 
-/// RttLogger configures two RTT up channels named `Data` (1,024 bytes, NoBlockSkip) and 
+/// RttLogger configures two RTT up channels named `Data` (1,024 bytes, NoBlockSkip) and
 /// `Log` (256 bytes, NoBlockSkip). `Data` transmits u8 byte streams, while `Log` is
 /// used for human readable messages using rprint! and rprintln! macros.
 /// Has an additional method to log heap changes.
