@@ -115,7 +115,6 @@ impl<const N_IN: usize, const N_OUT: usize> FmuBlock<N_IN, N_OUT> {
 /// This allows us to return errors from the FMU library from `build_fmu`. This is mainly used to allow
 /// `?` operator early returns, but down the line could be useful if we flush out how we handle fallibility
 #[derive(Debug)]
-#[allow(dead_code)]
 enum FmuErrors {
     Fmu(fmu_runner::FmuError),
     FmuLoad(fmu_runner::FmuLoadError),
@@ -148,7 +147,6 @@ impl<const N_IN: usize, const N_OUT: usize> ProcessBlock for FmuBlock<N_IN, N_OU
     type Inputs = [f64; N_IN];
     type Output = [f64; N_OUT];
 
-    #[allow(unused_variables)]
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
