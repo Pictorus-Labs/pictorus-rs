@@ -56,11 +56,16 @@ impl<C: Clock<T = u64>, D: DelayNs> Timing<C, D> {
             "Timing settings: Run time: {run_time:?}, frequency: {hertz} hz, realtime: {use_realtime}",
         );
         let now = clock.try_now().unwrap();
+        if !(hertz > 0.0 && hertz <= 1_000_000.0) {
+            panic!("Frequency must be greater than zero and less than or equal to 1,000,000 Hz!");
+        }
+        let timestep_us: u64 = s_to_us(1.0 / hertz);
+        assert!( timestep_us > 0, "This should be equivalent to the above check for hertz >= 0.0");
         Timing {
             iterations: 0,
             use_realtime,
             run_time,
-            timestep_us: s_to_us(1.0 / hertz),
+            timestep_us,
             app_start_time: now,
             loop_start_time: now,
             clock,
@@ -209,4 +214,26 @@ mod tests {
         let updated_app_time = timing.update(initial_app_time);
         assert_eq!(updated_app_time, initial_app_time + timing.timestep_us);
     }
+
+    #[test]
+    #[should_panic(expected = "Frequency must be greater than zero and less than or equal to 1,000,000 Hz!")]
+    fn test_timing_zero_hertz() {
+        let mut time = 0;
+        init_timing(RunTime::Indefinite, 0.0, true, &mut time);
+    }
+
+    #[test]
+    #[should_panic(expected = "Frequency must be greater than zero and less than or equal to 1,000,000 Hz!")]
+    fn test_timing_negative_hertz() {
+        let mut time = 0;
+        init_timing(RunTime::Indefinite, -1.0, true, &mut time);
+    }
+
+    #[test]
+    #[should_panic(expected = "Frequency must be greater than zero and less than or equal to 1,000,000 Hz!")]
+    fn test_timing_too_high_hertz() {
+        let mut time = 0;
+        init_timing(RunTime::Indefinite, 1_000_001.0, true, &mut time);
+    }
+
 }
