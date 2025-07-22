@@ -56,11 +56,17 @@ impl<C: Clock<T = u64>, D: DelayNs> Timing<C, D> {
             "Timing settings: Run time: {run_time:?}, frequency: {hertz} hz, realtime: {use_realtime}",
         );
         let now = clock.try_now().unwrap();
+        let timestep_us: u64 = s_to_us(1.0 / hertz);
+        if timestep_us <= 0 {
+            panic!(
+                "Timestep was either too short to represent in microseconds or less than or equal to zero! One microsecond is the minimum timestep."
+            );
+        }
         Timing {
             iterations: 0,
             use_realtime,
             run_time,
-            timestep_us: s_to_us(1.0 / hertz),
+            timestep_us,
             app_start_time: now,
             loop_start_time: now,
             clock,
@@ -209,4 +215,12 @@ mod tests {
         let updated_app_time = timing.update(initial_app_time);
         assert_eq!(updated_app_time, initial_app_time + timing.timestep_us);
     }
+
+    #[test]
+    #[should_panic(expected = "Timestep was either too short to represent in microseconds or less than or equal to zero! One microsecond is the minimum timestep.")]
+    fn test_timing_zero_timestep() {
+        let mut time = 0;
+        init_timing(RunTime::Indefinite, 1000001.0, true, &mut time);
+    }
+
 }
