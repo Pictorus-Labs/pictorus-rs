@@ -6,20 +6,20 @@ use log::{LevelFilter, Metadata, Record};
 use rtt_target::rprintln;
 
 /// An RTT-based logger implementation.
-pub struct RTTLogger {
+pub struct RPrintLog {
     level_filter: LevelFilter,
 }
 
-impl RTTLogger {
+impl RPrintLog {
     /// Static-friendly const initializer.
     ///
     /// * `level_filter`: The default level to enable.
-    pub const fn new(level_filter: LevelFilter) -> RTTLogger {
-        RTTLogger { level_filter }
+    pub const fn new(level_filter: LevelFilter) -> RPrintLog {
+        RPrintLog { level_filter }
     }
 }
 
-impl log::Log for RTTLogger {
+impl log::Log for RPrintLog {
     fn enabled(&self, metadata: &Metadata) -> bool {
         self.level_filter.ge(&metadata.level())
     }
