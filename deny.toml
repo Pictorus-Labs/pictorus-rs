@@ -113,6 +113,7 @@ exceptions = [
     { allow = ["BUSL-1.1"], crate = "pictorus-internal" },
     { allow = ["BUSL-1.1"], crate = "pictorus-sim" },
     { allow = ["BUSL-1.1"], crate = "pictorus-stm32" },
+    { allow = ["BUSL-1.1"], crate = "pictorus-renesas" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,
@@ -235,6 +236,8 @@ allow-git = [
     "https://github.com/Pictorus-Labs/rtt-target",
     "https://github.com/embassy-rs/embassy.git",
     "https://github.com/embassy-rs/stm32-data-generated",
+    "https://github.com/Pictorus-Labs/ra4m2-hal",
+    "https://github.com/amcelroy/ra-pac",
 ]
 
 [sources.allow-org]

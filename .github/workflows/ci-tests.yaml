@@ -67,6 +67,10 @@ jobs:
             no_std: true
             platforms: "pictorus-stm32"
             feature_variants: "_std_can_std_uart _fdcan_interrupt_uart"
+          - target: thumbv8m.main-none-eabi
+            no_std: true
+            platforms: "pictorus-renesas"
+            feature_variants: ""
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

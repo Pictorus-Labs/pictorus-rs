@@ -17,6 +17,7 @@ pub use runtime_context::RuntimeContext;
 
 pub mod encoders;
 pub mod loggers;
+pub mod logging;
 pub mod protocols;
 pub mod timing;
 pub mod utils;
