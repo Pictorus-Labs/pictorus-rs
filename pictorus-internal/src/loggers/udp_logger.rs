@@ -57,7 +57,7 @@ impl Logger for UdpLogger {
     }
 
     fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
-        if self.should_log(app_time) {
+        if self.socket.is_some()  && self.should_log(app_time) {
             let encoded_data = self.encoder.encode::<UDP_ENCODER_BUFFER_SIZE>(log_data);
 
             if let Some(socket) = &mut self.socket {

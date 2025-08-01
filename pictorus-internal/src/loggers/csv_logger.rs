@@ -1,7 +1,7 @@
 use chrono::Utc;
 use core::time::Duration;
 use log::info;
-use std::io::Write;
+use std::io::{Write, BufWriter};
 use std::{fs::File, string::String};
 
 use super::Logger;
@@ -14,9 +14,11 @@ use super::Logger;
 pub struct CsvLogger {
     last_csv_log_time: Option<Duration>,
     pub csv_log_period: Duration,
-    pub file: std::fs::File,
+    pub writer: BufWriter<File>,
     pub output_path: std::path::PathBuf,
     pub app_start_epoch: Duration,
+    /// Reusable buffer for formatting CSV samples to avoid repeated allocations.
+    buffer: String
 }
 
 impl CsvLogger {
@@ -33,7 +35,7 @@ impl CsvLogger {
         CsvLogger {
             last_csv_log_time: None,
             csv_log_period,
-            file: file_obj,
+            writer: BufWriter::with_capacity(65536, file_obj),
             output_path,
             app_start_epoch: Duration::from_micros(
                 Utc::now()
@@ -41,6 +43,7 @@ impl CsvLogger {
                     .try_into()
                     .expect("Could not cast app start epoch as u64"),
             ),
+            buffer: String::with_capacity(1024),
         }
     }
 }
@@ -56,12 +59,12 @@ impl Logger for CsvLogger {
 
     fn log(&mut self, log_data: &impl serde::Serialize, app_time: Duration) {
         if self.should_log(app_time) {
-            let sample = format_samples_csv(log_data);
+            format_samples_csv(log_data, &mut self.buffer);
             if self.last_csv_log_time.is_none() {
                 let header = format_header_csv(log_data);
-                writeln!(self.file, "{header}").ok();
+                writeln!(self.writer, "{header}").ok();
             }
-            writeln!(self.file, "{sample}").ok();
+            writeln!(self.writer, "{}", self.buffer).ok();
             self.last_csv_log_time = Some(app_time);
         }
     }
@@ -70,7 +73,7 @@ impl Logger for CsvLogger {
 /// Formats the header for CSV output based on the provided data.
 /// This function extracts the field names from the data and formats them as a CSV header.
 pub fn format_header_csv(data: &impl serde::Serialize) -> String {
-    let mut header = String::new();
+    let mut header = String::with_capacity(1024);
     let json = serde_json::to_value(data).unwrap();
     let mut first_entry = true;
     if let Some(json_map) = json.as_object() {
@@ -87,31 +90,31 @@ pub fn format_header_csv(data: &impl serde::Serialize) -> String {
 }
 
 /// Formats the samples for CSV output based on the provided data.
-pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
-    let mut sample = String::new();
+pub fn format_samples_csv(data: &impl serde::Serialize, output: &mut String ) {
+    output.clear();
     let json = serde_json::to_value(data).unwrap();
     let mut first_entry = true;
     if let Some(json_map) = json.as_object() {
         for (_, value) in json_map {
             if !first_entry {
-                sample.push(',');
+                output.push(',');
             }
 
             match value {
                 serde_json::Value::Null => {}
                 serde_json::Value::Bool(_) => {
-                    sample.push_str(&serde_json::to_string(value).unwrap());
+                    output.push_str(&serde_json::to_string(value).unwrap());
                 }
                 serde_json::Value::Number(_) => {
-                    sample.push_str(&serde_json::to_string(value).unwrap());
+                    output.push_str(&serde_json::to_string(value).unwrap());
                 }
                 serde_json::Value::String(_) => {
-                    sample.push_str(&serde_json::to_string(value).unwrap());
+                    output.push_str(&serde_json::to_string(value).unwrap());
                 }
                 serde_json::Value::Array(values) => {
-                    sample.push('"');
-                    sample.push_str(&serde_json::to_string(values).unwrap());
-                    sample.push('"');
+                    output.push('"');
+                    output.push_str(&serde_json::to_string(values).unwrap());
+                    output.push('"');
                 }
                 serde_json::Value::Object(_map) => {
                     panic!("Unsupported data format for CSV samples");
@@ -120,8 +123,6 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
             first_entry = false;
         }
     }
-
-    sample
 }
 
 #[cfg(test)]
@@ -159,7 +160,8 @@ mod tests {
             "state_id,timestamp,utctime,vector,scalar,matrix,bytesarray".to_string()
         );
 
-        let csv_data = format_samples_csv(&log_data);
+        let mut csv_data = String::new();
+        format_samples_csv(&log_data, &mut csv_data);
         assert_eq!(
             csv_data,
             ("\"main_state\",1.234,2.234,\"[[0.0,2.0,4.0]]\",1.0,\"[[5.0,6.0],[7.0,8.0]]\",\"[1,2,3]\"")
@@ -184,7 +186,8 @@ mod tests {
             csv_header,
             "state_id,timestamp,utctime,vector,scalar,matrix,bytesarray".to_string()
         );
-        let csv_data = format_samples_csv(&log_data);
+        let mut csv_data = String::new();
+        format_samples_csv(&log_data, &mut csv_data);
         assert_eq!(csv_data, ("\"main_state\",1.234,2.234,,,,"));
     }
 
