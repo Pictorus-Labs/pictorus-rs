@@ -1,7 +1,7 @@
 use chrono::Utc;
 use core::time::Duration;
 use log::info;
-use std::io::Write;
+use std::io::{Write, BufWriter};
 use std::{fs::File, string::String};
 
 use super::Logger;
@@ -14,7 +14,7 @@ use super::Logger;
 pub struct CsvLogger {
     last_csv_log_time: Option<Duration>,
     pub csv_log_period: Duration,
-    pub file: std::fs::File,
+    pub writer: BufWriter<File>,
     pub output_path: std::path::PathBuf,
     pub app_start_epoch: Duration,
 }
@@ -33,7 +33,7 @@ impl CsvLogger {
         CsvLogger {
             last_csv_log_time: None,
             csv_log_period,
-            file: file_obj,
+            writer: BufWriter::with_capacity(65536, file_obj),
             output_path,
             app_start_epoch: Duration::from_micros(
                 Utc::now()
@@ -59,9 +59,9 @@ impl Logger for CsvLogger {
             let sample = format_samples_csv(log_data);
             if self.last_csv_log_time.is_none() {
                 let header = format_header_csv(log_data);
-                writeln!(self.file, "{header}").ok();
+                writeln!(self.writer, "{header}").ok();
             }
-            writeln!(self.file, "{sample}").ok();
+            writeln!(self.writer, "{sample}").ok();
             self.last_csv_log_time = Some(app_time);
         }
     }
