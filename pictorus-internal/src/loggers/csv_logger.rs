@@ -3,7 +3,6 @@ use core::time::Duration;
 use log::info;
 use std::io::{BufWriter, Write};
 use std::{fs::File, string::String};
-use alloc::vec::Vec;
 
 use super::Logger;
 
@@ -244,6 +243,7 @@ mod tests {
     use super::*;
     use std::string::ToString;
     use tempfile;
+    use alloc::vec::Vec;
 
     #[derive(serde::Serialize)]
     struct TestLogData {
@@ -256,7 +256,6 @@ mod tests {
         bytesarray: Option<[u8; 3]>,
     }
 
-    // Original tests - still valid
     #[test]
     fn test_csv_formatting() {
         let log_data = TestLogData {
