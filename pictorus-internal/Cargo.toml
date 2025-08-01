@@ -30,7 +30,7 @@ env_logger = { version = "0.11.8", optional = true }
 rtt-target = { git = "https://github.com/Pictorus-Labs/rtt-target", branch = "alignment-fix", optional = true }
 postcard = { version = "1.1.1" }
 serde = { version = "1.0.219", default-features = false, features = ["derive", "alloc"]}
-serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
+serde_json = { version = "1.0", default-features = false, features = ["alloc", "preserve_order"], optional = true }
 heapless = { version = "0.7.0" }
 
 [dev-dependencies]
