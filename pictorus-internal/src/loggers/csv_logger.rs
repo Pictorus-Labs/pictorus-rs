@@ -31,7 +31,7 @@ impl CsvLogger {
         CsvLogger {
             last_csv_log_time: None,
             csv_log_period,
-            writer: BufWriter::with_capacity(65536, file), // 64KB buffer
+            writer: BufWriter::with_capacity(65536, file), // 64KB buffer - optimal for most filesystems
             output_path,
             app_start_epoch: Duration::from_micros(
                 Utc::now()
