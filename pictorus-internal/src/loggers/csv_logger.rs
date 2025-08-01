@@ -79,7 +79,7 @@ impl CsvLogger {
                     },
                     serde_json::Value::Number(n) => {
                         use std::fmt::Write;
-                        write!(self.buffer, "{}", n).ok();
+                        write!(self.buffer, "{n}").ok();
                     },
                     serde_json::Value::String(s) => {
                         self.buffer.push('"');
@@ -96,7 +96,7 @@ impl CsvLogger {
                             }
                             if let serde_json::Value::Number(n) = elem {
                                 use std::fmt::Write;
-                                write!(self.buffer, "{}", n).ok();
+                                write!(self.buffer, "{n}").ok();
                             } else if let serde_json::Value::Array(inner) = elem {
                                 // Handle nested arrays (like [[1,2,3]])
                                 self.buffer.push('[');
@@ -107,7 +107,7 @@ impl CsvLogger {
                                     }
                                     if let serde_json::Value::Number(n) = inner_elem {
                                         use std::fmt::Write;
-                                        write!(self.buffer, "{}", n).ok();
+                                        write!(self.buffer, "{n}").ok();
                                     }
                                     first_inner = false;
                                 }
@@ -187,7 +187,7 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
                 }
                 serde_json::Value::Number(n) => {
                     use std::fmt::Write;
-                    write!(sample, "{}", n).ok();
+                    write!(sample, "{n}").ok();
                 }
                 serde_json::Value::String(s) => {
                     sample.push('"');
@@ -204,7 +204,7 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
                         }
                         if let serde_json::Value::Number(n) = elem {
                             use std::fmt::Write;
-                            write!(sample, "{}", n).ok();
+                            write!(sample, "{n}").ok();
                         } else if let serde_json::Value::Array(inner) = elem {
                             sample.push('[');
                             let mut first_inner = true;
@@ -214,14 +214,14 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
                                 }
                                 if let serde_json::Value::Number(n) = inner_elem {
                                     use std::fmt::Write;
-                                    write!(sample, "{}", n).ok();
+                                    write!(sample, "{n}").ok();
                                 }
                                 first_inner = false;
                             }
                             sample.push(']');
                         } else {
                             use std::fmt::Write;
-                            write!(sample, "{}", elem).ok();
+                            write!(sample, "{elem}").ok();
                         }
                         first_elem = false;
                     }
@@ -498,7 +498,7 @@ mod tests {
         drop(logger);
         
         // Should complete quickly even with large array
-        assert!(elapsed < Duration::from_millis(10), "Large array logging took too long: {:?}", elapsed);
+        assert!(elapsed < Duration::from_millis(10), "Large array logging took too long: {elapsed:?}");
         
         // Verify data integrity
         let contents = std::fs::read_to_string(output_path).unwrap();
