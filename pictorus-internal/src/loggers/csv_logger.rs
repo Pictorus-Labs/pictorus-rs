@@ -186,7 +186,7 @@ mod tests {
             csv_header,
             "state_id,timestamp,utctime,vector,scalar,matrix,bytesarray".to_string()
         );
-         let mut csv_data = String::new();
+        let mut csv_data = String::new();
         format_samples_csv(&log_data, &mut csv_data);
         assert_eq!(csv_data, ("\"main_state\",1.234,2.234,,,,"));
     }
