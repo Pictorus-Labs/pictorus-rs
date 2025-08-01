@@ -17,6 +17,7 @@ pub struct CsvLogger {
     pub writer: BufWriter<File>,
     pub output_path: std::path::PathBuf,
     pub app_start_epoch: Duration,
+    /// Reusable buffer for formatting CSV samples to avoid repeated allocations.
     buffer: String
 }
 
