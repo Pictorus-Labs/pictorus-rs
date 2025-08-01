@@ -6,6 +6,11 @@ use std::{fs::File, string::String};
 
 use super::Logger;
 
+/// CsvLogger logs data to a file in CSV format.
+///
+/// Note, this uses a UTC time to be passed into the log. Other loggers
+/// may use the app time in conjunction with the a device manager starting
+/// timestamp to calculate the UTC time.
 pub struct CsvLogger {
     last_csv_log_time: Option<Duration>,
     pub csv_log_period: Duration,
@@ -45,10 +50,10 @@ impl CsvLogger {
 
     fn write_csv_direct(&mut self, log_data: &impl serde::Serialize) {
         self.buffer.clear();
-        
+
         // Get JSON representation just for structure, not for output
         let json = serde_json::to_value(log_data).unwrap();
-        
+
         if let Some(json_map) = json.as_object() {
             if !self.header_written {
                 // Write header
@@ -64,28 +69,28 @@ impl CsvLogger {
                 self.header_written = true;
                 self.buffer.clear();
             }
-            
+
             // Write values
             let mut first = true;
             for (_, value) in json_map {
                 if !first {
                     self.buffer.push(',');
                 }
-                
+
                 match value {
-                    serde_json::Value::Null => {},
+                    serde_json::Value::Null => {}
                     serde_json::Value::Bool(b) => {
                         self.buffer.push_str(if *b { "true" } else { "false" });
-                    },
+                    }
                     serde_json::Value::Number(n) => {
                         use std::fmt::Write;
                         write!(self.buffer, "{n}").ok();
-                    },
+                    }
                     serde_json::Value::String(s) => {
                         self.buffer.push('"');
                         self.buffer.push_str(s);
                         self.buffer.push('"');
-                    },
+                    }
                     serde_json::Value::Array(arr) => {
                         self.buffer.push('"');
                         self.buffer.push('[');
@@ -117,14 +122,14 @@ impl CsvLogger {
                         }
                         self.buffer.push(']');
                         self.buffer.push('"');
-                    },
+                    }
                     serde_json::Value::Object(_) => {
                         panic!("Unsupported data format for CSV samples");
                     }
                 }
                 first = false;
             }
-            
+
             writeln!(self.writer, "{}", self.buffer).ok();
         }
     }
@@ -154,6 +159,8 @@ impl Drop for CsvLogger {
     }
 }
 
+/// Formats the header for CSV output based on the provided data.
+/// This function extracts the field names from the data and formats them as a CSV header.
 pub fn format_header_csv(data: &impl serde::Serialize) -> String {
     let mut header = String::with_capacity(256);
     let json = serde_json::to_value(data).unwrap();
@@ -167,6 +174,7 @@ pub fn format_header_csv(data: &impl serde::Serialize) -> String {
             first_entry = false;
         }
     }
+
     header
 }
 
@@ -241,9 +249,9 @@ pub fn format_samples_csv(data: &impl serde::Serialize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
     use std::string::ToString;
     use tempfile;
-    use alloc::vec::Vec;
 
     #[derive(serde::Serialize)]
     struct TestLogData {
@@ -258,6 +266,7 @@ mod tests {
 
     #[test]
     fn test_csv_formatting() {
+        // Verify we can format samples of different array types for CSV logging without errors
         let log_data = TestLogData {
             state_id: "main_state".to_string().into(),
             timestamp: 1.234.into(),
@@ -335,12 +344,11 @@ mod tests {
         assert_eq!(dl.last_csv_log_time, Some(Duration::from_millis(123)));
     }
 
-    // New tests for the optimized implementation
     #[test]
     fn test_actual_file_output() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let output_path = temp_dir.path().join("test.csv");
-        
+
         let log_data = TestLogData {
             state_id: Some("test_state".to_string()),
             timestamp: Some(1.5),
@@ -352,13 +360,13 @@ mod tests {
         };
 
         let mut logger = CsvLogger::new(Duration::from_micros(1), output_path.clone());
-        
+
         // Log some data
         logger.log(&log_data, Duration::ZERO);
-        
+
         // Force flush by dropping
         drop(logger);
-        
+
         // Read file and verify contents
         let contents = std::fs::read_to_string(output_path).unwrap();
         assert!(contents.contains("state_id,timestamp,utctime,vector,scalar,matrix,bytesarray"));
@@ -370,7 +378,7 @@ mod tests {
     fn test_header_written_only_once() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let output_path = temp_dir.path().join("test_header.csv");
-        
+
         let log_data = TestLogData {
             state_id: Some("state1".to_string()),
             timestamp: Some(1.0),
@@ -382,19 +390,19 @@ mod tests {
         };
 
         let mut logger = CsvLogger::new(Duration::from_micros(1), output_path.clone());
-        
+
         // Log multiple times
         logger.log(&log_data, Duration::ZERO);
         logger.log(&log_data, Duration::from_millis(100));
         logger.log(&log_data, Duration::from_millis(200));
-        
+
         drop(logger);
-        
+
         // Count header occurrences
         let contents = std::fs::read_to_string(output_path).unwrap();
         let header_count = contents.matches("state_id,timestamp").count();
         assert_eq!(header_count, 1, "Header should only appear once");
-        
+
         // Should have 4 lines total (1 header + 3 data)
         let line_count = contents.lines().count();
         assert_eq!(line_count, 4);
@@ -404,9 +412,9 @@ mod tests {
     fn test_buffer_reuse_no_data_leakage() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let output_path = temp_dir.path().join("test_buffer.csv");
-        
+
         let mut logger = CsvLogger::new(Duration::from_micros(1), output_path.clone());
-        
+
         // First log with long string
         let log_data1 = TestLogData {
             state_id: Some("very_long_state_name_that_should_be_cleared".to_string()),
@@ -417,7 +425,7 @@ mod tests {
             matrix: None,
             bytesarray: None,
         };
-        
+
         // Second log with short string
         let log_data2 = TestLogData {
             state_id: Some("short".to_string()),
@@ -428,15 +436,15 @@ mod tests {
             matrix: None,
             bytesarray: None,
         };
-        
+
         logger.log(&log_data1, Duration::ZERO);
         logger.log(&log_data2, Duration::from_millis(100));
-        
+
         drop(logger);
-        
+
         let contents = std::fs::read_to_string(output_path).unwrap();
         let lines: Vec<&str> = contents.lines().collect();
-        
+
         // Verify second line doesn't contain remnants of first
         assert!(!lines[2].contains("very_long"));
         assert!(!lines[2].contains("99.99"));
@@ -447,7 +455,7 @@ mod tests {
     fn test_flush_on_drop() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let output_path = temp_dir.path().join("test_flush.csv");
-        
+
         let log_data = TestLogData {
             state_id: Some("flush_test".to_string()),
             timestamp: Some(123.456),
@@ -463,7 +471,7 @@ mod tests {
             logger.log(&log_data, Duration::ZERO);
             // Logger dropped here - should flush
         }
-        
+
         // Verify data was written
         let contents = std::fs::read_to_string(output_path).unwrap();
         assert!(contents.contains("flush_test"));
@@ -475,7 +483,7 @@ mod tests {
     fn test_large_array_handling() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let output_path = temp_dir.path().join("test_large.csv");
-        
+
         // Create a struct with a large array
         #[derive(serde::Serialize)]
         struct LargeArrayData {
@@ -483,23 +491,26 @@ mod tests {
             large_array: Option<Vec<f64>>,
             id: Option<String>,
         }
-        
+
         let large_data = LargeArrayData {
             large_array: Some((0..100).map(|i| i as f64 * 0.1).collect()),
             id: Some("large_test".to_string()),
         };
-        
+
         let mut logger = CsvLogger::new(Duration::from_micros(1), output_path.clone());
-        
+
         let start = std::time::Instant::now();
         logger.log(&large_data, Duration::ZERO);
         let elapsed = start.elapsed();
-        
+
         drop(logger);
-        
+
         // Should complete quickly even with large array
-        assert!(elapsed < Duration::from_millis(10), "Large array logging took too long: {elapsed:?}");
-        
+        assert!(
+            elapsed < Duration::from_millis(10),
+            "Large array logging took too long: {elapsed:?}"
+        );
+
         // Verify data integrity
         let contents = std::fs::read_to_string(output_path).unwrap();
         assert!(contents.contains("large_test"));
@@ -510,7 +521,7 @@ mod tests {
     fn test_zero_logging_period() {
         // When period is zero, should not create real file
         let output_path = std::path::PathBuf::from("should_not_exist.csv");
-        
+
         let log_data = TestLogData {
             state_id: Some("test".to_string()),
             timestamp: Some(1.0),
@@ -520,15 +531,15 @@ mod tests {
             matrix: None,
             bytesarray: None,
         };
-        
+
         let mut logger = CsvLogger::new(Duration::ZERO, output_path.clone());
-        
+
         // Should not log anything
         logger.log(&log_data, Duration::ZERO);
         logger.log(&log_data, Duration::from_secs(1));
-        
+
         drop(logger);
-        
+
         // File should not exist
         assert!(!output_path.exists());
     }
