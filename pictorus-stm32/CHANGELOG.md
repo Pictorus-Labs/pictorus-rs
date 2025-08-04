@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.1] - 2025-08-04
 
-Updated version of `embassy-stm`, `embassy-time`, and `embassy-futures` to latest release commit
+Updated version of `embassy-stm`, `embassy-time`, and `embassy-futures` to latest release commit for new STM32 boards
+Updated i2c implementation to run in Master mode
+Updated serial implementation to new start func name
+Updated adc implementation to call blocking func
 
 ## [0.0.0] - 2025-05-29
 

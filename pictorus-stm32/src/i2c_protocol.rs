@@ -1,17 +1,18 @@
 use alloc::vec::Vec;
 use embassy_stm32::i2c::I2c;
 use embassy_stm32::mode::Blocking;
+use embassy_stm32::i2c::Master;
 use embedded_hal::i2c::I2c as I2cTrait;
 use pictorus_blocks::{I2cInputBlockParams, I2cOutputBlockParams};
 use pictorus_traits::{ByteSliceSignal, InputBlock, OutputBlock};
 
 pub struct I2cWrapper<'a> {
-    i2c: I2c<'a, Blocking>,
+    i2c: I2c<'a, Blocking, Master>,
     buffer: Vec<u8>,
 }
 
 impl<'a> I2cWrapper<'a> {
-    pub fn new(i2c: I2c<'a, Blocking>) -> Self {
+    pub fn new(i2c: I2c<'a, Blocking, Master>) -> Self {
         Self {
             i2c,
             buffer: Vec::new(),
