@@ -2,7 +2,7 @@
 name = "pictorus-stm32"
 edition = "2024"
 description = "STM32 implementations of Pictorus traits."
-version = "0.0.0"
+version = "0.0.1"
 license.workspace = true
 homepage.workspace = true
 repository.workspace = true
@@ -19,9 +19,9 @@ embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [
   "unproven",
 ] }
 embedded-io = "0.6.1"
-embassy-futures = { git = "https://github.com/embassy-rs/embassy.git", rev = "68c8238" }
-embassy-stm32 = { git = "https://github.com/embassy-rs/embassy.git", rev = "68c8238" }
-embassy-time = { git = "https://github.com/embassy-rs/embassy.git", rev = "68c8238" }
+embassy-futures = { git = "https://github.com/embassy-rs/embassy.git", rev = "876ad00" }
+embassy-stm32 = { git = "https://github.com/embassy-rs/embassy.git", rev = "876ad00" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy.git", rev = "876ad00" }
 embedded-io-async = "0.6.1"
 heapless = "0.8.0"
 embedded-can = { version = "0.4.1", optional = true }
