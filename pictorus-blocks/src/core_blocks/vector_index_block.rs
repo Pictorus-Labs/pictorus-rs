@@ -67,7 +67,7 @@ where
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
-    ) -> PassBy<Self::Output> {
+    ) -> PassBy<'_, Self::Output> {
         // Linear array Index (i) -> Matrix Linear Index (x)
         // i = 0, x = 15 would represent output_0 of the block is the 15th linear element of the input matrix
         // i = 1, x = 0 would represent output_1 of the block is the 0th linear element of the input matrix

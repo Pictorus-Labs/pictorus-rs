@@ -52,7 +52,7 @@ impl GeneratorBlock for SystemTimeBlock<Real> {
         &mut self,
         parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // Since simulations can run faster than real-time, we'll use the delta between system start
         // and now, as measured by app_time, for system clock.
         let elpased_time = context.time();
@@ -71,7 +71,7 @@ impl GeneratorBlock for SystemTimeBlock<Sim> {
         &mut self,
         _parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // Assume that self.data was set externally and just use that
         self.output = self.data.scalar();
         self.output

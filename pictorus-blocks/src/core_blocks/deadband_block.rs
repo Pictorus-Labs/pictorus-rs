@@ -55,7 +55,7 @@ macro_rules! impl_deadband_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let in_deadband = input < parameters.upper_limit && input > parameters.lower_limit;
                 let res = if in_deadband { 0.0 } else { input };
                 let output = self.buffer.insert(res);
@@ -78,7 +78,7 @@ macro_rules! impl_deadband_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let output = self.buffer.insert(Matrix::zeroed());
                 input.for_each(|v, c, r| {
                     let in_deadband = v < parameters.upper_limit && v > parameters.lower_limit;

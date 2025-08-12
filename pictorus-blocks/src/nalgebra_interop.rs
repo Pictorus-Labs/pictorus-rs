@@ -9,8 +9,8 @@ pub trait MatrixExt {
     type NCOLS: Dim;
     type Elem;
 
-    fn as_view(&self) -> MatrixView<Self::Elem, Self::NROWS, Self::NCOLS>;
-    fn as_view_mut(&mut self) -> MatrixViewMut<Self::Elem, Self::NROWS, Self::NCOLS>;
+    fn as_view(&self) -> MatrixView<'_, Self::Elem, Self::NROWS, Self::NCOLS>;
+    fn as_view_mut(&mut self) -> MatrixViewMut<'_, Self::Elem, Self::NROWS, Self::NCOLS>;
     fn from_view(view: &MatrixView<Self::Elem, Self::NROWS, Self::NCOLS>) -> Self;
 }
 
@@ -22,11 +22,11 @@ where
     type NCOLS = Const<NCOLS>;
     type Elem = T;
 
-    fn as_view(&self) -> MatrixView<Self::Elem, Self::NROWS, Self::NCOLS> {
+    fn as_view(&self) -> MatrixView<'_, Self::Elem, Self::NROWS, Self::NCOLS> {
         MatrixView::<Self::Elem, Self::NROWS, Self::NCOLS>::from_slice(self.data.as_flattened())
     }
 
-    fn as_view_mut(&mut self) -> MatrixViewMut<Self::Elem, Self::NROWS, Self::NCOLS> {
+    fn as_view_mut(&mut self) -> MatrixViewMut<'_, Self::Elem, Self::NROWS, Self::NCOLS> {
         MatrixViewMut::<Self::Elem, Self::NROWS, Self::NCOLS>::from_slice(
             self.data.as_flattened_mut(),
         )

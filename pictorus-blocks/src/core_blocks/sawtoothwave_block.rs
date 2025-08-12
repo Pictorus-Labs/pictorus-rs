@@ -38,7 +38,7 @@ where
         &mut self,
         parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let two = T::one() + T::one();
         let time =
             (parameters.frequency * T::from_duration(context.time()) + parameters.phase) / T::TAU;

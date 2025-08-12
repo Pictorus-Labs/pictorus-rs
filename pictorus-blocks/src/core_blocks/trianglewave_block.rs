@@ -38,7 +38,7 @@ where
         &mut self,
         parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // These two variables are used to construct constants used in the math below in a way that is infallible and generic
         let two: T = T::one() + T::one();
         let four: T = two + two;

@@ -62,7 +62,7 @@ where
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
-    ) -> PassBy<Self::Output> {
+    ) -> PassBy<'_, Self::Output> {
         let res = T::apply(inputs, parameters.interval, &mut self.buffer);
         self.data = OldBlockData::from_pass(res);
         res
