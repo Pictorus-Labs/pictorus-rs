@@ -37,7 +37,7 @@ where
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
-    ) -> PassBy<Self::Output> {
+    ) -> PassBy<'_, Self::Output> {
         self.store = None;
         let result = T::get_sum(input, *parameters, &mut self.store);
         self.data = OldBlockData::from_pass(result);

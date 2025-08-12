@@ -109,7 +109,7 @@ macro_rules! impl_transfer_function {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
                     for _ in 0..(NUM_SIZE - 1) {
                         self.input.push_front(<$type>::zero()).expect(
@@ -187,7 +187,7 @@ macro_rules! impl_transfer_function {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
                     for _ in 0..(NUM_SIZE - 1) {
                         self.input.push_front(Matrix::zeroed()).expect(

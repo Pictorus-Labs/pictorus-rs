@@ -63,7 +63,7 @@ macro_rules! impl_trig_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 inputs: PassBy<'_, Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let output = match parameters.function {
                     TrigonometryFunction::Sine => Float::sin(inputs),
                     TrigonometryFunction::Cosine => Float::cos(inputs),
@@ -98,7 +98,7 @@ macro_rules! impl_trig_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 inputs: PassBy<'_, Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 inputs.for_each(|input, c, r| {
                     let output = match parameters.function {
                         TrigonometryFunction::Sine => Float::sin(input),

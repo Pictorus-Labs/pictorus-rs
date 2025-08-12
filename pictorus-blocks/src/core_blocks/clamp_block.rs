@@ -51,7 +51,7 @@ macro_rules! impl_clamp_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let clamp = input.clamp(parameters.min, parameters.max);
                 let output = self.buffer.insert(clamp);
                 self.data = OldBlockData::from_scalar((*output).into());
@@ -73,7 +73,7 @@ macro_rules! impl_clamp_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let output = self.buffer.insert(Matrix::zeroed());
                 for r in 0..ROWS {
                     for c in 0..COLS {

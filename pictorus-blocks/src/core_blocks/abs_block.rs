@@ -74,7 +74,7 @@ macro_rules! impl_abs_block {
                 _parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let abs = input.as_view().abs();
                 let o = Matrix::<ROWS, COLS, $type>::from_view(&abs.as_view());
                 let output = self.buffer.insert(o);

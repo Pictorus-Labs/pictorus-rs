@@ -42,7 +42,7 @@ where
         &mut self,
         _parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let time = T::from_duration(context.time());
         self.data = BlockData::from_scalar(time.into());
         time

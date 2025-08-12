@@ -47,7 +47,7 @@ impl<T: Apply> ProcessBlock for BytesJoinBlock<T> {
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
-    ) -> PassBy<Self::Output> {
+    ) -> PassBy<'_, Self::Output> {
         self.buffer = T::apply(inputs, parameters);
         self.data.set_bytes(&self.buffer);
         &self.buffer

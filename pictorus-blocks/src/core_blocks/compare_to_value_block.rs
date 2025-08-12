@@ -60,7 +60,7 @@ macro_rules! impl_compare_to_value_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let val = match parameters.comparison_type {
                     ComparisonType::Equal => input == parameters.value,
                     ComparisonType::NotEqual => input != parameters.value,
@@ -89,7 +89,7 @@ macro_rules! impl_compare_to_value_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 let mut b = Matrix::<ROWS, COLS, $type>::zeroed();
                 for r in 0..ROWS {
                     for c in 0..COLS {

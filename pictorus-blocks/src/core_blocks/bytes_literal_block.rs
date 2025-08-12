@@ -34,7 +34,7 @@ impl<const CHARS: usize> GeneratorBlock for BytesLiteralBlock<CHARS> {
         &mut self,
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         self.data = BlockData::from_bytes(&parameters.value);
         self.buffer = parameters.value;
         &self.buffer
