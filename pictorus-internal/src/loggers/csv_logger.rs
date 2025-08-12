@@ -1,7 +1,7 @@
 use chrono::Utc;
 use core::time::Duration;
 use log::info;
-use std::io::{Write, BufWriter};
+use std::io::{BufWriter, Write};
 use std::{fs::File, string::String};
 
 use super::Logger;
@@ -18,7 +18,7 @@ pub struct CsvLogger {
     pub output_path: std::path::PathBuf,
     pub app_start_epoch: Duration,
     /// Reusable buffer for formatting CSV samples to avoid repeated allocations.
-    buffer: String
+    buffer: String,
 }
 
 impl CsvLogger {
@@ -90,7 +90,7 @@ pub fn format_header_csv(data: &impl serde::Serialize) -> String {
 }
 
 /// Formats the samples for CSV output based on the provided data.
-pub fn format_samples_csv(data: &impl serde::Serialize, output: &mut String ) {
+pub fn format_samples_csv(data: &impl serde::Serialize, output: &mut String) {
     output.clear();
     let json = serde_json::to_value(data).unwrap();
     let mut first_entry = true;
