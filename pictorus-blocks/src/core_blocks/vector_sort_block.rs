@@ -64,7 +64,7 @@ macro_rules! impl_vector_sort {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 const { assert!(IROWS * ICOLS == OCOLS, "Input matrix dimensions do not match output matrix dimensions in VectorSortBlock"); }
 
                 // Copy the input data into the buffer. Sizes are guaranteed to be the same from codegen
@@ -103,7 +103,7 @@ macro_rules! impl_vector_sort {
                 _parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 self.buffer = input;
                 self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer

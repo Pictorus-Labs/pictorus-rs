@@ -52,7 +52,7 @@ where
         &mut self,
         parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let adjusted_time = Self::Output::from_duration(context.time()) - parameters.phase;
         let pulse_time = parameters.on_duration + parameters.off_duration;
         let mut time_since_last_pulse_start: Self::Output = adjusted_time % pulse_time;

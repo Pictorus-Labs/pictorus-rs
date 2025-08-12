@@ -591,6 +591,7 @@ impl BlockData {
     pub fn iter(
         &self,
     ) -> MatrixIter<
+        '_,
         f64,
         nalgebra::Dyn,
         nalgebra::Dyn,

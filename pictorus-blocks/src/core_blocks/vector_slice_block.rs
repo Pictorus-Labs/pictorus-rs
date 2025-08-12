@@ -98,7 +98,7 @@ macro_rules! impl_vector_slice_block {
                 parameters: &Self::Parameters,
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
+            ) -> PassBy<'_, Self::Output> {
                 // Attempt some static assertions for sizing
                 const {
                     assert!(
