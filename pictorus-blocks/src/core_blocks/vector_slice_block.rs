@@ -145,12 +145,10 @@ where
         // Zero the buffer each time or out of bounds access will return the last copied values
         self.buffer = S::zero();
 
-        input.for_each(|i, i_c, i_r| {
-            if let Some((_, _)) = output_coordinate_map::<IROWS, ICOLS, 1, 1>(i_c, i_r, parameters)
-            {
-                self.buffer = i;
-            }
-        });
+        self.buffer = input.data.get(parameters.cols)
+                                .and_then(|col| col.get(parameters.rows))
+                                .copied()
+                                .unwrap_or(S::zero());
 
         self.data = OldBlockData::from_scalar(self.buffer.into());
         self.buffer
