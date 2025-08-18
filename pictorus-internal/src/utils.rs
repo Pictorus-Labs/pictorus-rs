@@ -166,19 +166,17 @@ cfg_if::cfg_if! {
             let env_var_name = format!("{}_{}", block_name.to_uppercase(), var_name.to_uppercase());
 
             // Try loading from ENV
-            if let Ok(env_var) = std::env::var(&env_var_name) {
-                if let Some(parsed) = T::parse(&env_var, Some(&default)) {
+            if let Ok(env_var) = std::env::var(&env_var_name)
+                && let Some(parsed) = T::parse(&env_var, Some(&default)) {
                     info!("Found env variable {env_var_name} with value '{parsed:?}'");
                     return parsed;
-                }
             }
 
             // Try loading from DiagramParams
-            if let Some(params_map) = blocks_map.get(block_name).and_then(|map| map.get(var_name)) {
-                if let Some(parsed) = T::parse(params_map, Some(&default)) {
+            if let Some(params_map) = blocks_map.get(block_name).and_then(|map| map.get(var_name))
+                && let Some(parsed) = T::parse(params_map, Some(&default)) {
                     info!("Parsing and loading {block_name}_{var_name} from params file with value {parsed:?}");
                     return parsed;
-                }
             }
 
             // Otherwise return the default

@@ -89,7 +89,7 @@ where
         parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         if self.previous_stale_check_time_ms != parameters.stale_age_ms {
             self.stale_check = StaleTracker::from_ms(parameters.stale_age_ms);
             self.previous_stale_check_time_ms = parameters.stale_age_ms;

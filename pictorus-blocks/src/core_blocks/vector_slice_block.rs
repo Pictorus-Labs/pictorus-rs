@@ -1,5 +1,5 @@
-use crate::traits::MatrixOps;
-use num_traits::{ToPrimitive, Zero};
+use crate::{traits::MatrixOps, Scalar};
+use num_traits::ToPrimitive;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
@@ -80,68 +80,143 @@ fn output_coordinate_map<
     None
 }
 
-macro_rules! impl_vector_slice_block {
-    ($type:ty) => {
-        impl<const IROWS: usize, const ICOLS: usize, const OROWS: usize, const OCOLS: usize>
-            ProcessBlock
-            for VectorSliceBlock<Matrix<IROWS, ICOLS, $type>, Matrix<OROWS, OCOLS, $type>>
-        where
-            $type: num_traits::Zero,
-            OldBlockData: FromPass<Matrix<OROWS, OCOLS, $type>>,
-        {
-            type Inputs = Matrix<IROWS, ICOLS, $type>;
-            type Output = Matrix<OROWS, OCOLS, $type>;
-            type Parameters = Parameters;
+impl<S: Scalar, const IROWS: usize, const ICOLS: usize, const OROWS: usize, const OCOLS: usize>
+    ProcessBlock for VectorSliceBlock<Matrix<IROWS, ICOLS, S>, Matrix<OROWS, OCOLS, S>>
+where
+    S: num_traits::Zero,
+    OldBlockData: FromPass<Matrix<OROWS, OCOLS, S>>,
+{
+    type Inputs = Matrix<IROWS, ICOLS, S>;
+    type Output = Matrix<OROWS, OCOLS, S>;
+    type Parameters = Parameters;
 
-            fn process(
-                &mut self,
-                parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                input: PassBy<Self::Inputs>,
-            ) -> PassBy<Self::Output> {
-                // Attempt some static assertions for sizing
-                const {
-                    assert!(
-                        IROWS >= OROWS,
-                        "Output slice rows are larger than input slice"
-                    );
-                }
-                const {
-                    assert!(
-                        ICOLS >= OCOLS,
-                        "Output slice cols are larger than input slice"
-                    );
-                }
-
-                // Zero the buffer each time or out of bounds access will return the last copied values
-                self.buffer.data.fill([<$type>::zero(); OROWS]);
-
-                input.for_each(|i, i_c, i_r| {
-                    if let Some((o_row, o_col)) =
-                        output_coordinate_map::<IROWS, ICOLS, OROWS, OCOLS>(i_c, i_r, parameters)
-                    {
-                        self.buffer.data[o_col][o_row] = i;
-                    }
-                });
-
-                self.data = OldBlockData::from_pass(&self.buffer);
-                &self.buffer
-            }
+    fn process(
+        &mut self,
+        parameters: &Self::Parameters,
+        _context: &dyn pictorus_traits::Context,
+        input: PassBy<Self::Inputs>,
+    ) -> PassBy<'_, Self::Output> {
+        // Attempt some static assertions for sizing
+        const {
+            assert!(
+                IROWS >= OROWS,
+                "Output slice rows are larger than input slice"
+            );
         }
-    };
+        const {
+            assert!(
+                ICOLS >= OCOLS,
+                "Output slice cols are larger than input slice"
+            );
+        }
+
+        // Zero the buffer each time or out of bounds access will return the last copied values
+        self.buffer.data.fill([S::zero(); OROWS]);
+
+        input.for_each(|i, i_c, i_r| {
+            if let Some((o_row, o_col)) =
+                output_coordinate_map::<IROWS, ICOLS, OROWS, OCOLS>(i_c, i_r, parameters)
+            {
+                self.buffer.data[o_col][o_row] = i;
+            }
+        });
+
+        self.data = OldBlockData::from_pass(&self.buffer);
+        &self.buffer
+    }
 }
 
-impl_vector_slice_block!(f64);
-impl_vector_slice_block!(f32);
-impl_vector_slice_block!(i32);
-impl_vector_slice_block!(u32);
-impl_vector_slice_block!(i16);
-impl_vector_slice_block!(u16);
-impl_vector_slice_block!(i8);
-impl_vector_slice_block!(u8);
+impl<S: Scalar, const IROWS: usize, const ICOLS: usize> ProcessBlock
+    for VectorSliceBlock<Matrix<IROWS, ICOLS, S>, S>
+where
+    S: num_traits::Zero,
+    OldBlockData: FromPass<S>,
+{
+    type Inputs = Matrix<IROWS, ICOLS, S>;
+    type Output = S;
+    type Parameters = Parameters;
+
+    fn process(
+        &mut self,
+        parameters: &Self::Parameters,
+        _context: &dyn pictorus_traits::Context,
+        input: PassBy<Self::Inputs>,
+    ) -> PassBy<'_, Self::Output> {
+        // Zero the buffer each time or out of bounds access will return the last copied values
+        self.buffer = S::zero();
+
+        self.buffer = input.data.get(parameters.cols)
+                                .and_then(|col| col.get(parameters.rows))
+                                .copied()
+                                .unwrap_or(S::zero());
+
+        self.data = OldBlockData::from_scalar(self.buffer.into());
+        self.buffer
+    }
+}
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_vector_slice_block_1x1_scalar() {
+        use super::*;
+        use crate::testing::StubContext;
+
+        let c = StubContext::default();
+        let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, f64>::default();
+        let parameters = Parameters::new(1., 1.);
+
+        let input = Matrix {
+            data: [
+                [1.0, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+                [9.0, 10.0, 11.0, 12.0],
+                [13.0, 14.0, 15.0, 16.0],
+            ],
+        };
+
+        let output = block.process(&parameters, &c, &input);
+        assert_eq!(output, 6.0);
+
+        let parameters = Parameters::new(0., 0.);
+        let output = block.process(&parameters, &c, &input);
+        assert_eq!(output, 1.0);
+
+        let parameters = Parameters::new(2., 2.);
+        let output = block.process(&parameters, &c, &input);
+        assert_eq!(output, 11.0);
+    }
+
+    #[test]
+    fn test_vector_slice_block_1x1_matrix() {
+        use super::*;
+        use crate::testing::StubContext;
+
+        let c = StubContext::default();
+        let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<1, 1, f64>>::default();
+        let parameters = Parameters::new(1., 1.);
+
+        let input = Matrix {
+            data: [
+                [1.0, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+                [9.0, 10.0, 11.0, 12.0],
+                [13.0, 14.0, 15.0, 16.0],
+            ],
+        };
+
+        let output = block.process(&parameters, &c, &input);
+        assert_eq!(output.data, [[6.0]]);
+
+        let parameters = Parameters::new(0., 0.);
+        let output = block.process(&parameters, &c, &input);
+        assert_eq!(output.data, [[1.0]]);
+
+        let parameters = Parameters::new(2., 2.);
+        let output = block.process(&parameters, &c, &input);
+        assert_eq!(output.data, [[11.0]]);
+    }
+
     #[test]
     fn test_vector_slice_block_2x2() {
         use super::*;

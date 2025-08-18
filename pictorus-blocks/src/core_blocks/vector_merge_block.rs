@@ -68,7 +68,7 @@ where
         _parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
-    ) -> PassBy<Self::Output> {
+    ) -> PassBy<'_, Self::Output> {
         let mut offset = 0;
         let output = I::get_merge(input, &mut offset, &mut self.buffer);
         self.data = OldBlockData::from_pass(output);

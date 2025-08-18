@@ -86,7 +86,7 @@ where
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
-    ) -> PassBy<Self::Output> {
+    ) -> PassBy<'_, Self::Output> {
         // Initialize the memory with the initial condition
         if self.memory.is_empty() {
             self.buffer = parameters.initial_condition;
@@ -146,7 +146,7 @@ where
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
-    ) -> PassBy<Self::Output> {
+    ) -> PassBy<'_, Self::Output> {
         const {
             assert!(
                 ICOLS * N == OCOLS,

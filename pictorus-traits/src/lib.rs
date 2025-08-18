@@ -340,7 +340,7 @@ pub trait GeneratorBlock: Default {
         &mut self,
         parameters: &Self::Parameters,
         context: &dyn Context,
-    ) -> PassBy<Self::Output>;
+    ) -> PassBy<'_, Self::Output>;
 }
 
 /// An output block

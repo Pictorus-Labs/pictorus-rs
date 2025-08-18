@@ -45,7 +45,7 @@ where
         &mut self,
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<Self::Output> {
+    ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, parameters);
         self.data = OldBlockData::from_pass(output);
         output
