@@ -19,4 +19,4 @@ embedded-io = "0.6.1"
 embassy-time = { git = "https://github.com/embassy-rs/embassy.git", rev = "68c8238" }
 heapless = "0.8.0"
 log = "0.4.21"
-ra4m2-hal = { git = "https://github.com/Pictorus-Labs/ra4m2-hal" }
+ra4m2-hal = { git = "https://github.com/Pictorus-Labs/ra4m2-hal", rev = "76e158a" }
