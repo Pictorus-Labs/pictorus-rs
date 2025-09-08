@@ -372,26 +372,26 @@ impl ToPassType for vehicle_odometry_s {
 }
 
 impl FromPassType for actuator_motors_s {
-    type PassType = (f64, Matrix<12, 1, f64>, f64);
+    type PassType = (Matrix<12, 1, f64>, f64);
     fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
         Self {
             timestamp,
             timestamp_sample: timestamp,
             control: [
-                pass.1.data[0][0] as f32,
-                pass.1.data[0][1] as f32,
-                pass.1.data[0][2] as f32,
-                pass.1.data[0][3] as f32,
-                pass.1.data[0][4] as f32,
-                pass.1.data[0][5] as f32,
-                pass.1.data[0][6] as f32,
-                pass.1.data[0][7] as f32,
-                pass.1.data[0][8] as f32,
-                pass.1.data[0][9] as f32,
-                pass.1.data[0][10] as f32,
-                pass.1.data[0][11] as f32,
+                pass.0.data[0][0] as f32,
+                pass.0.data[0][1] as f32,
+                pass.0.data[0][2] as f32,
+                pass.0.data[0][3] as f32,
+                pass.0.data[0][4] as f32,
+                pass.0.data[0][5] as f32,
+                pass.0.data[0][6] as f32,
+                pass.0.data[0][7] as f32,
+                pass.0.data[0][8] as f32,
+                pass.0.data[0][9] as f32,
+                pass.0.data[0][10] as f32,
+                pass.0.data[0][11] as f32,
             ],
-            reversible_flags: pass.2 as u16,
+            reversible_flags: pass.1 as u16,
             _padding0: [0; 6],
         }
     }
