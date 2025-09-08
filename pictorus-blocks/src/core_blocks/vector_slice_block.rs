@@ -145,10 +145,12 @@ where
         // Zero the buffer each time or out of bounds access will return the last copied values
         self.buffer = S::zero();
 
-        self.buffer = input.data.get(parameters.cols)
-                                .and_then(|col| col.get(parameters.rows))
-                                .copied()
-                                .unwrap_or(S::zero());
+        self.buffer = input
+            .data
+            .get(parameters.cols)
+            .and_then(|col| col.get(parameters.rows))
+            .copied()
+            .unwrap_or(S::zero());
 
         self.data = OldBlockData::from_scalar(self.buffer.into());
         self.buffer
