@@ -8,8 +8,8 @@ members = [
   "pictorus-sim",
   "pictorus-stm32", 
   "pictorus-renesas",
-  "px4-workspace/pictorus-px4",
-  "px4-workspace/px4-msgs-sys",
+  "pictorus-px4",
+  "px4-msgs-sys",
 ]
 # Exclude platform-specific crates from the default crates
 default-members = [

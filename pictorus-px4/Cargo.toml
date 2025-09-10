@@ -1,0 +1,32 @@
+[package]
+name = "pictorus-px4"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+grounded = "0.2.0"
+pictorus-block-data = { path = "../pictorus-block-data" }
+pictorus-blocks = { path = "../pictorus-blocks" }
+pictorus-traits = { path = "../pictorus-traits" }
+px4-msgs-sys = { path = "../px4-msgs-sys" }
+spin = "0.10.0"
+once_cell = { version = "1.19", default-features = false, features = ["critical-section"] }
+critical-section = "1.2.0"
+
+[[example]]
+name = "ffi-example"
+crate-type = ["staticlib"]
+
+[[example]]
+name = "quad_controller"
+crate-type = ["staticlib"]
+
+[dev-dependencies]
+panic-halt = "1.0.0"
+embedded-alloc = { version = "0.5.0", default-features = false }
+num-traits = { version = "0.2.19", default-features = false }
