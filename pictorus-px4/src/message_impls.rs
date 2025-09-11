@@ -372,26 +372,26 @@ impl ToPassType for vehicle_odometry_s {
 }
 
 impl FromPassType for actuator_motors_s {
-    type PassType = (Matrix<12, 1, f64>, f64);
+    type PassType = (f64, Matrix<12, 1, f64>, f64);
     fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
         Self {
             timestamp,
             timestamp_sample: timestamp,
             control: [
-                pass.0.data[0][0] as f32,
-                pass.0.data[0][1] as f32,
-                pass.0.data[0][2] as f32,
-                pass.0.data[0][3] as f32,
-                pass.0.data[0][4] as f32,
-                pass.0.data[0][5] as f32,
-                pass.0.data[0][6] as f32,
-                pass.0.data[0][7] as f32,
-                pass.0.data[0][8] as f32,
-                pass.0.data[0][9] as f32,
-                pass.0.data[0][10] as f32,
-                pass.0.data[0][11] as f32,
+                pass.1.data[0][0] as f32,
+                pass.1.data[0][1] as f32,
+                pass.1.data[0][2] as f32,
+                pass.1.data[0][3] as f32,
+                pass.1.data[0][4] as f32,
+                pass.1.data[0][5] as f32,
+                pass.1.data[0][6] as f32,
+                pass.1.data[0][7] as f32,
+                pass.1.data[0][8] as f32,
+                pass.1.data[0][9] as f32,
+                pass.1.data[0][10] as f32,
+                pass.1.data[0][11] as f32,
             ],
-            reversible_flags: pass.1 as u16,
+            reversible_flags: pass.2 as u16,
             _padding0: [0; 6],
         }
     }
@@ -498,17 +498,16 @@ use px4_msgs_sys::{
         __orb_actuator_controls_status_0, __orb_actuator_controls_status_1, __orb_actuator_motors,
         __orb_actuator_outputs, __orb_actuator_outputs_debug, __orb_actuator_outputs_sim,
         __orb_actuator_servos, __orb_actuator_servos_trim, __orb_actuator_test, __orb_adc_report,
-        __orb_airspeed, __orb_airspeed_validated, __orb_airspeed_wind, __orb_arming_check_reply,
-        __orb_arming_check_request, __orb_autotune_attitude_control_status,
-        __orb_aux_global_position, __orb_battery_status, __orb_button_event, __orb_camera_capture,
-        __orb_camera_status, __orb_camera_trigger, __orb_can_interface_status,
-        __orb_cellular_status, __orb_collision_constraints, __orb_config_control_setpoints,
-        __orb_config_overrides, __orb_config_overrides_request, __orb_control_allocator_status,
-        __orb_cpuload, __orb_dataman_request, __orb_dataman_response, __orb_debug_array,
-        __orb_debug_key_value, __orb_debug_value, __orb_debug_vect, __orb_differential_pressure,
-        __orb_differential_velocity_setpoint, __orb_distance_sensor,
-        __orb_distance_sensor_mode_change_request, __orb_ekf2_timestamps, __orb_esc_report,
-        __orb_esc_serial_passthru, __orb_esc_status, __orb_estimator_aid_src_airspeed,
+        __orb_airspeed, __orb_airspeed_validated, __orb_airspeed_wind, __orb_arming_check_request,
+        __orb_autotune_attitude_control_status, __orb_aux_global_position, __orb_battery_status,
+        __orb_button_event, __orb_camera_capture, __orb_camera_status, __orb_camera_trigger,
+        __orb_can_interface_status, __orb_cellular_status, __orb_collision_constraints,
+        __orb_config_control_setpoints, __orb_config_overrides, __orb_config_overrides_request,
+        __orb_control_allocator_status, __orb_cpuload, __orb_dataman_request,
+        __orb_dataman_response, __orb_debug_array, __orb_debug_key_value, __orb_debug_value,
+        __orb_debug_vect, __orb_differential_pressure, __orb_differential_velocity_setpoint,
+        __orb_distance_sensor, __orb_distance_sensor_mode_change_request, __orb_ekf2_timestamps,
+        __orb_esc_report, __orb_esc_serial_passthru, __orb_estimator_aid_src_airspeed,
         __orb_estimator_aid_src_aux_global_position, __orb_estimator_aid_src_aux_vel,
         __orb_estimator_aid_src_baro_hgt, __orb_estimator_aid_src_drag,
         __orb_estimator_aid_src_ev_hgt, __orb_estimator_aid_src_ev_pos,
@@ -559,19 +558,18 @@ use px4_msgs_sys::{
         __orb_parameter_reset_request, __orb_parameter_set_used_request,
         __orb_parameter_set_value_request, __orb_parameter_set_value_response,
         __orb_parameter_update, __orb_ping, __orb_position_controller_landing_status,
-        __orb_position_controller_status, __orb_position_setpoint, __orb_position_setpoint_triplet,
-        __orb_power_button_state, __orb_power_monitor, __orb_pps_capture,
-        __orb_pure_pursuit_status, __orb_pwm_input, __orb_px4io_status, __orb_qshell_req,
-        __orb_qshell_retval, __orb_radio_status, __orb_rate_ctrl_status, __orb_rc_channels,
-        __orb_rc_parameter_map, __orb_register_ext_component_reply,
-        __orb_register_ext_component_request, __orb_rover_attitude_setpoint,
-        __orb_rover_attitude_status, __orb_rover_position_setpoint, __orb_rover_rate_setpoint,
-        __orb_rover_rate_status, __orb_rover_steering_setpoint, __orb_rover_throttle_setpoint,
-        __orb_rover_velocity_status, __orb_rpm, __orb_rtl_status, __orb_rtl_time_estimate,
-        __orb_safety_button, __orb_satellite_info, __orb_sensor_accel, __orb_sensor_accel_fifo,
-        __orb_sensor_airflow, __orb_sensor_baro, __orb_sensor_combined, __orb_sensor_correction,
-        __orb_sensor_gnss_relative, __orb_sensor_gps, __orb_sensor_gyro, __orb_sensor_gyro_fft,
-        __orb_sensor_gyro_fifo, __orb_sensor_hygrometer, __orb_sensor_mag,
+        __orb_position_controller_status, __orb_position_setpoint, __orb_power_button_state,
+        __orb_power_monitor, __orb_pps_capture, __orb_pure_pursuit_status, __orb_pwm_input,
+        __orb_px4io_status, __orb_qshell_req, __orb_qshell_retval, __orb_radio_status,
+        __orb_rate_ctrl_status, __orb_rc_channels, __orb_rc_parameter_map,
+        __orb_register_ext_component_reply, __orb_register_ext_component_request,
+        __orb_rover_attitude_setpoint, __orb_rover_attitude_status, __orb_rover_position_setpoint,
+        __orb_rover_rate_setpoint, __orb_rover_rate_status, __orb_rover_steering_setpoint,
+        __orb_rover_throttle_setpoint, __orb_rover_velocity_status, __orb_rpm, __orb_rtl_status,
+        __orb_rtl_time_estimate, __orb_safety_button, __orb_satellite_info, __orb_sensor_accel,
+        __orb_sensor_accel_fifo, __orb_sensor_airflow, __orb_sensor_baro, __orb_sensor_combined,
+        __orb_sensor_correction, __orb_sensor_gnss_relative, __orb_sensor_gps, __orb_sensor_gyro,
+        __orb_sensor_gyro_fft, __orb_sensor_gyro_fifo, __orb_sensor_hygrometer, __orb_sensor_mag,
         __orb_sensor_optical_flow, __orb_sensor_preflight_mag, __orb_sensor_selection,
         __orb_sensor_uwb, __orb_sensors_status_baro, __orb_sensors_status_imu,
         __orb_sensors_status_mag, __orb_spoilers_setpoint, __orb_system_power,
@@ -599,14 +597,14 @@ use px4_msgs_sys::{
         __orb_yaw_estimator_status, ackermann_velocity_setpoint_s, action_request_s,
         actuator_armed_s, actuator_controls_status_s, actuator_motors_s, actuator_outputs_s,
         actuator_servos_s, actuator_servos_trim_s, actuator_test_s, adc_report_s, airspeed_s,
-        airspeed_validated_s, airspeed_wind_s, arming_check_reply_s, arming_check_request_s,
+        airspeed_validated_s, airspeed_wind_s, arming_check_request_s,
         autotune_attitude_control_status_s, battery_status_s, button_event_s, camera_capture_s,
         camera_status_s, camera_trigger_s, can_interface_status_s, cellular_status_s,
         collision_constraints_s, config_overrides_s, control_allocator_status_s, cpuload_s,
         dataman_request_s, dataman_response_s, debug_array_s, debug_key_value_s, debug_value_s,
         debug_vect_s, differential_pressure_s, differential_velocity_setpoint_s,
         distance_sensor_mode_change_request_s, distance_sensor_s, ekf2_timestamps_s, esc_report_s,
-        esc_status_s, estimator_aid_source1d_s, estimator_aid_source2d_s, estimator_aid_source3d_s,
+        estimator_aid_source1d_s, estimator_aid_source2d_s, estimator_aid_source3d_s,
         estimator_bias3d_s, estimator_bias_s, estimator_event_flags_s, estimator_gps_status_s,
         estimator_innovations_s, estimator_selector_status_s, estimator_sensor_bias_s,
         estimator_states_s, estimator_status_flags_s, estimator_status_s, event_s,
@@ -633,14 +631,13 @@ use px4_msgs_sys::{
         parameter_set_used_request_s, parameter_set_value_request_s,
         parameter_set_value_response_s, parameter_update_s, ping_s,
         position_controller_landing_status_s, position_controller_status_s, position_setpoint_s,
-        position_setpoint_triplet_s, power_button_state_s, power_monitor_s, pps_capture_s,
-        pure_pursuit_status_s, pwm_input_s, px4io_status_s, qshell_req_s, qshell_retval_s,
-        radio_status_s, rate_ctrl_status_s, rc_channels_s, rc_parameter_map_s,
-        register_ext_component_reply_s, register_ext_component_request_s,
-        rover_attitude_setpoint_s, rover_attitude_status_s, rover_position_setpoint_s,
-        rover_rate_setpoint_s, rover_rate_status_s, rover_steering_setpoint_s,
-        rover_throttle_setpoint_s, rover_velocity_status_s, rpm_s, rtl_status_s,
-        rtl_time_estimate_s, satellite_info_s, sensor_accel_fifo_s, sensor_accel_s,
+        power_button_state_s, power_monitor_s, pps_capture_s, pure_pursuit_status_s, pwm_input_s,
+        px4io_status_s, qshell_req_s, qshell_retval_s, radio_status_s, rate_ctrl_status_s,
+        rc_channels_s, rc_parameter_map_s, register_ext_component_reply_s,
+        register_ext_component_request_s, rover_attitude_setpoint_s, rover_attitude_status_s,
+        rover_position_setpoint_s, rover_rate_setpoint_s, rover_rate_status_s,
+        rover_steering_setpoint_s, rover_throttle_setpoint_s, rover_velocity_status_s, rpm_s,
+        rtl_status_s, rtl_time_estimate_s, satellite_info_s, sensor_accel_fifo_s, sensor_accel_s,
         sensor_airflow_s, sensor_baro_s, sensor_combined_s, sensor_correction_s,
         sensor_gnss_relative_s, sensor_gps_s, sensor_gyro_fft_s, sensor_gyro_fifo_s, sensor_gyro_s,
         sensor_hygrometer_s, sensor_mag_s, sensor_optical_flow_s, sensor_preflight_mag_s,
@@ -676,7 +673,6 @@ impl_uorb_message!(
     airspeed_s,
     airspeed_validated_s,
     airspeed_wind_s,
-    arming_check_reply_s,
     arming_check_request_s,
     autotune_attitude_control_status_s,
     battery_status_s,
@@ -702,12 +698,11 @@ impl_uorb_message!(
     distance_sensor_s,
     ekf2_timestamps_s,
     esc_report_s,
-    esc_status_s,
     estimator_aid_source1d_s,
     estimator_aid_source2d_s,
     estimator_aid_source3d_s,
-    estimator_bias_s,
     estimator_bias3d_s,
+    estimator_bias_s,
     estimator_event_flags_s,
     estimator_gps_status_s,
     estimator_innovations_s,
@@ -797,7 +792,6 @@ impl_uorb_message!(
     position_controller_landing_status_s,
     position_controller_status_s,
     position_setpoint_s,
-    position_setpoint_triplet_s,
     power_button_state_s,
     power_monitor_s,
     pps_capture_s,
@@ -850,8 +844,8 @@ impl_uorb_message!(
     telemetry_status_s,
     tiltrotor_extra_controls_s,
     timesync_status_s,
-    trajectory_setpoint_s,
     trajectory_setpoint6dof_s,
+    trajectory_setpoint_s,
     transponder_report_s,
     tune_control_s,
     uavcan_parameter_request_s,
@@ -1031,12 +1025,6 @@ define_topics! {
     /// Gpio Request topic
     GpioRequest => gpio_request_s, __orb_gpio_request;
 
-    /// Esc Report topic
-    EscReport => esc_report_s, __orb_esc_report;
-
-    /// Esc Status topic
-    EscStatus => esc_status_s, __orb_esc_status;
-
     /// Rate Ctrl Status topic
     RateCtrlStatus => rate_ctrl_status_s, __orb_rate_ctrl_status;
 
@@ -1175,11 +1163,8 @@ define_topics! {
     /// Sensor Preflight Mag topic
     SensorPreflightMag => sensor_preflight_mag_s, __orb_sensor_preflight_mag;
 
-    /// Event topic
-    Event => event_s, __orb_event;
-
-    /// Arming Check Reply topic
-    ArmingCheckReply => arming_check_reply_s, __orb_arming_check_reply;
+    /// Esc Report topic
+    EscReport => esc_report_s, __orb_esc_report;
 
     /// Pwm Input topic
     PwmInput => pwm_input_s, __orb_pwm_input;
@@ -1361,6 +1346,9 @@ define_topics! {
     /// Trajectory Setpoint6Dof topic
     TrajectorySetpoint6dof => trajectory_setpoint6dof_s, __orb_trajectory_setpoint6dof;
 
+    /// Event topic
+    Event => event_s, __orb_event;
+
     /// Power Monitor topic
     PowerMonitor => power_monitor_s, __orb_power_monitor;
 
@@ -1454,12 +1442,6 @@ define_topics! {
     /// Qshell Req topic
     QshellReq => qshell_req_s, __orb_qshell_req;
 
-    /// Position Setpoint topic
-    PositionSetpoint => position_setpoint_s, __orb_position_setpoint;
-
-    /// Position Setpoint Triplet topic
-    PositionSetpointTriplet => position_setpoint_triplet_s, __orb_position_setpoint_triplet;
-
     /// Vehicle Acceleration topic
     VehicleAcceleration => vehicle_acceleration_s, __orb_vehicle_acceleration;
 
@@ -1552,6 +1534,9 @@ define_topics! {
 
     /// Landing Gear topic
     LandingGear => landing_gear_s, __orb_landing_gear;
+
+    /// Position Setpoint topic
+    PositionSetpoint => position_setpoint_s, __orb_position_setpoint;
 
     /// Generator Status topic
     GeneratorStatus => generator_status_s, __orb_generator_status;

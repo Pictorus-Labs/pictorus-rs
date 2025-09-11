@@ -1,6 +1,14 @@
 use std::path::PathBuf;
 
 fn main() {
+    // set appropriate include_path based on target
+    let target = std::env::var("TARGET").unwrap();
+    let include_path = match target.as_str() {
+        "aarch64-unknown-linux-gnu" => PathBuf::from("/usr/aarch64-linux-gnu"),
+        "x86_64-unknown-linux-gnu" => PathBuf::from("/usr/x86_64-linux-gnu"),
+        _ => PathBuf::from("/usr/include/newlib"), // default to newlib for unknown targets
+    };
+
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
 
     // Include dir is `c_api` in the `px4-msgs-sys` crate.
@@ -20,7 +28,8 @@ fn main() {
         .join("\n");
 
     let message_def_builder = bindgen::builder()
-        // .clang_arg("--target=armv7-unknown-linux-gnueabihf")
+        .clang_arg("-I")
+        .clang_arg(include_path.display().to_string())
         .use_core()
         .header_contents("imports.h", &includes_string)
         .clang_arg("-I")
@@ -102,6 +111,8 @@ fn main() {
 
     let orb_builder = bindgen::builder()
         // .clang_arg("--target=armv7-unknown-linux-gnueabihf")
+        .clang_arg("-I")
+        .clang_arg(include_path.display().to_string())
         .use_core()
         .header_contents("imports.h", &includes_string)
         .clang_arg("-I")
