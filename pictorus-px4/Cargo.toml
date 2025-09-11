@@ -19,7 +19,7 @@ once_cell = { version = "1.19", default-features = false, features = ["critical-
 critical-section = "1.2.0"
 
 [[example]]
-name = "ffi-example"
+name = "uorb"
 crate-type = ["staticlib"]
 
 [[example]]
