@@ -42,7 +42,7 @@ impl<'a> SerialWrapper<'a> {
     pub fn new(uart: Uart<'a, Async>, rx_buf: &'a mut [u8]) -> Self {
         let (tx, rx) = uart.split();
         let mut rx = rx.into_ring_buffered(rx_buf);
-        rx.start_uart();
+        rx.start().unwrap();
         Self {
             tx,
             rx,

@@ -5,19 +5,17 @@ use pictorus_traits::{Matrix, OutputBlock};
 pub struct DacWrapper<
     'a,
     T: embassy_stm32::dac::Instance,
-    M: embassy_stm32::mode::Mode,
     const CHANNELS: usize,
     const SAMPLES: usize,
 > {
-    dac: Dac<'a, T, M>,
+    dac: Dac<'a, T>,
 }
 
-impl<'a, T, M, const CHANNELS: usize, const SAMPLES: usize> DacWrapper<'a, T, M, CHANNELS, SAMPLES>
+impl<'a, T, const CHANNELS: usize, const SAMPLES: usize> DacWrapper<'a, T, CHANNELS, SAMPLES>
 where
     T: embassy_stm32::dac::Instance,
-    M: embassy_stm32::mode::Mode,
 {
-    pub fn new(dac: Dac<'a, T, M>) -> Self {
+    pub fn new(dac: Dac<'a, T>) -> Self {
         Self { dac }
     }
 
@@ -39,11 +37,10 @@ where
     }
 }
 
-impl<const CHANNELS: usize, const SAMPLES: usize, T, M> OutputBlock
-    for DacWrapper<'_, T, M, CHANNELS, SAMPLES>
+impl<const CHANNELS: usize, const SAMPLES: usize, T> OutputBlock
+    for DacWrapper<'_, T, CHANNELS, SAMPLES>
 where
     T: embassy_stm32::dac::Instance,
-    M: embassy_stm32::mode::Mode,
 {
     type Inputs = Matrix<SAMPLES, CHANNELS, f64>;
     type Parameters = DacBlockParams;
