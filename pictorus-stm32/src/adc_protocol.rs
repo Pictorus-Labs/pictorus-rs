@@ -22,7 +22,7 @@ where
         _context: &dyn Context,
     ) -> PassBy<'_, Self::Output> {
         if self.buffer.is_none() {
-            self.buffer = Some(self.adc.blocking_read(&mut self.channel));
+            self.buffer = Some(self.adc.read(&mut self.channel));
         }
 
         self.buffer.unwrap_or(0)
