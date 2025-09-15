@@ -33,9 +33,3 @@ pub use can_protocol::*;
 
 mod spi_protocol;
 pub use spi_protocol::*;
-
-mod uorb_subscribe_protocol;
-pub use uorb_subscribe_protocol::*;
-
-mod uorb_advertise_protocol;
-pub use uorb_advertise_protocol::*;

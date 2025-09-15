@@ -155,6 +155,12 @@ pub use min_max_block::MinMaxBlock;
 mod matrix_inverse_block;
 pub use matrix_inverse_block::{Inverse, MatrixInverseBlock, Svd};
 
+mod noop_input_block;
+pub use noop_input_block::NoOpInputBlock;
+
+mod noop_output_block;
+pub use noop_output_block::NoOpOutputBlock;
+
 mod not_block;
 pub use not_block::NotBlock;
 
