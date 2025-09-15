@@ -8,6 +8,9 @@ impl NoOpOutputBlockParameters {
     }
 }
 
+/// This block is a special case for output blocks that need to be simulated
+/// but don't have a fixed message type, for example the uORB input block, which
+/// has an input size based on which message is selected. Input data is ignored.
 pub struct NoOpOutputBlock<T> {
     _phantom: core::marker::PhantomData<T>,
 }

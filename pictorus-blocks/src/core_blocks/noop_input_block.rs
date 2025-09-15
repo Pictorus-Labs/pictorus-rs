@@ -10,7 +10,8 @@ impl NoOpInputBlockParameters {
 
 /// This block is a special case for input blocks that need to be simulated
 /// but don't have a fixed message type, for example the uORB input block, which
-/// binds and links to C structures that can't be simulated.
+/// has an output size based on which message is selected. Output data is the
+/// default() value for the type.
 pub struct NoOpInputBlock<T> {
     _phantom: core::marker::PhantomData<T>,
     store: Option<T>,
