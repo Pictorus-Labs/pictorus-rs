@@ -1,4 +1,4 @@
-use pictorus_traits::{ByteSliceSignal, Matrix, Pass, PassBy};
+use pictorus_traits::{Matrix, Pass, PassBy};
 
 /// Core trait for PX4 uORB message types
 ///
@@ -2365,40 +2365,6 @@ impl FromPassType for button_event_s {
     }
 }
 
-impl ToPassType for debug_vect_s {
-    type PassType = (f64, f64, f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                self.x as f64,
-                self.y as f64,
-                self.z as f64,
-                self.name.as_slice(),
-            ),
-        )
-    }
-}
-
-impl FromPassType for debug_vect_s {
-    type PassType = (f64, f64, f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let x: f32 = pass.0 as f32;
-        let y: f32 = pass.1 as f32;
-        let z: f32 = pass.2 as f32;
-        let name: [::core::ffi::c_char; 10] =
-            core::array::from_fn(|i| pass.3[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            x,
-            y,
-            z,
-            name,
-            _padding0: [0; 2],
-        }
-    }
-}
-
 impl ToPassType for health_report_s {
     type PassType = (f64, f64, f64, f64, f64, f64, f64);
     fn to_pass_type(&self) -> (u64, Self::PassType) {
@@ -2536,39 +2502,6 @@ impl FromPassType for orb_test_large_s {
     }
 }
 
-impl ToPassType for debug_array_s {
-    type PassType = (Matrix<58, 1, f64>, f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                Matrix {
-                    data: [core::array::from_fn(|i| self.data[i] as f64)],
-                },
-                self.id as f64,
-                self.name.as_slice(),
-            ),
-        )
-    }
-}
-
-impl FromPassType for debug_array_s {
-    type PassType = (Matrix<58, 1, f64>, f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let data: [f32; 58] = core::array::from_fn(|i| pass.0.data[0][i] as f32);
-        let id: u16 = pass.1 as u16;
-        let name: [::core::ffi::c_char; 10] =
-            core::array::from_fn(|i| pass.2[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            data,
-            id,
-            name,
-            _padding0: [0; 4],
-        }
-    }
-}
-
 impl ToPassType for orbit_status_s {
     type PassType = (f64, f64, f64, f64, f64, f64);
     fn to_pass_type(&self) -> (u64, Self::PassType) {
@@ -2646,31 +2579,6 @@ impl FromPassType for vehicle_roi_s {
             yaw_offset,
             mode,
             _padding0: [0; 7],
-        }
-    }
-}
-
-impl ToPassType for message_format_request_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (self.protocol_version as f64, self.topic_name.as_slice()),
-        )
-    }
-}
-
-impl FromPassType for message_format_request_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let protocol_version: u16 = pass.0 as u16;
-        let topic_name: [::core::ffi::c_char; 50] =
-            core::array::from_fn(|i| pass.1[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            protocol_version,
-            topic_name,
-            _padding0: [0; 4],
         }
     }
 }
@@ -3060,49 +2968,6 @@ impl FromPassType for differential_velocity_setpoint_s {
     }
 }
 
-impl ToPassType for register_ext_component_reply_s {
-    type PassType = (f64, f64, ByteSliceSignal, f64, f64, f64, f64);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                self.request_id as f64,
-                self.px4_ros2_api_version as f64,
-                self.name.as_slice(),
-                self.success as u8 as f64,
-                self.arming_check_id as f64,
-                self.mode_id as f64,
-                self.mode_executor_id as f64,
-            ),
-        )
-    }
-}
-
-impl FromPassType for register_ext_component_reply_s {
-    type PassType = (f64, f64, ByteSliceSignal, f64, f64, f64, f64);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let request_id: u64 = pass.0 as u64;
-        let px4_ros2_api_version: u16 = pass.1 as u16;
-        let name: [::core::ffi::c_char; 25] =
-            core::array::from_fn(|i| pass.2[i] as ::core::ffi::c_char);
-        let success: bool = pass.3 != 0.0;
-        let arming_check_id: i8 = pass.4 as i8;
-        let mode_id: i8 = pass.5 as i8;
-        let mode_executor_id: i8 = pass.6 as i8;
-        Self {
-            timestamp: timestamp,
-            request_id,
-            px4_ros2_api_version,
-            name,
-            success,
-            arming_check_id,
-            mode_id,
-            mode_executor_id,
-            _padding0: [0; 1],
-        }
-    }
-}
-
 impl ToPassType for vehicle_thrust_setpoint_s {
     type PassType = Matrix<3, 1, f64>;
     fn to_pass_type(&self) -> (u64, Self::PassType) {
@@ -3300,39 +3165,6 @@ impl FromPassType for actuator_armed_s {
     }
 }
 
-impl ToPassType for open_drone_id_operator_id_s {
-    type PassType = (Matrix<20, 1, f64>, f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                Matrix {
-                    data: [core::array::from_fn(|i| self.id_or_mac[i] as f64)],
-                },
-                self.operator_id_type as f64,
-                self.operator_id.as_slice(),
-            ),
-        )
-    }
-}
-
-impl FromPassType for open_drone_id_operator_id_s {
-    type PassType = (Matrix<20, 1, f64>, f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let id_or_mac: [u8; 20] = core::array::from_fn(|i| pass.0.data[0][i] as u8);
-        let operator_id_type: u8 = pass.1 as u8;
-        let operator_id: [::core::ffi::c_char; 20] =
-            core::array::from_fn(|i| pass.2[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            id_or_mac,
-            operator_id_type,
-            operator_id,
-            _padding0: [0; 7],
-        }
-    }
-}
-
 impl ToPassType for debug_value_s {
     type PassType = (f64, f64);
     fn to_pass_type(&self) -> (u64, Self::PassType) {
@@ -3523,27 +3355,6 @@ impl FromPassType for vehicle_angular_velocity_s {
     }
 }
 
-impl ToPassType for log_message_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (self.timestamp, (self.severity as f64, self.text.as_slice()))
-    }
-}
-
-impl FromPassType for log_message_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let severity: u8 = pass.0 as u8;
-        let text: [::core::ffi::c_char; 127] =
-            core::array::from_fn(|i| pass.1[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            severity,
-            text,
-        }
-    }
-}
-
 impl ToPassType for qshell_retval_s {
     type PassType = (f64, f64);
     fn to_pass_type(&self) -> (u64, Self::PassType) {
@@ -3582,28 +3393,6 @@ impl FromPassType for rover_attitude_setpoint_s {
             timestamp: timestamp,
             yaw_setpoint,
             _padding0: [0; 4],
-        }
-    }
-}
-
-impl ToPassType for debug_key_value_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (self.timestamp, (self.value as f64, self.key.as_slice()))
-    }
-}
-
-impl FromPassType for debug_key_value_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let value: f32 = pass.0 as f32;
-        let key: [::core::ffi::c_char; 10] =
-            core::array::from_fn(|i| pass.1[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            value,
-            key,
-            _padding0: [0; 2],
         }
     }
 }
@@ -3700,28 +3489,6 @@ impl FromPassType for satellite_info_s {
             snr,
             prn,
             _padding0: [0; 7],
-        }
-    }
-}
-
-impl ToPassType for open_drone_id_arm_status_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (self.timestamp, (self.status as f64, self.error.as_slice()))
-    }
-}
-
-impl FromPassType for open_drone_id_arm_status_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let status: u8 = pass.0 as u8;
-        let error: [::core::ffi::c_char; 50] =
-            core::array::from_fn(|i| pass.1[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            status,
-            error,
-            _padding0: [0; 5],
         }
     }
 }
@@ -3941,27 +3708,6 @@ impl FromPassType for event_s {
     }
 }
 
-impl ToPassType for mavlink_log_s {
-    type PassType = (ByteSliceSignal, f64);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (self.timestamp, (self.text.as_slice(), self.severity as f64))
-    }
-}
-
-impl FromPassType for mavlink_log_s {
-    type PassType = (ByteSliceSignal, f64);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let text: [::core::ffi::c_char; 127] =
-            core::array::from_fn(|i| pass.0[i] as ::core::ffi::c_char);
-        let severity: u8 = pass.1 as u8;
-        Self {
-            timestamp: timestamp,
-            text,
-            severity,
-        }
-    }
-}
-
 impl ToPassType for sensor_accel_fifo_s {
     type PassType = (
         f64,
@@ -4074,31 +3820,6 @@ impl FromPassType for parameter_set_value_response_s {
     }
 }
 
-impl ToPassType for task_stack_info_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (self.stack_free as f64, self.task_name.as_slice()),
-        )
-    }
-}
-
-impl FromPassType for task_stack_info_s {
-    type PassType = (f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let stack_free: u16 = pass.0 as u16;
-        let task_name: [::core::ffi::c_char; 24] =
-            core::array::from_fn(|i| pass.1[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            stack_free,
-            task_name,
-            _padding0: [0; 6],
-        }
-    }
-}
-
 impl ToPassType for rpm_s {
     type PassType = (f64, f64);
     fn to_pass_type(&self) -> (u64, Self::PassType) {
@@ -4118,39 +3839,6 @@ impl FromPassType for rpm_s {
             timestamp: timestamp,
             rpm_estimate,
             rpm_raw,
-        }
-    }
-}
-
-impl ToPassType for open_drone_id_self_id_s {
-    type PassType = (Matrix<20, 1, f64>, f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                Matrix {
-                    data: [core::array::from_fn(|i| self.id_or_mac[i] as f64)],
-                },
-                self.description_type as f64,
-                self.description.as_slice(),
-            ),
-        )
-    }
-}
-
-impl FromPassType for open_drone_id_self_id_s {
-    type PassType = (Matrix<20, 1, f64>, f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let id_or_mac: [u8; 20] = core::array::from_fn(|i| pass.0.data[0][i] as u8);
-        let description_type: u8 = pass.1 as u8;
-        let description: [::core::ffi::c_char; 23] =
-            core::array::from_fn(|i| pass.2[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            id_or_mac,
-            description_type,
-            description,
-            _padding0: [0; 4],
         }
     }
 }
@@ -4250,40 +3938,6 @@ impl FromPassType for arming_check_request_s {
             timestamp: timestamp,
             request_id,
             _padding0: [0; 7],
-        }
-    }
-}
-
-impl ToPassType for unregister_ext_component_s {
-    type PassType = (ByteSliceSignal, f64, f64, f64);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                self.name.as_slice(),
-                self.arming_check_id as f64,
-                self.mode_id as f64,
-                self.mode_executor_id as f64,
-            ),
-        )
-    }
-}
-
-impl FromPassType for unregister_ext_component_s {
-    type PassType = (ByteSliceSignal, f64, f64, f64);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let name: [::core::ffi::c_char; 25] =
-            core::array::from_fn(|i| pass.0[i] as ::core::ffi::c_char);
-        let arming_check_id: i8 = pass.1 as i8;
-        let mode_id: i8 = pass.2 as i8;
-        let mode_executor_id: i8 = pass.3 as i8;
-        Self {
-            timestamp: timestamp,
-            name,
-            arming_check_id,
-            mode_id,
-            mode_executor_id,
-            _padding0: [0; 4],
         }
     }
 }
@@ -4476,49 +4130,6 @@ impl FromPassType for gimbal_manager_status_s {
     }
 }
 
-impl ToPassType for uavcan_parameter_request_s {
-    type PassType = (f64, f64, f64, f64, f64, ByteSliceSignal, f64);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                self.int_value as f64,
-                self.real_value as f64,
-                self.param_index as f64,
-                self.message_type as f64,
-                self.node_id as f64,
-                self.param_id.as_slice(),
-                self.param_type as f64,
-            ),
-        )
-    }
-}
-
-impl FromPassType for uavcan_parameter_request_s {
-    type PassType = (f64, f64, f64, f64, f64, ByteSliceSignal, f64);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let int_value: i64 = pass.0 as i64;
-        let real_value: f32 = pass.1 as f32;
-        let param_index: i16 = pass.2 as i16;
-        let message_type: u8 = pass.3 as u8;
-        let node_id: u8 = pass.4 as u8;
-        let param_id: [::core::ffi::c_char; 17] =
-            core::array::from_fn(|i| pass.5[i] as ::core::ffi::c_char);
-        let param_type: u8 = pass.6 as u8;
-        Self {
-            timestamp: timestamp,
-            int_value,
-            real_value,
-            param_index,
-            message_type,
-            node_id,
-            param_id,
-            param_type,
-            _padding0: [0; 6],
-        }
-    }
-}
-
 impl ToPassType for action_request_s {
     type PassType = (f64, f64, f64);
     fn to_pass_type(&self) -> (u64, Self::PassType) {
@@ -4595,49 +4206,6 @@ impl FromPassType for actuator_servos_s {
             timestamp: timestamp,
             timestamp_sample: timestamp,
             control,
-        }
-    }
-}
-
-impl ToPassType for uavcan_parameter_value_s {
-    type PassType = (f64, f64, f64, f64, f64, ByteSliceSignal, f64);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                self.int_value as f64,
-                self.real_value as f64,
-                self.param_index as f64,
-                self.param_count as f64,
-                self.node_id as f64,
-                self.param_id.as_slice(),
-                self.param_type as f64,
-            ),
-        )
-    }
-}
-
-impl FromPassType for uavcan_parameter_value_s {
-    type PassType = (f64, f64, f64, f64, f64, ByteSliceSignal, f64);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let int_value: i64 = pass.0 as i64;
-        let real_value: f32 = pass.1 as f32;
-        let param_index: i16 = pass.2 as i16;
-        let param_count: u16 = pass.3 as u16;
-        let node_id: u8 = pass.4 as u8;
-        let param_id: [::core::ffi::c_char; 17] =
-            core::array::from_fn(|i| pass.5[i] as ::core::ffi::c_char);
-        let param_type: u8 = pass.6 as u8;
-        Self {
-            timestamp: timestamp,
-            int_value,
-            real_value,
-            param_index,
-            param_count,
-            node_id,
-            param_id,
-            param_type,
-            _padding0: [0; 5],
         }
     }
 }
@@ -4861,40 +4429,6 @@ impl FromPassType for takeoff_status_s {
             tilt_limit,
             takeoff_state,
             _padding0: [0; 3],
-        }
-    }
-}
-
-impl ToPassType for message_format_response_s {
-    type PassType = (f64, f64, ByteSliceSignal, f64);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                self.message_hash as f64,
-                self.protocol_version as f64,
-                self.topic_name.as_slice(),
-                self.success as u8 as f64,
-            ),
-        )
-    }
-}
-
-impl FromPassType for message_format_response_s {
-    type PassType = (f64, f64, ByteSliceSignal, f64);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let message_hash: u32 = pass.0 as u32;
-        let protocol_version: u16 = pass.1 as u16;
-        let topic_name: [::core::ffi::c_char; 50] =
-            core::array::from_fn(|i| pass.2[i] as ::core::ffi::c_char);
-        let success: bool = pass.3 != 0.0;
-        Self {
-            timestamp: timestamp,
-            message_hash,
-            protocol_version,
-            topic_name,
-            success,
-            _padding0: [0; 7],
         }
     }
 }
@@ -5385,77 +4919,6 @@ impl FromPassType for wind_s {
             tas_innov_var,
             beta_innov,
             beta_innov_var,
-        }
-    }
-}
-
-impl ToPassType for rc_parameter_map_s {
-    type PassType = (
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        ByteSliceSignal,
-    );
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                Matrix {
-                    data: [core::array::from_fn(|i| self.param_index[i] as f64)],
-                },
-                Matrix {
-                    data: [core::array::from_fn(|i| self.scale[i] as f64)],
-                },
-                Matrix {
-                    data: [core::array::from_fn(|i| self.value0[i] as f64)],
-                },
-                Matrix {
-                    data: [core::array::from_fn(|i| self.value_min[i] as f64)],
-                },
-                Matrix {
-                    data: [core::array::from_fn(|i| self.value_max[i] as f64)],
-                },
-                Matrix {
-                    data: [core::array::from_fn(|i| self.valid[i] as u8 as f64)],
-                },
-                self.param_id.as_slice(),
-            ),
-        )
-    }
-}
-
-impl FromPassType for rc_parameter_map_s {
-    type PassType = (
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        Matrix<3, 1, f64>,
-        ByteSliceSignal,
-    );
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let param_index: [i32; 3] = core::array::from_fn(|i| pass.0.data[0][i] as i32);
-        let scale: [f32; 3] = core::array::from_fn(|i| pass.1.data[0][i] as f32);
-        let value0: [f32; 3] = core::array::from_fn(|i| pass.2.data[0][i] as f32);
-        let value_min: [f32; 3] = core::array::from_fn(|i| pass.3.data[0][i] as f32);
-        let value_max: [f32; 3] = core::array::from_fn(|i| pass.4.data[0][i] as f32);
-        let valid: [bool; 3] = core::array::from_fn(|i| pass.5.data[0][i] != 0.0);
-        let param_id: [::core::ffi::c_char; 51] =
-            core::array::from_fn(|i| pass.6[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            param_index,
-            scale,
-            value0,
-            value_min,
-            value_max,
-            valid,
-            param_id,
-            _padding0: [0; 6],
         }
     }
 }
@@ -6754,37 +6217,6 @@ impl FromPassType for timesync_status_s {
             round_trip_time,
             source_protocol,
             _padding0: [0; 3],
-        }
-    }
-}
-
-impl ToPassType for qshell_req_s {
-    type PassType = (f64, f64, ByteSliceSignal);
-    fn to_pass_type(&self) -> (u64, Self::PassType) {
-        (
-            self.timestamp,
-            (
-                self.strlen as f64,
-                self.request_sequence as f64,
-                self.cmd.as_slice(),
-            ),
-        )
-    }
-}
-
-impl FromPassType for qshell_req_s {
-    type PassType = (f64, f64, ByteSliceSignal);
-    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
-        let strlen: u32 = pass.0 as u32;
-        let request_sequence: u32 = pass.1 as u32;
-        let cmd: [::core::ffi::c_char; 100] =
-            core::array::from_fn(|i| pass.2[i] as ::core::ffi::c_char);
-        Self {
-            timestamp: timestamp,
-            strlen,
-            request_sequence,
-            cmd,
-            _padding0: [0; 4],
         }
     }
 }
