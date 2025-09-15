@@ -75,7 +75,7 @@ where
         _context: &dyn Context,
     ) -> PassBy<'_, Self::Output> {
         self.store = Some(pictorus_traits::Matrix::<NROWS, NCOLS, T>::default());
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
@@ -92,7 +92,7 @@ where
         _context: &dyn Context,
     ) -> PassBy<'_, Self::Output> {
         self.store = Some((A::default(), B::default()));
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
@@ -110,7 +110,7 @@ where
         _context: &dyn Context,
     ) -> PassBy<'_, Self::Output> {
         self.store = Some((A::default(), B::default(), C::default()));
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
@@ -129,7 +129,7 @@ where
         _context: &dyn Context,
     ) -> PassBy<'_, Self::Output> {
         self.store = Some((A::default(), B::default(), C::default(), D::default()));
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
@@ -166,7 +166,7 @@ where
             D::default(),
             E::default(),
         ));
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
@@ -206,7 +206,7 @@ where
             E::default(),
             F::default(),
         ));
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
@@ -249,7 +249,7 @@ where
             F::default(),
             G::default(),
         ));
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
@@ -295,7 +295,7 @@ where
             G::default(),
             H::default(),
         ));
-        self.store.as_ref().unwrap().as_by()
+        self.store.as_ref().expect("Store was not initialized").as_by()
     }
 }
 
