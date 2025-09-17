@@ -575,14 +575,8 @@ where
     }
 
     pub fn is_truthy(&self) -> bool {
-        for col in 0..NCOLS {
-            for row in 0..NROWS {
-                if self.data[col][row] != T::default() {
-                    return true;
-                }
-            }
-        }
-        false
+        let default = T::default();
+        self.data.iter().flatten().any(|x| *x != default)
     }
 }
 
