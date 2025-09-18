@@ -410,7 +410,7 @@ where
 /// "Scalar" types
 ///
 /// Marker trait for small primitives like floats, integers and booleans
-pub trait Scalar: Sealed + Copy + 'static + Default + Into<f64> {}
+pub trait Scalar: Sealed + Copy + 'static + Default + Into<f64> + PartialEq {}
 
 impl Scalar for bool {}
 impl Sealed for bool {}
@@ -572,6 +572,11 @@ where
         Self {
             data: unsafe { mem::zeroed() },
         }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        let default = T::default();
+        self.data.iter().flatten().any(|x| *x != default)
     }
 }
 
