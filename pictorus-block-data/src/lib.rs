@@ -666,7 +666,7 @@ impl BlockData {
     pub fn median(&self) -> f64 {
         let sorted_values = self.sorted(true);
         let len = sorted_values.len();
-        if len % 2 == 0 {
+        if len.is_multiple_of(2) {
             (sorted_values.at(len / 2 - 1) + sorted_values.at(len / 2)) / 2.0
         } else {
             sorted_values.at(len / 2)
