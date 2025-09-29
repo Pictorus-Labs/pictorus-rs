@@ -130,6 +130,12 @@ unsafe impl Sync for MessageEntry {}
 static FFI_PROTOCOL: Lazy<RwLock<UorbBinding>> = Lazy::new(|| RwLock::new(UorbBinding::new()));
 
 impl UorbBinding {
+    /// Reset the global FFI_PROTOCOL to a new UorbBinding instance
+    pub fn reset() {
+        let mut protocol = FFI_PROTOCOL.write();
+        *protocol = UorbBinding::new();
+    }
+
     pub fn get() -> RwLockReadGuard<'static, UorbBinding> {
         FFI_PROTOCOL.read()
     }
@@ -1128,5 +1134,27 @@ mod tests {
         };
 
         assert_eq!(result, FfiReturnCode::NullArgument);
+    }
+
+    #[test]
+    fn test_ffi_reset() {
+        {
+            // Get lock on FFI_PROTOCOL
+            let mut protocol = UorbBinding::get_mut();
+            protocol.subscribe_to_message(MockTopic::default());
+            protocol.advertise_message(MockTopic::default());
+
+            assert_eq!(protocol.get_input_message_count(), 1);
+            assert_eq!(protocol.get_output_message_count(), 1);
+            // Drop lock on FFI_PROTOCOL
+        }
+
+        // Reset FFI_PROTOCOL
+        UorbBinding::reset();
+
+        // Verify FFI_PROTOCOL is reset
+        let protocol = UorbBinding::get();
+        assert_eq!(protocol.get_input_message_count(), 0);
+        assert_eq!(protocol.get_output_message_count(), 0);
     }
 }
