@@ -380,12 +380,12 @@ use px4_msgs_sys::{
         can_interface_status_s, cellular_status_s, collision_constraints_s, config_overrides_s,
         control_allocator_status_s, cpuload_s, dataman_request_s, dataman_response_s,
         debug_array_s, debug_key_value_s, debug_value_s, debug_vect_s, differential_pressure_s,
-        distance_sensor_mode_change_request_s, distance_sensor_s,
-        ekf2_timestamps_s, esc_report_s, estimator_aid_source1d_s, estimator_aid_source2d_s,
-        estimator_aid_source3d_s, estimator_bias3d_s, estimator_bias_s, estimator_event_flags_s,
-        estimator_gps_status_s, estimator_innovations_s, estimator_selector_status_s,
-        estimator_sensor_bias_s, estimator_states_s, estimator_status_flags_s, estimator_status_s,
-        event_s, failsafe_flags_s, failure_detector_status_s, figure_eight_status_s,
+        distance_sensor_mode_change_request_s, distance_sensor_s, ekf2_timestamps_s, esc_report_s,
+        estimator_aid_source1d_s, estimator_aid_source2d_s, estimator_aid_source3d_s,
+        estimator_bias3d_s, estimator_bias_s, estimator_event_flags_s, estimator_gps_status_s,
+        estimator_innovations_s, estimator_selector_status_s, estimator_sensor_bias_s,
+        estimator_states_s, estimator_status_flags_s, estimator_status_s, event_s,
+        failsafe_flags_s, failure_detector_status_s, figure_eight_status_s,
         flight_phase_estimation_s, follow_target_estimator_s, follow_target_s,
         follow_target_status_s, fuel_tank_status_s, generator_status_s, geofence_result_s,
         geofence_status_s, gimbal_controls_s, gimbal_device_attitude_status_s,
@@ -1513,6 +1513,61 @@ define_topics! {
 
     /// Gimbal Device Information topic
     GimbalDeviceInformation => gimbal_device_information_s, __orb_gimbal_device_information;
+}
+
+// --------------------------------------------------------------------------------
+// Manual message impls below here
+// --------------------------------------------------------------------------------
+
+/// Manual Implementation for Manual Control Setpoint; Manual Control Setpoint 
+/// currently has more than 8 fields but is highly useful for controls.
+impl ToPassType for manual_control_setpoint_s {
+    type PassType = (f64, f64, f64, f64, f64);
+    fn to_pass_type(&self) -> (u64, Self::PassType) {
+        (
+            self.timestamp,
+            (
+                self.roll as f64,
+                self.pitch as f64,
+                self.yaw as f64,
+                self.throttle as f64,
+                self.flaps as f64,
+            ),
+        )
+    }
+}
+
+/// Manual Implementation for Manual Control Setpoint; not really meant to be used
+/// for publishing due to the 0 / false defaults, but could be used for testing.
+impl FromPassType for manual_control_setpoint_s {
+    type PassType = (f64, f64, f64, f64, f64);
+    fn from_pass_type(timestamp: u64, pass: PassBy<Self::PassType>) -> Self {
+        let roll: f32 = pass.0 as f32;
+        let pitch: f32 = pass.1 as f32;
+        let yaw: f32 = pass.2 as f32;
+        let throttle: f32 = pass.3 as f32;
+        let flaps: f32 = pass.4 as f32;
+        Self {
+            timestamp: timestamp,
+            timestamp_sample: timestamp,
+            roll,
+            pitch,
+            yaw,
+            throttle,
+            flaps,
+            aux1: 0.0,
+            aux2: 0.0,
+            aux3: 0.0,
+            aux4: 0.0,
+            aux5: 0.0,
+            aux6: 0.0,
+            buttons: 0,
+            sticks_moving: false,
+            data_source: 0,
+            valid: false,
+            _padding0: [0; 7],
+        }
+    }
 }
 
 // --------------------------------------------------------------------------------
