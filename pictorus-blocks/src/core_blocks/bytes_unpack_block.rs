@@ -4,7 +4,7 @@ use core::time::Duration;
 use crate::{traits::Scalar, IsValid};
 use alloc::vec::Vec;
 use generic_array::{ArrayLength, GenericArray};
-use typenum::{Const, Sub1, ToUInt, B1, U};
+use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
 
 use crate::byte_data::{parse_byte_data_spec, try_unpack_data, ByteOrderSpec, DataType};
 use pictorus_block_data::BlockData as OldBlockData;
@@ -40,7 +40,7 @@ pub struct Parameters<N: ArrayLength> {
 impl<const N: usize> ProcessBlock for BytesUnpackBlock<N>
 where
     Const<N>: ToUInt,
-    U<N>: core::ops::Sub<B1>,
+    U<N>: core::ops::Sub<B1> + NonZero,
     Sub1<U<N>>: ArrayLength,
 {
     type Parameters = Parameters<Sub1<U<N>>>;
@@ -66,11 +66,11 @@ where
         // the data at N is the `is_valid` flag
         let mut inputs = inputs;
         let mut unpack_success = true;
-        for i in 0..(N - 1) {
+        for (i, elem) in new_buffer.iter_mut().enumerate().take((N - 1)) {
             let (val, advanced_data) =
                 f64::unpack(inputs, parameters.pack_spec[i].0, parameters.pack_spec[i].1);
             if let Some(val) = val {
-                new_buffer[i] = val;
+                *elem = val;
             } else {
                 unpack_success = false;
                 break;
