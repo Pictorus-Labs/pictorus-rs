@@ -39,9 +39,10 @@ pub struct Parameters<N: ArrayLength> {
 
 impl<const N: usize> ProcessBlock for BytesUnpackBlock<N>
 where
-    Const<N>: ToUInt,
-    U<N>: core::ops::Sub<B1> + NonZero,
-    Sub1<U<N>>: ArrayLength,
+    // To be able to have parameters be of size N-1 we use typenum to express that at the type level
+    Const<N>: ToUInt,                   // Ensure N can be converted to a typenum UInt
+    U<N>: core::ops::Sub<B1> + NonZero, // Ensure N-1 is non-zero and N-1 is valid
+    Sub1<U<N>>: ArrayLength, // Ensure we can use N-1 as an ArrayLength (this is a trait defined by generic-array). `Sub1<U<N>>` is shorthand for `<U<N> as Sub<B1>>::Output`
 {
     type Parameters = Parameters<Sub1<U<N>>>;
 
