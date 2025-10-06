@@ -66,7 +66,7 @@ where
         // the data at N is the `is_valid` flag
         let mut inputs = inputs;
         let mut unpack_success = true;
-        for (i, elem) in new_buffer.iter_mut().enumerate().take((N - 1)) {
+        for (i, elem) in new_buffer.iter_mut().enumerate().take(N - 1) {
             let (val, advanced_data) =
                 f64::unpack(inputs, parameters.pack_spec[i].0, parameters.pack_spec[i].1);
             if let Some(val) = val {
@@ -93,27 +93,6 @@ where
         &self.buffer
     }
 }
-
-// impl<T: Apply> ProcessBlock for BytesUnpackBlock<T> {
-//     type Inputs = ByteSliceSignal;
-//     type Output = T::Output;
-//     type Parameters = T::Parameters;
-
-//     fn process<'b>(
-//         &'b mut self,
-//         parameters: &Self::Parameters,
-//         context: &dyn pictorus_traits::Context,
-//         inputs: PassBy<'_, Self::Inputs>,
-//     ) -> PassBy<'b, Self::Output> {
-//         let update_age = context.time() - self.last_valid_time.unwrap_or_default();
-//         let unpack_success = T::apply(&mut self.buffer, inputs, parameters, update_age);
-//         self.data = T::as_old_block_data(&self.buffer);
-//         if unpack_success {
-//             self.last_valid_time = Some(context.time());
-//         }
-//         self.buffer.as_by()
-//     }
-// }
 
 impl<const N: usize> IsValid for BytesUnpackBlock<N> {
     fn is_valid(&self, _app_time_s: f64) -> OldBlockData {
