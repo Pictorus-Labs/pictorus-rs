@@ -2,23 +2,28 @@ extern crate alloc;
 use core::time::Duration;
 
 use crate::{traits::Scalar, IsValid};
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
+use generic_array::{ArrayLength, GenericArray};
+use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
 
 use crate::byte_data::{parse_byte_data_spec, try_unpack_data, ByteOrderSpec, DataType};
 use pictorus_block_data::BlockData as OldBlockData;
-use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Unpacks a byte slice into a specified number of outputs based on the provided data types and byte order.
-pub struct BytesUnpackBlock<T: Apply> {
+pub struct BytesUnpackBlock<const N: usize> {
     pub data: Vec<OldBlockData>,
-    buffer: T::Output,
+    buffer: [f64; N],
     last_valid_time: Option<Duration>,
 }
 
-impl<T: Apply> Default for BytesUnpackBlock<T> {
+impl<const N: usize> Default for BytesUnpackBlock<N> {
     fn default() -> Self {
-        let buffer = T::Output::default();
-        let data = T::as_old_block_data(&buffer);
+        let buffer = [0.0; N];
+        let data = buffer
+            .iter()
+            .map(|_| OldBlockData::from_scalar(0.0))
+            .collect();
         BytesUnpackBlock {
             data,
             buffer,
@@ -27,10 +32,22 @@ impl<T: Apply> Default for BytesUnpackBlock<T> {
     }
 }
 
-impl<T: Apply> ProcessBlock for BytesUnpackBlock<T> {
+pub struct Parameters<N: ArrayLength> {
+    pub pack_spec: GenericArray<(DataType, ByteOrderSpec), N>,
+    pub stale_age: Duration,
+}
+
+impl<const N: usize> ProcessBlock for BytesUnpackBlock<N>
+where
+    // To be able to have parameters be of size N-1 we use typenum to express that at the type level
+    Const<N>: ToUInt,                   // Ensure N can be converted to a typenum UInt
+    U<N>: core::ops::Sub<B1> + NonZero, // Ensure N-1 is non-zero and N-1 is valid
+    Sub1<U<N>>: ArrayLength, // Ensure we can use N-1 as an ArrayLength (this is a trait defined by generic-array). `Sub1<U<N>>` is shorthand for `<U<N> as Sub<B1>>::Output`
+{
+    type Parameters = Parameters<Sub1<U<N>>>;
+
     type Inputs = ByteSliceSignal;
-    type Output = T::Output;
-    type Parameters = T::Parameters;
+    type Output = [f64; N];
 
     fn process<'b>(
         &'b mut self,
@@ -38,28 +55,53 @@ impl<T: Apply> ProcessBlock for BytesUnpackBlock<T> {
         context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let update_age = context.time() - self.last_valid_time.unwrap_or_default();
-        let unpack_success = T::apply(&mut self.buffer, inputs, parameters, update_age);
-        self.data = T::as_old_block_data(&self.buffer);
-        if unpack_success {
-            self.last_valid_time = Some(context.time());
+        let maybe_stale = if let Some(last_valid) = self.last_valid_time {
+            (context.time() - last_valid) > parameters.stale_age
+        } else {
+            // We've never had a valid time, so consider it stale if we don't get a valid read now
+            true
+        };
+        let mut new_buffer = [0.0; N];
+        // Use Unpack::unpack N-1 times to fill the buffer
+        // if it fails at any point, keep the old buffer values
+        // the data at N is the `is_valid` flag
+        let mut inputs = inputs;
+        let mut unpack_success = true;
+        for (i, elem) in new_buffer.iter_mut().enumerate().take(N - 1) {
+            let (val, advanced_data) =
+                f64::unpack(inputs, parameters.pack_spec[i].0, parameters.pack_spec[i].1);
+            if let Some(val) = val {
+                *elem = val;
+            } else {
+                unpack_success = false;
+                break;
+            }
+            inputs = advanced_data;
         }
-        self.buffer.as_by()
+        if unpack_success {
+            new_buffer[N - 1] = 1.0; // last element is is_valid flag
+            self.buffer = new_buffer;
+            self.last_valid_time = Some(context.time());
+        } else if maybe_stale {
+            // If we failed to unpack and it is stale, keep the old buffer but mark as invalid
+            self.buffer[N - 1] = 0.0; // last element is is_valid flag
+        }
+        self.data = self
+            .buffer
+            .iter()
+            .map(|&x| OldBlockData::from_scalar(x))
+            .collect();
+        &self.buffer
     }
 }
 
-impl<T: Apply> IsValid for BytesUnpackBlock<T> {
+impl<const N: usize> IsValid for BytesUnpackBlock<N> {
     fn is_valid(&self, _app_time_s: f64) -> OldBlockData {
-        OldBlockData::scalar_from_bool(T::is_valid(&self.buffer))
+        OldBlockData::from_scalar(self.buffer[N - 1])
     }
 }
 
-pub struct Parameters<const N: usize> {
-    pub pack_spec: [(DataType, ByteOrderSpec); N],
-    pub stale_age: Duration,
-}
-
-impl<const N: usize> Parameters<N> {
+impl<N: ArrayLength> Parameters<N> {
     /// This constructor takes a slice of strings that represent the data spec for each input.
     pub fn new<S: AsRef<str>>(pack_spec_str: &[S], stale_age_ms: f64) -> Self {
         let pack_spec = parse_byte_data_spec(pack_spec_str)
@@ -75,9 +117,6 @@ impl<const N: usize> Parameters<N> {
 pub trait Unpack: Scalar {
     fn unpack(data: &[u8], data_type: DataType, byte_order: ByteOrderSpec)
         -> (Option<Self>, &[u8]);
-
-    /// Just needed to support the OldBlockData
-    fn as_f64(&self) -> f64;
 }
 
 impl Unpack for f64 {
@@ -100,312 +139,6 @@ impl Unpack for f64 {
         };
         (val, advanced_data)
     }
-
-    fn as_f64(&self) -> f64 {
-        *self
-    }
-}
-
-pub trait Apply: Default + Pass {
-    type Output: Pass + Default;
-    type Parameters;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool;
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData>;
-
-    fn is_valid(val: &Self::Output) -> bool;
-}
-
-impl<T: Unpack> Apply for T {
-    type Output = (T, bool);
-    type Parameters = Parameters<1>;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool {
-        let val1 = T::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1).0;
-        if let Some(val1) = val1 {
-            *dest = (val1, true);
-            true
-        } else {
-            if update_age > parameters.stale_age {
-                dest.1 = false;
-            }
-            false
-        }
-    }
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
-        vec![OldBlockData::from_scalar(val.0.as_f64())]
-    }
-
-    fn is_valid(val: &Self::Output) -> bool {
-        val.1
-    }
-}
-
-impl<T1: Unpack, T2: Unpack> Apply for (T1, T2) {
-    type Output = (T1, T2, bool);
-    type Parameters = Parameters<2>;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool {
-        let (val1, data) = T1::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1);
-        let (val2, _) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
-        if let (Some(val1), Some(val2)) = (val1, val2) {
-            *dest = (val1, val2, true);
-            true
-        } else {
-            if update_age > parameters.stale_age {
-                dest.2 = false;
-            }
-            false
-        }
-    }
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
-        vec![
-            OldBlockData::from_scalar(val.0.as_f64()),
-            OldBlockData::from_scalar(val.1.as_f64()),
-        ]
-    }
-
-    fn is_valid(val: &Self::Output) -> bool {
-        val.2
-    }
-}
-
-impl<T1: Unpack, T2: Unpack, T3: Unpack> Apply for (T1, T2, T3) {
-    type Output = (T1, T2, T3, bool);
-    type Parameters = Parameters<3>;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool {
-        let (val1, data) = T1::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1);
-        let (val2, data) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
-        let (val3, _) = T3::unpack(data, parameters.pack_spec[2].0, parameters.pack_spec[2].1);
-        if let (Some(val1), Some(val2), Some(val3)) = (val1, val2, val3) {
-            *dest = (val1, val2, val3, true);
-            true
-        } else {
-            if update_age > parameters.stale_age {
-                dest.3 = false;
-            }
-            false
-        }
-    }
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
-        vec![
-            OldBlockData::from_scalar(val.0.as_f64()),
-            OldBlockData::from_scalar(val.1.as_f64()),
-            OldBlockData::from_scalar(val.2.as_f64()),
-        ]
-    }
-    fn is_valid(val: &Self::Output) -> bool {
-        val.3
-    }
-}
-
-impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack> Apply for (T1, T2, T3, T4) {
-    type Output = (T1, T2, T3, T4, bool);
-    type Parameters = Parameters<4>;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool {
-        let (val1, data) = T1::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1);
-        let (val2, data) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
-        let (val3, data) = T3::unpack(data, parameters.pack_spec[2].0, parameters.pack_spec[2].1);
-        let (val4, _) = T4::unpack(data, parameters.pack_spec[3].0, parameters.pack_spec[3].1);
-        if let (Some(val1), Some(val2), Some(val3), Some(val4)) = (val1, val2, val3, val4) {
-            *dest = (val1, val2, val3, val4, true);
-            true
-        } else {
-            if update_age > parameters.stale_age {
-                dest.4 = false;
-            }
-            false
-        }
-    }
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
-        vec![
-            OldBlockData::from_scalar(val.0.as_f64()),
-            OldBlockData::from_scalar(val.1.as_f64()),
-            OldBlockData::from_scalar(val.2.as_f64()),
-            OldBlockData::from_scalar(val.3.as_f64()),
-        ]
-    }
-
-    fn is_valid(val: &Self::Output) -> bool {
-        val.4
-    }
-}
-
-impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack> Apply for (T1, T2, T3, T4, T5) {
-    type Output = (T1, T2, T3, T4, T5, bool);
-    type Parameters = Parameters<5>;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool {
-        let (val1, data) = T1::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1);
-        let (val2, data) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
-        let (val3, data) = T3::unpack(data, parameters.pack_spec[2].0, parameters.pack_spec[2].1);
-        let (val4, data) = T4::unpack(data, parameters.pack_spec[3].0, parameters.pack_spec[3].1);
-        let (val5, _) = T5::unpack(data, parameters.pack_spec[4].0, parameters.pack_spec[4].1);
-        if let (Some(val1), Some(val2), Some(val3), Some(val4), Some(val5)) =
-            (val1, val2, val3, val4, val5)
-        {
-            *dest = (val1, val2, val3, val4, val5, true);
-            true
-        } else {
-            if update_age > parameters.stale_age {
-                dest.5 = false;
-            }
-            false
-        }
-    }
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
-        vec![
-            OldBlockData::from_scalar(val.0.as_f64()),
-            OldBlockData::from_scalar(val.1.as_f64()),
-            OldBlockData::from_scalar(val.2.as_f64()),
-            OldBlockData::from_scalar(val.3.as_f64()),
-            OldBlockData::from_scalar(val.4.as_f64()),
-        ]
-    }
-
-    fn is_valid(val: &Self::Output) -> bool {
-        val.5
-    }
-}
-
-impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack> Apply
-    for (T1, T2, T3, T4, T5, T6)
-{
-    type Output = (T1, T2, T3, T4, T5, T6, bool);
-    type Parameters = Parameters<6>;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool {
-        let (val1, data) = T1::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1);
-        let (val2, data) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
-        let (val3, data) = T3::unpack(data, parameters.pack_spec[2].0, parameters.pack_spec[2].1);
-        let (val4, data) = T4::unpack(data, parameters.pack_spec[3].0, parameters.pack_spec[3].1);
-        let (val5, data) = T5::unpack(data, parameters.pack_spec[4].0, parameters.pack_spec[4].1);
-        let (val6, _) = T6::unpack(data, parameters.pack_spec[5].0, parameters.pack_spec[5].1);
-        if let (Some(val1), Some(val2), Some(val3), Some(val4), Some(val5), Some(val6)) =
-            (val1, val2, val3, val4, val5, val6)
-        {
-            *dest = (val1, val2, val3, val4, val5, val6, true);
-            true
-        } else {
-            if update_age > parameters.stale_age {
-                dest.6 = false;
-            }
-            false
-        }
-    }
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
-        vec![
-            OldBlockData::from_scalar(val.0.as_f64()),
-            OldBlockData::from_scalar(val.1.as_f64()),
-            OldBlockData::from_scalar(val.2.as_f64()),
-            OldBlockData::from_scalar(val.3.as_f64()),
-            OldBlockData::from_scalar(val.4.as_f64()),
-            OldBlockData::from_scalar(val.5.as_f64()),
-        ]
-    }
-
-    fn is_valid(val: &Self::Output) -> bool {
-        val.6
-    }
-}
-
-impl<T1: Unpack, T2: Unpack, T3: Unpack, T4: Unpack, T5: Unpack, T6: Unpack, T7: Unpack> Apply
-    for (T1, T2, T3, T4, T5, T6, T7)
-{
-    type Output = (T1, T2, T3, T4, T5, T6, T7, bool);
-    type Parameters = Parameters<7>;
-
-    fn apply(
-        dest: &mut Self::Output,
-        data: PassBy<ByteSliceSignal>,
-        parameters: &Self::Parameters,
-        update_age: Duration,
-    ) -> bool {
-        let (val1, data) = T1::unpack(data, parameters.pack_spec[0].0, parameters.pack_spec[0].1);
-        let (val2, data) = T2::unpack(data, parameters.pack_spec[1].0, parameters.pack_spec[1].1);
-        let (val3, data) = T3::unpack(data, parameters.pack_spec[2].0, parameters.pack_spec[2].1);
-        let (val4, data) = T4::unpack(data, parameters.pack_spec[3].0, parameters.pack_spec[3].1);
-        let (val5, data) = T5::unpack(data, parameters.pack_spec[4].0, parameters.pack_spec[4].1);
-        let (val6, data) = T6::unpack(data, parameters.pack_spec[5].0, parameters.pack_spec[5].1);
-        let (val7, _) = T7::unpack(data, parameters.pack_spec[6].0, parameters.pack_spec[6].1);
-        if let (
-            Some(val1),
-            Some(val2),
-            Some(val3),
-            Some(val4),
-            Some(val5),
-            Some(val6),
-            Some(val7),
-        ) = (val1, val2, val3, val4, val5, val6, val7)
-        {
-            *dest = (val1, val2, val3, val4, val5, val6, val7, true);
-            true
-        } else {
-            if update_age > parameters.stale_age {
-                dest.7 = false;
-            }
-            false
-        }
-    }
-
-    fn as_old_block_data(val: &Self::Output) -> Vec<OldBlockData> {
-        vec![
-            OldBlockData::from_scalar(val.0.as_f64()),
-            OldBlockData::from_scalar(val.1.as_f64()),
-            OldBlockData::from_scalar(val.2.as_f64()),
-            OldBlockData::from_scalar(val.3.as_f64()),
-            OldBlockData::from_scalar(val.4.as_f64()),
-            OldBlockData::from_scalar(val.5.as_f64()),
-            OldBlockData::from_scalar(val.6.as_f64()),
-        ]
-    }
-    fn is_valid(val: &Self::Output) -> bool {
-        val.7
-    }
 }
 
 #[cfg(test)]
@@ -419,243 +152,59 @@ mod tests {
     fn test_bytes_unpack_1_output() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<f64>::default();
-        let mut block = BytesUnpackBlock::<f64>::default();
+        let mut block = BytesUnpackBlock::<2>::default();
         let spec_strings = &["I8:BigEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
 
         // Test happy path
         let test_data = 42.0;
-        let expected = (42.0, true);
+        let expected = [42.0, 1.0];
         let packed = pack_block.process(&pack_parameters, &context, test_data);
         let unpacked = block.process(&parameters, &context, packed);
-        assert_eq!(unpacked, expected);
+        assert_eq!(unpacked, expected.as_slice());
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_eq!(unpacked, expected);
+        assert_eq!(unpacked, expected.as_slice());
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_eq!(unpacked, (42.0, false));
+        assert_eq!(unpacked, [42.0, 0.0].as_slice());
     }
 
     #[test]
     fn test_bytes_unpack_2_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<3>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];
         let pack_parameters = PackParameters::new(spec_strings);
         let parameters = Parameters::new(spec_strings, 1000.0);
 
         // Test happy path
         let test_data = (-23.0, 43.0);
-        let expected = (-23.0, 43.0, true);
+        let expected = [-23.0, 43.0, 1.0];
         let packed = pack_block.process(&pack_parameters, &context, test_data);
         let unpacked = block.process(&parameters, &context, packed);
-        assert_eq!(unpacked, expected);
+        assert_eq!(unpacked, expected.as_slice());
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_eq!(unpacked, expected);
+        assert_eq!(unpacked, expected.as_slice());
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_eq!(unpacked, (-23.0, 43.0, false));
-    }
-
-    #[test]
-    fn test_bytes_unpack_3_outputs() {
-        let mut context = StubContext::default();
-        let mut pack_block = BytesPackBlock::<(f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64)>::default();
-        let spec_strings = &["I8:BigEndian", "U64:LittleEndian", "F32:BigEndian"];
-        let pack_parameters = PackParameters::new(spec_strings);
-        let parameters = Parameters::new(spec_strings, 1000.0);
-
-        // Test happy path
-        let test_data = (-23.0, 43.0, 1.234);
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert!(unpacked.3);
-
-        // Test not-stale yet but invalid data
-        let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert!(unpacked.3);
-
-        // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert!(!unpacked.3);
-    }
-
-    #[test]
-    fn test_bytes_unpack_4_outputs() {
-        let mut context = StubContext::default();
-        let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64)>::default();
-        let spec_strings = &[
-            "I8:BigEndian",
-            "U64:LittleEndian",
-            "F32:BigEndian",
-            "F64:LittleEndian",
-        ];
-        let pack_parameters = PackParameters::new(spec_strings);
-        let parameters = Parameters::new(spec_strings, 1000.0);
-
-        // Test happy path
-        let test_data = (-23.0, 43.0, 1.234, 3.1);
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert!(unpacked.4);
-
-        // Test not-stale yet but invalid data
-        let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert!(unpacked.4);
-
-        // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1);
-        assert!(!unpacked.4);
-    }
-
-    #[test]
-    fn test_bytes_unpack_5_outputs() {
-        let mut context = StubContext::default();
-        let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64)>::default();
-        let spec_strings = &[
-            "I8:BigEndian",
-            "U64:LittleEndian",
-            "F32:BigEndian",
-            "F64:LittleEndian",
-            "I32:BigEndian",
-        ];
-        let pack_parameters = PackParameters::new(spec_strings);
-        let parameters = Parameters::new(spec_strings, 1000.0);
-
-        // Test happy path
-        let test_data = (-23.0, 43.0, 1.234, 3.1, 42.5);
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert!(unpacked.5);
-
-        // Test not-stale yet but invalid data
-        let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert!(unpacked.5);
-
-        // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert!(!unpacked.5);
-    }
-
-    #[test]
-    fn test_bytes_unpack_6_outputs() {
-        let mut context = StubContext::default();
-        let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
-        let spec_strings = &[
-            "I8:BigEndian",
-            "U64:LittleEndian",
-            "F32:BigEndian",
-            "F64:LittleEndian",
-            "I32:BigEndian",
-            "U16:LittleEndian",
-        ];
-        let pack_parameters = PackParameters::new(spec_strings);
-        let parameters = Parameters::new(spec_strings, 1000.0);
-
-        // Test happy path
-        let test_data = (-23.0, 43.0, 1.234, 3.1, 42.5, 9999.0);
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert!(unpacked.6);
-
-        // Test not-stale yet but invalid data
-        let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert!(unpacked.6);
-
-        // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &packed[..15]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert!(!unpacked.6);
-
-        // Make it un-stale with new input
-        let test_data = (1337.0, 12.0, 1994.0, -8.3, 71.92, -15.0);
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
-        assert_relative_eq!(unpacked.0, 127.0_f64); //I8 Max
-        assert_relative_eq!(unpacked.1, 12.0_f64);
-        assert_relative_eq!(unpacked.2, 1994.0_f64);
-        assert_relative_eq!(unpacked.3, -8.3_f64);
-        assert_relative_eq!(unpacked.4, 71.0_f64); // Int storage drops decimal
-        assert_relative_eq!(unpacked.5, 0.0_f64); // unsigned storage can't hold negative and defaults to 0
-        assert!(unpacked.6);
+        assert_eq!(unpacked, [-23.0, 43.0, 0.0].as_slice());
     }
 
     #[test]
     fn test_bytes_unpack_7_outputs() {
         let mut context = StubContext::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
-        let mut block = BytesUnpackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<8>::default();
         let spec_strings = &[
             "I8:BigEndian",
             "U64:LittleEndian",
@@ -672,36 +221,90 @@ mod tests {
         let test_data = (-23.0, 43.0, 1.234, 3.1, 42.5, 9999.0, -7.89);
         let packed = pack_block.process(&pack_parameters, &context, test_data);
         let unpacked = block.process(&parameters, &context, packed);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert!(unpacked.7);
+        assert_relative_eq!(unpacked[0], -23.0_f64);
+        assert_relative_eq!(unpacked[1], 43.0_f64);
+        assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[3], 3.1_f64);
+        assert_relative_eq!(unpacked[4], 42.0_f64);
+        assert_relative_eq!(unpacked[5], 9999.0_f64);
+        assert_relative_eq!(unpacked[6], -7.89_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[7], 1.0_f64, epsilon = 0.001);
 
         // Test not-stale yet but invalid data
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert!(unpacked.7);
+        assert_relative_eq!(unpacked[0], -23.0_f64);
+        assert_relative_eq!(unpacked[1], 43.0_f64);
+        assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[3], 3.1_f64);
+        assert_relative_eq!(unpacked[4], 42.0_f64);
+        assert_relative_eq!(unpacked[5], 9999.0_f64);
+        assert_relative_eq!(unpacked[6], -7.89_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[7], 1.0_f64, epsilon = 0.001);
 
         // Now it is stale
         context.time += Duration::from_secs_f64(1.1);
         let unpacked = block.process(&parameters, &context, &[]);
-        assert_relative_eq!(unpacked.0, -23.0_f64);
-        assert_relative_eq!(unpacked.1, 43.0_f64);
-        assert_relative_eq!(unpacked.2, 1.234_f64, epsilon = 0.001);
-        assert_relative_eq!(unpacked.3, 3.1_f64);
-        assert_relative_eq!(unpacked.4, 42.0_f64);
-        assert_relative_eq!(unpacked.5, 9999.0_f64);
-        assert_relative_eq!(unpacked.6, -7.89_f64, epsilon = 0.001);
-        assert!(!unpacked.7);
+        assert_relative_eq!(unpacked[0], -23.0_f64);
+        assert_relative_eq!(unpacked[1], 43.0_f64);
+        assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[3], 3.1_f64);
+        assert_relative_eq!(unpacked[4], 42.0_f64);
+        assert_relative_eq!(unpacked[5], 9999.0_f64);
+        assert_relative_eq!(unpacked[6], -7.89_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[7], 0.0_f64, epsilon = 0.001);
+    }
+
+    #[test]
+    fn test_bytes_unpack_12_outputs() {
+        let context = StubContext::default();
+        let mut pack_block_1 = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
+        let mut pack_block_2 = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
+        let mut block = BytesUnpackBlock::<13>::default();
+        let spec_strings = &[
+            "I8:BigEndian",
+            "U64:LittleEndian",
+            "F32:BigEndian",
+            "F64:LittleEndian",
+            "I32:BigEndian",
+            "U16:LittleEndian",
+            "F32:LittleEndian",
+            "I8:BigEndian",
+            "U64:LittleEndian",
+            "F64:BigEndian",
+            "F64:LittleEndian",
+            "I32:BigEndian",
+        ];
+        let pack_parameters_1 = PackParameters::new(&spec_strings[0..6]);
+        let pack_parameters_2 = PackParameters::new(&spec_strings[6..12]);
+        let parameters = Parameters::new(spec_strings, 1000.0);
+        // Test happy path
+        let test_data_1 = (-23.0, 43.0, 1.234, 3.1, 42.5, 9999.0);
+        let test_data_2 = (
+            -7.89,
+            127.0,
+            123456789.0,
+            3.4028235e38,
+            2.2250739e-308,
+            -2147483648.0,
+        );
+        let packed_1 = pack_block_1.process(&pack_parameters_1, &context, test_data_1);
+        let packed_2 = pack_block_2.process(&pack_parameters_2, &context, test_data_2);
+        let mut packed = alloc::vec![];
+        packed.extend_from_slice(packed_1);
+        packed.extend_from_slice(packed_2);
+        let unpacked = block.process(&parameters, &context, packed.as_slice());
+        assert_relative_eq!(unpacked[0], -23.0_f64);
+        assert_relative_eq!(unpacked[1], 43.0_f64);
+        assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[3], 3.1_f64);
+        assert_relative_eq!(unpacked[4], 42.0_f64);
+        assert_relative_eq!(unpacked[5], 9999.0_f64);
+        assert_relative_eq!(unpacked[6], -7.89_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[7], 127.0_f64);
+        assert_relative_eq!(unpacked[8], 123456789.0_f64);
+        assert_relative_eq!(unpacked[9], 3.4028235e38_f64, epsilon = 0.001);
+        assert_relative_eq!(unpacked[10], 2.2250739e-308_f64);
+        assert_relative_eq!(unpacked[11], -2147483648.0_f64);
+        assert_relative_eq!(unpacked[12], 1.0_f64, epsilon = 0.001);
     }
 }
