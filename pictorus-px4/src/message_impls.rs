@@ -1519,7 +1519,7 @@ define_topics! {
 // Manual message impls below here
 // --------------------------------------------------------------------------------
 
-/// Manual Implementation for Manual Control Setpoint; Manual Control Setpoint 
+/// Manual Implementation for Manual Control Setpoint; Manual Control Setpoint
 /// currently has more than 8 fields but is highly useful for controls.
 impl ToPassType for manual_control_setpoint_s {
     type PassType = (f64, f64, f64, f64, f64);
