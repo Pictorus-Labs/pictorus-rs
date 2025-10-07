@@ -616,236 +616,52 @@ impl Pass for () {
 
 impl Sealed for () {}
 
-impl<A, B> Pass for (A, B)
-where
-    A: Pass,
-    B: Pass,
-{
-    type By<'a> = (PassBy<'a, A>, PassBy<'a, B>);
+/// Generates `Pass` impls for tuples of various sizes of types that impl `Pass`
+/// Example expansion for (A 0, B 1):
+/// ``` rust ignore
+/// impl<A, B> Pass for (A, B)
+/// where
+///     A: Pass,
+///     B: Pass,
+/// {
+///     type By<'a> = (PassBy<'a, A>, PassBy<'a, B>);
+///
+///     fn as_by(&self) -> Self::By<'_> {
+///         (self.0.as_by(), self.1.as_by())
+///     }
+/// }
+/// ```
+macro_rules! impl_pass_for_tuples {
+    ( $( ( $( $T:ident $i:tt ),+ ) ),+ $(,)? ) => {
+        $(
+            impl<$( $T: Pass ),+> Pass for ( $( $T ),+ ) {
+                type By<'a> = ( $( PassBy<'a, $T> ),+ );
 
-    fn as_by(&self) -> Self::By<'_> {
-        (self.0.as_by(), self.1.as_by())
-    }
+                fn as_by(&self) -> Self::By<'_> {
+                    ( $( self.$i.as_by() ),+ )
+                }
+            }
+
+            impl<$( $T: Pass ),+> Sealed for ( $( $T ),+ ) {}
+        )+
+    };
 }
 
-impl<A, B> Sealed for (A, B)
-where
-    A: Pass,
-    B: Pass,
-{
-}
-
-impl<A, B, C> Pass for (A, B, C)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-{
-    type By<'a> = (PassBy<'a, A>, PassBy<'a, B>, PassBy<'a, C>);
-
-    fn as_by(&self) -> Self::By<'_> {
-        (self.0.as_by(), self.1.as_by(), self.2.as_by())
-    }
-}
-impl<A, B, C> Sealed for (A, B, C)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-{
-}
-
-impl<A, B, C, D> Pass for (A, B, C, D)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-{
-    type By<'a> = (PassBy<'a, A>, PassBy<'a, B>, PassBy<'a, C>, PassBy<'a, D>);
-
-    fn as_by(&self) -> Self::By<'_> {
-        (
-            self.0.as_by(),
-            self.1.as_by(),
-            self.2.as_by(),
-            self.3.as_by(),
-        )
-    }
-}
-impl<A, B, C, D> Sealed for (A, B, C, D)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-{
-}
-
-impl<A, B, C, D, E> Pass for (A, B, C, D, E)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-{
-    type By<'a> = (
-        PassBy<'a, A>,
-        PassBy<'a, B>,
-        PassBy<'a, C>,
-        PassBy<'a, D>,
-        PassBy<'a, E>,
-    );
-
-    fn as_by(&self) -> Self::By<'_> {
-        (
-            self.0.as_by(),
-            self.1.as_by(),
-            self.2.as_by(),
-            self.3.as_by(),
-            self.4.as_by(),
-        )
-    }
-}
-impl<A, B, C, D, E> Sealed for (A, B, C, D, E)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-{
-}
-
-impl<A, B, C, D, E, F> Pass for (A, B, C, D, E, F)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-    F: Pass,
-{
-    type By<'a> = (
-        PassBy<'a, A>,
-        PassBy<'a, B>,
-        PassBy<'a, C>,
-        PassBy<'a, D>,
-        PassBy<'a, E>,
-        PassBy<'a, F>,
-    );
-
-    fn as_by(&self) -> Self::By<'_> {
-        (
-            self.0.as_by(),
-            self.1.as_by(),
-            self.2.as_by(),
-            self.3.as_by(),
-            self.4.as_by(),
-            self.5.as_by(),
-        )
-    }
-}
-impl<A, B, C, D, E, F> Sealed for (A, B, C, D, E, F)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-    F: Pass,
-{
-}
-
-impl<A, B, C, D, E, F, G> Pass for (A, B, C, D, E, F, G)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-    F: Pass,
-    G: Pass,
-{
-    type By<'a> = (
-        PassBy<'a, A>,
-        PassBy<'a, B>,
-        PassBy<'a, C>,
-        PassBy<'a, D>,
-        PassBy<'a, E>,
-        PassBy<'a, F>,
-        PassBy<'a, G>,
-    );
-
-    fn as_by(&self) -> Self::By<'_> {
-        (
-            self.0.as_by(),
-            self.1.as_by(),
-            self.2.as_by(),
-            self.3.as_by(),
-            self.4.as_by(),
-            self.5.as_by(),
-            self.6.as_by(),
-        )
-    }
-}
-impl<A, B, C, D, E, F, G> Sealed for (A, B, C, D, E, F, G)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-    F: Pass,
-    G: Pass,
-{
-}
-
-impl<A, B, C, D, E, F, G, H> Pass for (A, B, C, D, E, F, G, H)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-    F: Pass,
-    G: Pass,
-    H: Pass,
-{
-    type By<'a> = (
-        PassBy<'a, A>,
-        PassBy<'a, B>,
-        PassBy<'a, C>,
-        PassBy<'a, D>,
-        PassBy<'a, E>,
-        PassBy<'a, F>,
-        PassBy<'a, G>,
-        PassBy<'a, H>,
-    );
-
-    fn as_by(&self) -> Self::By<'_> {
-        (
-            self.0.as_by(),
-            self.1.as_by(),
-            self.2.as_by(),
-            self.3.as_by(),
-            self.4.as_by(),
-            self.5.as_by(),
-            self.6.as_by(),
-            self.7.as_by(),
-        )
-    }
-}
-impl<A, B, C, D, E, F, G, H> Sealed for (A, B, C, D, E, F, G, H)
-where
-    A: Pass,
-    B: Pass,
-    C: Pass,
-    D: Pass,
-    E: Pass,
-    F: Pass,
-    G: Pass,
-    H: Pass,
-{
-}
+// Implement Pass for tuples up to size 16
+impl_pass_for_tuples!(
+    (A 0, B 1),
+    (A 0, B 1, C 2),
+    (A 0, B 1, C 2, D 3),
+    (A 0, B 1, C 2, D 3, E 4),
+    (A 0, B 1, C 2, D 3, E 4, F 5),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14, P 15),
+);
