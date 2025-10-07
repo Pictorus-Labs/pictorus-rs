@@ -561,6 +561,19 @@ where
     }
 }
 
+/// Convert struct into a scalar value
+pub trait ToScalar<S: Scalar> {
+    fn to_scalar(&self) -> S;
+}
+
+/// Convert a 1x1 matrix into a scalar value
+impl<S: Scalar> ToScalar<S> for Matrix<1, 1, S> {
+    #[inline]
+    fn to_scalar(&self) -> S {
+        self.data[0][0]
+    }
+}
+
 impl<const NROWS: usize, const NCOLS: usize, T> Matrix<NROWS, NCOLS, T>
 where
     T: Scalar,
