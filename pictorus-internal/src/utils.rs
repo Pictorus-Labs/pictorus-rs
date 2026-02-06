@@ -121,18 +121,6 @@ cfg_if::cfg_if! {
             }
         }
 
-        impl LoadableParams for BlockData {
-            fn parse(source: &str, default: Option<&Self>) -> Option<Self> {
-                let parsed_val: Vec<f64> = string_to_vec::<f64>(source);
-
-                match (parsed_val.len(), default) {
-                    (1, Some(d)) => Some(BlockData::scalar_sizeof(parsed_val[0], d)),
-                    (len, Some(d)) if len == d.n_elements() => Some(BlockData::from_row_slice(d.nrows(), d.ncols(), &parsed_val)),
-                    _ => Some(BlockData::from_vector(&parsed_val)),
-                }
-            }
-        }
-
         // Generic function to load a parameter from env or params
         pub fn load_param<T: LoadableParams + std::fmt::Debug>(
             block_name: &str,
@@ -158,17 +146,6 @@ cfg_if::cfg_if! {
 
             // Otherwise return the default
             default
-        }
-
-        pub fn load_ic(block_name: &str, var_name: &str, default: BlockData, blocks_map: &DiagramParams) -> BlockData {
-            let ic = load_param::<BlockData>(block_name, var_name, default.clone(), blocks_map);
-
-            if !ic.same_size(&default) {
-                panic!(
-                    "Cannot load parameter {}:{} with size {:?}, required size is {:?}",
-                    block_name, var_name, ic.size(), default.size());
-            }
-            ic
         }
 
         fn string_to_vec<T: str::FromStr>(vec_str: &str) -> Vec<T> {
@@ -385,134 +362,6 @@ mod tests {
 
         let result_default =
             load_param::<Vec<String>>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
-    }
-
-    #[test]
-    fn test_load_param_vec_f64() {
-        let mut diagram_params = DiagramParams::new();
-        diagram_params.insert("test_block".to_string(), {
-            let mut params = HashMap::new();
-            params.insert(
-                "test_var".to_string(),
-                "[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]".to_string(),
-            );
-            params
-        });
-
-        let default = BlockData::new(2, 3, &[7., 8., 9., 10., 11., 12.]);
-
-        with_vars(
-            vec![(
-                "TEST_BLOCK_TEST_VAR",
-                Some("[-1.0, -2.0, -3.0, -4.0, -5.0, -6.0]"),
-            )],
-            || {
-                let result_env = load_param::<BlockData>(
-                    "test_block",
-                    "test_var",
-                    default.clone(),
-                    &diagram_params,
-                );
-                assert_eq!(
-                    result_env,
-                    BlockData::new(2, 3, &[-1., -2., -3., -4., -5., -6.])
-                );
-            },
-        );
-
-        let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
-
-        assert_eq!(
-            result_param,
-            BlockData::new(2, 3, &[1., 2., 3., 4., 5., 6.])
-        );
-
-        let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
-    }
-
-    #[test]
-    fn test_load_param_vec_f64_scalar_override_vector_default() {
-        let mut diagram_params = DiagramParams::new();
-        diagram_params.insert("test_block".to_string(), {
-            let mut params = HashMap::new();
-            params.insert("test_var".to_string(), "42.0".to_string());
-            params
-        });
-
-        let default = BlockData::from_vector(&[1.0, 1.0, 1.0]);
-
-        with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("[-13.0]"))], || {
-            let result_env =
-                load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
-            assert_eq!(result_env, BlockData::from_vector(&[-13., -13., -13.]));
-        });
-
-        let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
-
-        // If override is a scalar of different dimensions from default, use default dimensions
-        assert_eq!(result_param, BlockData::from_vector(&[42.0, 42.0, 42.0]));
-
-        let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "Cannot load parameter test_block:test_var with size (1, 2), required size is (1, 3)"
-    )]
-    fn test_load_ic_vec_f64_vector_override_vector_default() {
-        let mut diagram_params = DiagramParams::new();
-        diagram_params.insert("test_block".to_string(), {
-            let mut params = HashMap::new();
-            params.insert("test_var".to_string(), "[42.0, 43.0]".to_string());
-            params
-        });
-
-        let default = BlockData::from_vector(&[1.0, 1.0, 1.0]);
-        load_ic("test_block", "test_var", default.clone(), &diagram_params);
-    }
-
-    #[test]
-    fn test_load_param_matrix_f64() {
-        let mut diagram_params = DiagramParams::new();
-        diagram_params.insert("test_block".to_string(), {
-            let mut params = HashMap::new();
-            params.insert(
-                "test_var".to_string(),
-                "[[1.0, 2.0], [3.0, 4.0]]".to_string(),
-            );
-            params
-        });
-
-        let default = BlockData::new(2, 2, &[7., 8., 9., 10.]);
-
-        with_vars(
-            vec![("TEST_BLOCK_TEST_VAR", Some("[[3.0, 4.0],[5.0, 6.0]]"))],
-            || {
-                let result_env = load_param::<BlockData>(
-                    "test_block",
-                    "test_var",
-                    default.clone(),
-                    &diagram_params,
-                );
-                assert_eq!(result_env, BlockData::new(2, 2, &[3., 4., 5., 6.]));
-            },
-        );
-
-        let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
-
-        assert_eq!(result_param, BlockData::new(2, 2, &[1., 2., 3., 4.]));
-
-        let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
-
         assert_eq!(result_default, default.clone());
     }
 

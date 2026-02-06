@@ -1,5 +1,4 @@
 use alloc::string::{String, ToString};
-use alloc::vec;
 use alloc::vec::Vec;
 
 use fmu_runner::{fmi2Type, model_description::ScalarVariable, Fmu, FmuInstance, FmuLibrary};
@@ -10,7 +9,6 @@ use std::collections::HashMap;
 /// It takes a set of parameters that define the FMU file, the input signals, and the output signals.
 /// Each time step, it will run the FMU for the given time step with the provided inputs and return the output signals.
 pub struct FmuBlock<const N_IN: usize, const N_OUT: usize> {
-    pub data: Vec<OldBlockData>,
     fm_cs: Option<FmuInstance<FmuLibrary>>,
     buffer: [f64; N_OUT],
 }
@@ -18,7 +16,6 @@ pub struct FmuBlock<const N_IN: usize, const N_OUT: usize> {
 impl<const N_IN: usize, const N_OUT: usize> Default for FmuBlock<N_IN, N_OUT> {
     fn default() -> Self {
         Self {
-            data: vec![OldBlockData::from_scalar(0.0); N_OUT],
             fm_cs: None,
             buffer: [0.0; N_OUT],
         }
@@ -154,12 +151,6 @@ impl<const N_IN: usize, const N_OUT: usize> ProcessBlock for FmuBlock<N_IN, N_OU
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         self.buffer = self.run_time_step(parameters, context, inputs);
-        self.data.clear();
-        self.data = self
-            .buffer
-            .iter()
-            .map(|&x| OldBlockData::from_scalar(x))
-            .collect();
         &self.buffer
     }
 }

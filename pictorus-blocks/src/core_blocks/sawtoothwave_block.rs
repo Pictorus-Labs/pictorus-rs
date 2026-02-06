@@ -40,8 +40,8 @@ where
         let time =
             (parameters.frequency * T::from_duration(context.time()) + parameters.phase) / T::TAU;
         let x = two * (time - num_traits::Float::floor(time)) - T::one();
-        let val = parameters.amplitude * x + parameters.bias;
-        val
+        
+        parameters.amplitude * x + parameters.bias
     }
 }
 

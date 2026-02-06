@@ -55,7 +55,6 @@ impl<T: Float, const N: usize> ProcessBlock for FftBlock<T, N> {
                 self.output.data[i][0] = buf_val.re;
                 self.output.data[i][1] = buf_val.im;
             }
-            self.data = <OldBlockData as FromPass<Matrix<2, N, T>>>::from_pass(self.output.as_by());
         } else {
             self.sample_index += 1;
         }

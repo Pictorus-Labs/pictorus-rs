@@ -59,12 +59,12 @@ where
             time_since_last_pulse_start += pulse_time
         };
 
-        let output = if time_since_last_pulse_start > parameters.on_duration {
+        
+        if time_since_last_pulse_start > parameters.on_duration {
             parameters.bias
         } else {
             parameters.bias + parameters.amplitude
-        };
-        output
+        }
     }
 }
 

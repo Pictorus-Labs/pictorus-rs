@@ -40,8 +40,8 @@ where
         _parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        let time = T::from_duration(context.time());
-        time
+        
+        T::from_duration(context.time())
     }
 }
 

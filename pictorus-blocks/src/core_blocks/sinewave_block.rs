@@ -37,10 +37,10 @@ where
         context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let time = T::from_duration(context.time());
-        let sin_val = parameters.amplitude
+        
+        parameters.amplitude
             * num_traits::Float::sin(parameters.frequency * time + parameters.phase)
-            + parameters.bias;
-        sin_val
+            + parameters.bias
     }
 }
 

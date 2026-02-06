@@ -32,10 +32,9 @@ where
         context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let time = T::from_duration(context.time());
-        let ramp_val =
-            parameters.rate * num_traits::Float::max(time - parameters.start_time, T::zero());
+        
 
-        ramp_val
+        parameters.rate * num_traits::Float::max(time - parameters.start_time, T::zero())
     }
 }
 

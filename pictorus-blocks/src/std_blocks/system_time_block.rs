@@ -69,8 +69,9 @@ impl GeneratorBlock for SystemTimeBlock<Sim> {
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // Assume that self.data was set externally and just use that
-        self.output = self.data.scalar();
-        self.output
+        // self.output = self.data.scalar();
+        // self.output
+        todo!("Sim time source not implemented yet")
     }
 }
 
@@ -147,17 +148,18 @@ mod tests {
         assert_eq!(output, start_time.timestamp() as f64 + 42.0);
     }
 
-    #[test]
-    fn test_system_time_block_sim() {
-        let mut block: SystemTimeBlock<Sim> = Default::default();
-        block.data.set_scalar(1337.0);
-        let params = Parameters::new("Epoch");
-        let context = StubContext::new(
-            Duration::from_secs(42),
-            Some(Duration::from_millis(100)),
-            Duration::from_millis(100),
-        );
-        let output = block.generate(&params, &context);
-        assert_eq!(output, 1337.0);
-    }
+    // SIM loading is TODO
+    // #[test]
+    // fn test_system_time_block_sim() {
+    //     let mut block: SystemTimeBlock<Sim> = Default::default();
+    //     block.data.set_scalar(1337.0);
+    //     let params = Parameters::new("Epoch");
+    //     let context = StubContext::new(
+    //         Duration::from_secs(42),
+    //         Some(Duration::from_millis(100)),
+    //         Duration::from_millis(100),
+    //     );
+    //     let output = block.generate(&params, &context);
+    //     assert_eq!(output, 1337.0);
+    // }
 }

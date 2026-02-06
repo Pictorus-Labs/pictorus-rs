@@ -45,9 +45,9 @@ where
         let y = if t < T::one() / two { t } else { T::one() - t };
         // y is in the range [0, 0.5] over a t value from 0 to 1. Scale it by 4 ( to a range of [0, 2] )
         // then shift it down by 1 to get it in the range [-1, 1], then scale it by the amplitude and add the bias.
-        let val = (four * y - T::one()) * parameters.amplitude + parameters.bias;
+        
 
-        val
+        (four * y - T::one()) * parameters.amplitude + parameters.bias
     }
 }
 

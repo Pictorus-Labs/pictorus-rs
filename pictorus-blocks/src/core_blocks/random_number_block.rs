@@ -43,11 +43,11 @@ where
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        let val = self
+        
+        self
             .rng
             //Will Fail if std2 is infinite: https://docs.rs/rand_distr/latest/src/rand_distr/normal.rs.html#156-161
-            .sample(Normal::new(parameters.mean, parameters.std2).unwrap());
-        val
+            .sample(Normal::new(parameters.mean, parameters.std2).unwrap())
     }
 }
 
