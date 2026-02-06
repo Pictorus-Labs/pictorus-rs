@@ -2,32 +2,25 @@ use core::ops::{AddAssign, Mul, MulAssign};
 
 use crate::nalgebra_interop::MatrixExt;
 use crate::traits::Scalar;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Calculate the dot product of two same-sized vectors.
 pub struct DotProductBlock<T: Apply> {
     buffer: Option<T::Output>,
-    pub data: OldBlockData,
 }
 
 impl<T> Default for DotProductBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 impl<T> ProcessBlock for DotProductBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -40,7 +33,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

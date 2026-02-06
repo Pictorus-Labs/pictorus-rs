@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
@@ -28,18 +27,11 @@ impl Parameters {
 /// or a matrix of scalars. However they are interpreted as bools or matrices of bools, where true or
 /// false is determined by whether the value is non-zero or zero respectively. See the [`Scalar::is_truthy`]
 /// function for more details.
-pub struct CounterBlock<T: Apply>
-where
-    OldBlockData: FromPass<T::Counter>,
-{
-    pub data: OldBlockData,
+pub struct CounterBlock<T: Apply> {
     counter: T::Counter,
 }
 
-impl<T: Apply> ProcessBlock for CounterBlock<T>
-where
-    OldBlockData: FromPass<T::Counter>,
-{
+impl<T: Apply> ProcessBlock for CounterBlock<T> {
     type Inputs = T;
     type Output = T::Counter;
     type Parameters = Parameters;
@@ -54,16 +46,10 @@ where
     }
 }
 
-impl<T: Apply> Default for CounterBlock<T>
-where
-    OldBlockData: FromPass<T::Counter>,
-{
+impl<T: Apply> Default for CounterBlock<T> {
     fn default() -> Self {
         let counter = T::Counter::default();
-        Self {
-            data: OldBlockData::from_pass(counter.as_by()),
-            counter,
-        }
+        Self { counter }
     }
 }
 

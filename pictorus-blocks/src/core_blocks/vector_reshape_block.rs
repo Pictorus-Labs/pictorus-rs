@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the VectorReshapeBlock
@@ -21,7 +20,6 @@ impl Parameters {
 /// If the input type is an (M, N) matrix, the output type MUST have dimensions such that M_in*N_in == M_out*N_out.
 /// Accepts a scalar input, T, if the output is a Matrix<1, 1, T>.
 pub struct VectorReshapeBlock<I, O> {
-    pub data: OldBlockData,
     buffer: O,
     _phantom: core::marker::PhantomData<I>,
 }
@@ -29,11 +27,9 @@ pub struct VectorReshapeBlock<I, O> {
 impl<I, O> Default for VectorReshapeBlock<I, O>
 where
     O: Default + Pass,
-    OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<O>>::from_pass(O::default().as_by()),
             buffer: O::default(),
             _phantom: core::marker::PhantomData,
         }
@@ -67,7 +63,6 @@ where
             .data
             .as_flattened_mut()
             .copy_from_slice(input.data.as_flattened());
-        self.data = <OldBlockData as FromPass<Self::Output>>::from_pass(&self.buffer);
         &self.buffer
     }
 }
@@ -87,7 +82,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer.data[0][0] = input;
-        self.data = <OldBlockData as FromPass<Self::Output>>::from_pass(&self.buffer);
         &self.buffer
     }
 }

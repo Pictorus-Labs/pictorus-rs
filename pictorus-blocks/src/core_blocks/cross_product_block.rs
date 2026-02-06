@@ -1,5 +1,4 @@
 use crate::nalgebra_interop::MatrixExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy};
 
 pub struct Parameters {
@@ -23,27 +22,21 @@ pub struct CrossProductBlock<T>
 where
     T: Apply + Pass + Default,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
 impl<T> Default for CrossProductBlock<T>
 where
     T: Apply + Pass + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 impl<T> pictorus_traits::ProcessBlock for CrossProductBlock<T>
 where
     T: Pass + Apply + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -56,7 +49,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

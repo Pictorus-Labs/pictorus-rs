@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
 #[derive(Debug, Clone)]
@@ -10,7 +9,6 @@ where
     f64: From<T>,
 {
     phantom: core::marker::PhantomData<T>,
-    pub data: BlockData,
 }
 
 impl<T> Default for SinewaveBlock<T>
@@ -21,7 +19,6 @@ where
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
-            data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
 }
@@ -43,7 +40,6 @@ where
         let sin_val = parameters.amplitude
             * num_traits::Float::sin(parameters.frequency * time + parameters.phase)
             + parameters.bias;
-        self.data = BlockData::from_scalar(sin_val.into());
         sin_val
     }
 }

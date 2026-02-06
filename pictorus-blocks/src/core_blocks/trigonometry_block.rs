@@ -1,6 +1,5 @@
 use crate::traits::MatrixOps;
 use num_traits::Float;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, PartialEq)]
@@ -34,18 +33,15 @@ impl Parameters {
 }
 
 pub struct TrigonometryBlock<T> {
-    pub data: OldBlockData,
     buffer: T,
 }
 
 impl<T> Default for TrigonometryBlock<T>
 where
     T: Default + Pass,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -79,15 +75,12 @@ macro_rules! impl_trig_block {
                     TrigonometryFunction::ArcTangentHyperbolic => Float::atanh(inputs),
                 };
                 self.buffer = output;
-                self.data = OldBlockData::from_scalar(output.into());
                 output
             }
         }
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for TrigonometryBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -116,7 +109,6 @@ macro_rules! impl_trig_block {
                     };
                     self.buffer.data[c][r] = output;
                 });
-                self.data = OldBlockData::from_pass(&self.buffer);
                 &self.buffer
             }
         }

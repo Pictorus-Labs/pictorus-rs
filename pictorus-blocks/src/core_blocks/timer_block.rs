@@ -1,4 +1,3 @@
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{PassBy, ProcessBlock, Scalar};
 
 #[derive(strum::EnumString)]
@@ -37,7 +36,6 @@ impl Parameters {
 ///
 /// This block is useful for tracking how much time has passed since an event for logical conditions.
 pub struct TimerBlock<T> {
-    pub data: OldBlockData,
     buffer: T,
     timer_running: bool,
     start_time_s: T,
@@ -49,7 +47,6 @@ where
 {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_scalar(0.0),
             buffer: T::zero(),
             timer_running: false,
             start_time_s: T::zero(),
@@ -88,7 +85,6 @@ impl ProcessBlock for TimerBlock<f64> {
         let trigger_high = input > 0.0;
         // Early exit if not running and input trigger is false
         if !self.timer_running && !trigger_high {
-            self.data.set_scalar(self.buffer);
             return self.buffer;
         }
 
@@ -114,7 +110,6 @@ impl ProcessBlock for TimerBlock<f64> {
             }
         }
 
-        self.data.set_scalar(self.buffer);
         self.buffer
     }
 }

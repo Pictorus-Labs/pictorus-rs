@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
 #[derive(Debug, Clone)]
@@ -10,7 +9,6 @@ where
     f64: From<T>,
 {
     phantom: core::marker::PhantomData<T>,
-    pub data: BlockData,
 }
 
 impl<T> Default for SawtoothwaveBlock<T>
@@ -21,7 +19,6 @@ where
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
-            data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
 }
@@ -44,7 +41,6 @@ where
             (parameters.frequency * T::from_duration(context.time()) + parameters.phase) / T::TAU;
         let x = two * (time - num_traits::Float::floor(time)) - T::one();
         let val = parameters.amplitude * x + parameters.bias;
-        self.data = BlockData::from_scalar(val.into());
         val
     }
 }

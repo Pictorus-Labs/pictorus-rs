@@ -1,6 +1,5 @@
 use crate::{traits::MatrixOps, Scalar};
 use num_traits::ToPrimitive;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the VectorSliceBlock
@@ -28,7 +27,6 @@ impl Parameters {
 
 /// Returns a fixed-size slice of the input matrix starting from the specified row and column.
 pub struct VectorSliceBlock<I, O> {
-    pub data: OldBlockData,
     buffer: O,
     _phantom: core::marker::PhantomData<I>,
 }
@@ -36,11 +34,9 @@ pub struct VectorSliceBlock<I, O> {
 impl<I, O> Default for VectorSliceBlock<I, O>
 where
     O: Default + Pass,
-    OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<O>>::from_pass(O::default().as_by()),
             buffer: O::default(),
             _phantom: core::marker::PhantomData,
         }
@@ -84,7 +80,6 @@ impl<S: Scalar, const IROWS: usize, const ICOLS: usize, const OROWS: usize, cons
     ProcessBlock for VectorSliceBlock<Matrix<IROWS, ICOLS, S>, Matrix<OROWS, OCOLS, S>>
 where
     S: num_traits::Zero,
-    OldBlockData: FromPass<Matrix<OROWS, OCOLS, S>>,
 {
     type Inputs = Matrix<IROWS, ICOLS, S>;
     type Output = Matrix<OROWS, OCOLS, S>;
@@ -121,7 +116,6 @@ where
             }
         });
 
-        self.data = OldBlockData::from_pass(&self.buffer);
         &self.buffer
     }
 }
@@ -130,7 +124,6 @@ impl<S: Scalar, const IROWS: usize, const ICOLS: usize> ProcessBlock
     for VectorSliceBlock<Matrix<IROWS, ICOLS, S>, S>
 where
     S: num_traits::Zero,
-    OldBlockData: FromPass<S>,
 {
     type Inputs = Matrix<IROWS, ICOLS, S>;
     type Output = S;
@@ -152,7 +145,6 @@ where
             .copied()
             .unwrap_or(S::zero());
 
-        self.data = OldBlockData::from_scalar(self.buffer.into());
         self.buffer
     }
 }

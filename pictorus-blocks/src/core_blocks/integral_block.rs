@@ -4,39 +4,27 @@ use crate::{
     traits::{Float, MatrixOps},
     Scalar,
 };
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Performs a discrete integration of the input signal.
 ///
 /// It can accept a scalar or a matrix input, for a matrix input it will do an
 /// element wise integration.
-pub struct IntegralBlock<T: Apply>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+pub struct IntegralBlock<T: Apply> {
     previous_sample: Option<T::Output>,
     output: Option<T::Output>,
-    pub data: OldBlockData,
 }
 
-impl<T: Apply> Default for IntegralBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> Default for IntegralBlock<T> {
     fn default() -> Self {
         Self {
             previous_sample: None,
             output: None,
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
 }
 
-impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)>
-where
-    OldBlockData: FromPass<F>,
-{
+impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)> {
     type Inputs = (F, R);
     type Output = F;
     type Parameters = Parameters<(F, R)>;
@@ -79,28 +67,21 @@ where
         }
         // This could be none if we were reset above
         let output = self.output.get_or_insert(parameters.ic);
-        self.data = OldBlockData::from_pass(output.as_by());
         output.as_by()
     }
 }
 
-impl<F: Float, R: Scalar> HasIc for IntegralBlock<(F, R)>
-where
-    OldBlockData: FromPass<F>,
-{
+impl<F: Float, R: Scalar> HasIc for IntegralBlock<(F, R)> {
     fn new(parameters: &Self::Parameters) -> Self {
         IntegralBlock::<(F, R)> {
             previous_sample: None,
             output: Some(parameters.ic),
-            data: <OldBlockData as FromPass<F>>::from_pass(parameters.ic.as_by()),
         }
     }
 }
 
 impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
     for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
-where
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, F>>,
 {
     type Inputs = (Matrix<NROWS, NCOLS, F>, R);
     type Output = Matrix<NROWS, NCOLS, F>;
@@ -139,21 +120,17 @@ where
             self.previous_sample = Some(*sample);
         }
         let output = self.output.get_or_insert(parameters.ic);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }
 
 impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
     for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
-where
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, F>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IntegralBlock::<(Matrix<NROWS, NCOLS, F>, R)> {
             previous_sample: None,
             output: Some(parameters.ic),
-            data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, F>>>::from_pass(&parameters.ic),
         }
     }
 }

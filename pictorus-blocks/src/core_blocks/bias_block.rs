@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
 /// Outputs the input data with an added bias (offset).
@@ -7,7 +6,6 @@ where
     B: Scalar,
     T: Apply<B>,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
@@ -15,13 +13,9 @@ impl<B, T> Default for BiasBlock<B, T>
 where
     B: Scalar,
     T: Apply<B> + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
@@ -29,7 +23,6 @@ impl<B, T> ProcessBlock for BiasBlock<B, T>
 where
     B: Scalar,
     T: Apply<B> + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -42,7 +35,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.offset);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }
@@ -137,7 +129,6 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
-    use pictorus_block_data::ToPass;
 
     #[test]
     fn test_bias_scalar() {
@@ -155,9 +146,9 @@ mod tests {
         let mut block = BiasBlock::<f64, f64>::default();
         let parameters = Parameters::new(3.0);
         let context = StubContext::default();
-        let input = OldBlockData::from_scalar(-3.1);
+        let input = -3.1;
 
-        let output = block.process(&parameters, &context, input.to_pass());
+        let output = block.process(&parameters, &context, input);
         assert_relative_eq!(output, -0.1);
         assert_relative_eq!(block.data.scalar(), -0.1);
     }

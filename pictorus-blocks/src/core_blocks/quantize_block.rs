@@ -4,7 +4,6 @@ use crate::nalgebra_interop::MatrixExt;
 use crate::traits::{MatrixOps, Scalar};
 use nalgebra::ClosedDivAssign;
 use num_traits::Float;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters<I: Scalar + Float> {
@@ -27,9 +26,7 @@ pub struct QuantizeBlock<I, T>
 where
     I: Scalar + Float,
     T: Apply<I>,
-    OldBlockData: FromPass<T::Output>,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
@@ -37,13 +34,9 @@ impl<I, T> Default for QuantizeBlock<I, T>
 where
     I: Scalar + Float,
     T: Apply<I>,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
@@ -51,7 +44,6 @@ impl<I, T> ProcessBlock for QuantizeBlock<I, T>
 where
     I: Scalar + Float,
     T: Apply<I>,
-    OldBlockData: FromPass<T::Output>,
 {
     type Parameters = Parameters<I>;
     type Inputs = T;
@@ -64,7 +56,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let res = T::apply(inputs, parameters.interval, &mut self.buffer);
-        self.data = OldBlockData::from_pass(res);
         res
     }
 }

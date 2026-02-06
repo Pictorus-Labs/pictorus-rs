@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
@@ -31,7 +30,6 @@ pub struct VectorMergeBlock<O, I>
 where
     I: Pass + Mergeable<O>,
 {
-    pub data: OldBlockData,
     buffer: Option<<I as Mergeable<O>>::Output>,
     _phantom: core::marker::PhantomData<I>,
 }
@@ -40,13 +38,9 @@ impl<O, I> Default for VectorMergeBlock<O, I>
 where
     I: Pass + Mergeable<O>,
     O: Pass + Default,
-    OldBlockData: FromPass<<I as Mergeable<O>>::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<<I as Mergeable<O>>::Output>>::from_pass(
-                <I as Mergeable<O>>::Output::default().as_by(),
-            ),
             buffer: None,
             _phantom: core::marker::PhantomData,
         }
@@ -57,7 +51,6 @@ impl<O, I> ProcessBlock for VectorMergeBlock<O, I>
 where
     I: Pass + Mergeable<O>,
     O: Pass + Default,
-    OldBlockData: FromPass<<I as Mergeable<O>>::Output>,
 {
     type Inputs = I;
     type Output = <I as Mergeable<O>>::Output;
@@ -71,9 +64,6 @@ where
     ) -> PassBy<'_, Self::Output> {
         let mut offset = 0;
         let output = I::get_merge(input, &mut offset, &mut self.buffer);
-        self.data = OldBlockData::from_pass(output);
-        self.data
-            .set_type(pictorus_block_data::BlockDataType::Vector);
         output
     }
 }

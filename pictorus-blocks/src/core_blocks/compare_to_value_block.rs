@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 use super::comparison_block::ComparisonType;
@@ -28,29 +27,21 @@ where
 ///
 /// The output is the same size as the input and each element is the result of the comparison.
 pub struct CompareToValueBlock<T: Pass> {
-    pub data: OldBlockData,
     buffer: Option<T>,
 }
 
 impl<T> Default for CompareToValueBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 macro_rules! impl_compare_to_value_block {
     ($type:ty) => {
-        impl ProcessBlock for CompareToValueBlock<$type>
-        where
-            OldBlockData: FromPass<$type>,
-        {
+        impl ProcessBlock for CompareToValueBlock<$type> {
             type Inputs = $type;
             type Output = $type;
             type Parameters = Parameter<$type>;
@@ -70,15 +61,13 @@ macro_rules! impl_compare_to_value_block {
                     ComparisonType::GreaterOrEqual => input >= parameters.value,
                 };
                 let output = self.buffer.insert(val.into());
-                self.data = OldBlockData::from_scalar((*output).into());
+
                 *output
             }
         }
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for CompareToValueBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -105,7 +94,6 @@ macro_rules! impl_compare_to_value_block {
                     }
                 }
                 let output = self.buffer.insert(b);
-                self.data = OldBlockData::from_pass(output);
                 output
             }
         }

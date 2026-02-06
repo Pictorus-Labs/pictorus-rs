@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
 /// Multiplies the input by a gain factor.
@@ -7,7 +6,6 @@ where
     G: Scalar,
     T: Apply<G>,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
@@ -15,13 +13,9 @@ impl<G, T> Default for GainBlock<G, T>
 where
     G: Scalar,
     T: Apply<G>,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
@@ -29,7 +23,6 @@ impl<G, T> ProcessBlock for GainBlock<G, T>
 where
     G: Scalar,
     T: Apply<G>,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -42,7 +35,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.gain);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }
@@ -132,7 +124,6 @@ impl<G: Scalar> Parameters<G> {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use pictorus_block_data::ToPass;
 
     #[test]
     fn test_gain_scalar() {

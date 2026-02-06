@@ -1,11 +1,9 @@
 extern crate alloc;
 use crate::byte_data::{find_all_bytes_idx, parse_string_to_read_delimiter};
 use crate::traits::{DefaultStorage, Scalar};
-use crate::IsValid;
 use alloc::borrow::ToOwned;
-use alloc::{string::String, vec, vec::Vec};
+use alloc::{string::String, vec::Vec};
 use core::time::Duration;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Splits input bytes based on a specified delimiter and maps outputs to specific indices of the split chunks.
@@ -18,7 +16,6 @@ use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 /// If the time since the last successful parse is greater than the stale age,
 /// the block will output false for the "is_valid" output.
 pub struct BytesSplitBlock<T: Apply> {
-    pub data: Vec<OldBlockData>,
     buffer: Option<T::Storage>,
     last_valid_time: Option<Duration>,
 }
@@ -63,7 +60,6 @@ impl Parameters {
 impl<T: Apply> Default for BytesSplitBlock<T> {
     fn default() -> Self {
         Self {
-            data: T::default_block_data(),
             buffer: None,
             last_valid_time: None,
         }
@@ -101,14 +97,8 @@ impl<T: Apply> ProcessBlock for BytesSplitBlock<T> {
         if parse_success {
             self.last_valid_time = Some(context.time());
         }
-        self.data = T::build_block_data(self.buffer.as_ref().unwrap());
-        <T as Apply>::storage_as_by(self.buffer.as_ref().unwrap())
-    }
-}
 
-impl<T: Apply> IsValid for BytesSplitBlock<T> {
-    fn is_valid(&self, _app_time_s: f64) -> OldBlockData {
-        <OldBlockData as FromPass<bool>>::from_pass(T::is_valid(&self.buffer))
+        <T as Apply>::storage_as_by(self.buffer.as_ref().unwrap())
     }
 }
 
@@ -168,17 +158,10 @@ pub trait Apply: Pass {
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output>;
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData>;
-
-    fn default_block_data() -> Vec<OldBlockData>;
-
     fn is_valid(storage: &Option<Self::Storage>) -> bool;
 }
 
-impl<A: FromBytes> Apply for A
-where
-    OldBlockData: FromPass<A>,
-{
+impl<A: FromBytes> Apply for A {
     type Storage = (A::Storage, bool);
     type Output = (A, bool);
 
@@ -208,16 +191,6 @@ where
         }
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![OldBlockData::from_pass(A::from_storage(&storage.0))]
-    }
-
-    fn default_block_data() -> Vec<OldBlockData> {
-        vec![OldBlockData::from_pass(A::from_storage(
-            &A::default_storage(),
-        ))]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (A::from_storage(&storage.0), storage.1)
     }
@@ -227,11 +200,7 @@ where
     }
 }
 
-impl<A: FromBytes, B: FromBytes> Apply for (A, B)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-{
+impl<A: FromBytes, B: FromBytes> Apply for (A, B) {
     type Output = (A, B, bool);
     type Storage = (A::Storage, B::Storage, bool);
 
@@ -267,20 +236,6 @@ where
         }
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-        ]
-    }
-
-    fn default_block_data() -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&A::default_storage())),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&B::default_storage())),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -293,12 +248,7 @@ where
     }
 }
 
-impl<A: FromBytes, B: FromBytes, C: FromBytes> Apply for (A, B, C)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-{
+impl<A: FromBytes, B: FromBytes, C: FromBytes> Apply for (A, B, C) {
     type Output = (A, B, C, bool);
     type Storage = (A::Storage, B::Storage, C::Storage, bool);
 
@@ -347,22 +297,6 @@ where
         }
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-        ]
-    }
-
-    fn default_block_data() -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&A::default_storage())),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&B::default_storage())),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&C::default_storage())),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -376,13 +310,7 @@ where
     }
 }
 
-impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes> Apply for (A, B, C, D)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-{
+impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes> Apply for (A, B, C, D) {
     type Output = (A, B, C, D, bool);
     type Storage = (A::Storage, B::Storage, C::Storage, D::Storage, bool);
 
@@ -448,24 +376,6 @@ where
         }
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-        ]
-    }
-
-    fn default_block_data() -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&A::default_storage())),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&B::default_storage())),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&C::default_storage())),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&D::default_storage())),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -481,13 +391,8 @@ where
     }
 }
 
-impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes> Apply for (A, B, C, D, E)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
+impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes> Apply
+    for (A, B, C, D, E)
 {
     type Output = (A, B, C, D, E, bool);
     type Storage = (
@@ -575,26 +480,6 @@ where
         }
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-        ]
-    }
-
-    fn default_block_data() -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&A::default_storage())),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&B::default_storage())),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&C::default_storage())),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&D::default_storage())),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&E::default_storage())),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -613,13 +498,6 @@ where
 
 impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes, F: FromBytes> Apply
     for (A, B, C, D, E, F)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
-    OldBlockData: FromPass<F>,
 {
     type Output = (A, B, C, D, E, F, bool);
     type Storage = (
@@ -718,28 +596,6 @@ where
         }
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&storage.5)),
-        ]
-    }
-
-    fn default_block_data() -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&A::default_storage())),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&B::default_storage())),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&C::default_storage())),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&D::default_storage())),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&E::default_storage())),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&F::default_storage())),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -766,14 +622,6 @@ impl<
         F: FromBytes,
         G: FromBytes,
     > Apply for (A, B, C, D, E, F, G)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
-    OldBlockData: FromPass<F>,
-    OldBlockData: FromPass<G>,
 {
     type Output = (A, B, C, D, E, F, G, bool);
     type Storage = (
@@ -881,30 +729,6 @@ where
             }
             false
         }
-    }
-
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&storage.5)),
-            <OldBlockData as FromPass<G>>::from_pass(G::from_storage(&storage.6)),
-        ]
-    }
-
-    fn default_block_data() -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&A::default_storage())),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&B::default_storage())),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&C::default_storage())),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&D::default_storage())),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&E::default_storage())),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&F::default_storage())),
-            <OldBlockData as FromPass<G>>::from_pass(G::from_storage(&G::default_storage())),
-        ]
     }
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {

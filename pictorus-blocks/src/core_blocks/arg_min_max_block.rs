@@ -1,5 +1,4 @@
 use num_traits::{FromPrimitive, Zero};
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Gets the index of the minimum or maximum value in the input.
@@ -14,27 +13,21 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 /// | 2 | 5 | 8 | 11| 14 |
 /// ----------------------
 pub struct ArgMinMaxBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
 impl<T: Apply> Default for ArgMinMaxBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 impl<T> ProcessBlock for ArgMinMaxBlock<T>
 where
     T: Apply + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -47,7 +40,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

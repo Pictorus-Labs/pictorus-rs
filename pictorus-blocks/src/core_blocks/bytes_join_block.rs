@@ -2,13 +2,11 @@ extern crate alloc;
 use crate::byte_data::parse_string_to_bytes;
 use crate::traits::Serialize;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Joins multiple signals into a single byte slice by
 /// serializing each signal and joining them with a delimiter.
 pub struct BytesJoinBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     _unused: core::marker::PhantomData<T>,
 }
@@ -30,7 +28,6 @@ impl Parameters {
 impl<T: Apply> Default for BytesJoinBlock<T> {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(b""),
             buffer: Vec::new(),
             _unused: core::marker::PhantomData,
         }
@@ -49,7 +46,6 @@ impl<T: Apply> ProcessBlock for BytesJoinBlock<T> {
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer = T::apply(inputs, parameters);
-        self.data.set_bytes(&self.buffer);
         &self.buffer
     }
 }

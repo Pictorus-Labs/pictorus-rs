@@ -1,6 +1,5 @@
 use crate::traits::{Float, MatrixOps};
 use num_traits::Zero;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Rate limit block parameters
@@ -27,18 +26,15 @@ where
 /// the rate of change of the signal as specified by the Rising and
 /// Falling rates.
 pub struct RateLimitBlock<T> {
-    pub data: OldBlockData,
     buffer: T,
 }
 
 impl<T> Default for RateLimitBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -49,7 +45,6 @@ macro_rules! impl_rate_limit_block {
         impl ProcessBlock for RateLimitBlock<$type>
         where
             $type: num_traits::Zero,
-            OldBlockData: FromPass<$type>,
         {
             type Inputs = $type;
             type Output = $type;
@@ -74,7 +69,6 @@ macro_rules! impl_rate_limit_block {
                         // b + clamped_change_rate * timestep_s;
                         self.buffer + clamped_change_rate * timestep_s
                     };
-                    self.data = OldBlockData::from_scalar(self.buffer.into());
                     self.buffer
                 } else {
                     //First Run ever
@@ -85,8 +79,6 @@ macro_rules! impl_rate_limit_block {
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for RateLimitBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -114,7 +106,6 @@ macro_rules! impl_rate_limit_block {
                     });
 
                     self.buffer = output;
-                    self.data = OldBlockData::from_pass(&output);
                     &self.buffer
                 } else {
                     //First Run ever

@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Clone, Copy)]
@@ -11,29 +10,22 @@ pub enum NotMethod {
 pub struct NotBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
 impl<T> Default for NotBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 impl<T> ProcessBlock for NotBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -46,7 +38,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.method);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

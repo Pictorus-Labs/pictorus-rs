@@ -1,30 +1,23 @@
 use crate::nalgebra_interop::MatrixExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Block for performing an aggregation operation (i.e. sum, min, max) on input data.
 pub struct AggregateBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
 impl<T: Apply> Default for AggregateBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 impl<T> ProcessBlock for AggregateBlock<T>
 where
     T: Apply + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -37,7 +30,7 @@ where
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
-        self.data = OldBlockData::from_pass(output);
+
         output
     }
 }

@@ -8,7 +8,7 @@ use miniserde::json::{self, Array, Number, Object, Value};
 use pictorus_block_data::{BlockData as OldBlockData, BlockDataType, FromPass};
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, traits::DefaultStorage, IsValid};
+use crate::{stale_tracker::StaleTracker, traits::DefaultStorage};
 
 /// Deserializes bytes encoded as JSON into the specified output signals.
 ///
@@ -54,15 +54,6 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
             tracker.mark_updated(context.time().as_secs_f64());
         }
         T::storage_as_by(&self.buffer)
-    }
-}
-
-impl<T: Apply> IsValid for JsonLoadBlock<T> {
-    fn is_valid(&self, app_time_s: f64) -> OldBlockData {
-        match self.stale_tracker {
-            Some(ref tracker) => tracker.is_valid(app_time_s),
-            None => OldBlockData::scalar_from_bool(false),
-        }
     }
 }
 
@@ -219,10 +210,7 @@ fn parse_number(num_val: &Number) -> f64 {
 }
 
 // Impl for single value
-impl<A: Deserialize> Apply for A
-where
-    OldBlockData: FromPass<A>,
-{
+impl<A: Deserialize> Apply for A {
     type Storage = (A::Storage, bool);
     type Output = (A, bool);
 
@@ -265,11 +253,7 @@ where
 }
 
 // Impl for tuple of two values
-impl<A: Deserialize, B: Deserialize> Apply for (A, B)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-{
+impl<A: Deserialize, B: Deserialize> Apply for (A, B) {
     type Storage = (A::Storage, B::Storage, bool);
     type Output = (A, B, bool);
 
@@ -312,12 +296,7 @@ where
 }
 
 // Impl for tuple of three values
-impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-{
+impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C) {
     type Storage = (A::Storage, B::Storage, C::Storage, bool);
     type Output = (A, B, C, bool);
 
@@ -368,13 +347,7 @@ where
 }
 
 // Impl for tuple of four values
-impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (A, B, C, D)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-{
+impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (A, B, C, D) {
     type Storage = (A::Storage, B::Storage, C::Storage, D::Storage, bool);
     type Output = (A, B, C, D, bool);
 
@@ -431,12 +404,6 @@ where
 // Impl for tuple of five values
 impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize, E: Deserialize> Apply
     for (A, B, C, D, E)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
 {
     type Storage = (
         A::Storage,
@@ -510,13 +477,6 @@ impl<
         E: Deserialize,
         F: Deserialize,
     > Apply for (A, B, C, D, E, F)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
-    OldBlockData: FromPass<F>,
 {
     type Storage = (
         A::Storage,
@@ -594,14 +554,6 @@ impl<
         F: Deserialize,
         G: Deserialize,
     > Apply for (A, B, C, D, E, F, G)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
-    OldBlockData: FromPass<F>,
-    OldBlockData: FromPass<G>,
 {
     type Storage = (
         A::Storage,

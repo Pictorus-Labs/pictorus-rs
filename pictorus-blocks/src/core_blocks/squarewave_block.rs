@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
 pub struct Parameters<T: Float> {
@@ -25,7 +24,6 @@ impl<T: Float> Parameters<T> {
 /// Outputs a square wave signal with specified amplitude, on duration, off duration, phase, and bias.
 pub struct SquarewaveBlock<T: Float> {
     phantom_output_type: core::marker::PhantomData<T>,
-    pub data: BlockData,
 }
 
 impl<T: Float> Default for SquarewaveBlock<T>
@@ -35,7 +33,6 @@ where
     fn default() -> Self {
         Self {
             phantom_output_type: core::marker::PhantomData,
-            data: BlockData::from_scalar(T::zero().into()),
         }
     }
 }
@@ -67,7 +64,6 @@ where
         } else {
             parameters.bias + parameters.amplitude
         };
-        self.data = BlockData::from_scalar(f64::from(output));
         output
     }
 }

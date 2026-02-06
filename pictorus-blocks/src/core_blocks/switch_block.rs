@@ -1,6 +1,5 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{ByteSliceSignal, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{CopyInto, DefaultStorage, Scalar};
@@ -51,22 +50,16 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 pub struct SwitchBlock<T: Apply>
 where
     T::Output: DefaultStorage,
-    OldBlockData: FromPass<T::Output>,
 {
-    pub data: OldBlockData,
     buffer: <T::Output as DefaultStorage>::Storage,
 }
 
 impl<T: Apply> Default for SwitchBlock<T>
 where
     T::Output: DefaultStorage,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::from_storage(
-                &T::Output::default_storage(),
-            )),
             buffer: T::Output::default_storage(),
         }
     }
@@ -75,7 +68,6 @@ where
 impl<T: Apply> ProcessBlock for SwitchBlock<T>
 where
     T::Output: DefaultStorage,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -89,7 +81,6 @@ where
     ) -> PassBy<'b, Self::Output> {
         T::apply(inputs, parameters, &mut self.buffer);
         let res = T::Output::from_storage(&self.buffer);
-        self.data = <OldBlockData as FromPass<T::Output>>::from_pass(res);
         res
     }
 }
@@ -105,7 +96,7 @@ pub struct Parameters<C: Scalar, const N: usize> {
 // TODO: This is currently only implemented for f64 and is constructed from OldBlockData.
 // In the future this should either accept an array of [C; N] or a &[C]
 impl<const N: usize> Parameters<f64, N> {
-    pub fn new(cases: &OldBlockData) -> Self {
+    pub fn new(cases: &[f64]) -> Self {
         assert!(cases.len() == N, "Invalid number of switch cases");
 
         let mut case_arr: [f64; N] = [0.0; N];

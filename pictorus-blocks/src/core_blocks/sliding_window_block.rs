@@ -1,6 +1,5 @@
 use core::fmt::Debug;
 use heapless::Deque;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the SlidingWindowBlock consist of the initial condition of the output. This is only
@@ -33,7 +32,6 @@ impl<I> Parameters<I> {
 /// let swb_matrix = SlidingWindowBlock::<3, Matrix<2, 2, f64>, Matrix<2, 6, f64>>::default();
 /// ```
 pub struct SlidingWindowBlock<const N: usize, I, O> {
-    pub data: OldBlockData,
     memory: Deque<I, N>,
     buffer: O,
     _phantom: core::marker::PhantomData<I>,
@@ -42,11 +40,9 @@ pub struct SlidingWindowBlock<const N: usize, I, O> {
 impl<const N: usize, I, O> Default for SlidingWindowBlock<N, I, O>
 where
     O: Default + Pass,
-    OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
         SlidingWindowBlock {
-            data: <OldBlockData as FromPass<O>>::from_pass(O::default().as_by()),
             memory: Deque::new(),
             buffer: O::default(),
             _phantom: core::marker::PhantomData,
@@ -57,13 +53,9 @@ where
 impl<const N: usize, I> HasIc for SlidingWindowBlock<N, I, Matrix<1, N, I>>
 where
     I: Scalar + Debug,
-    OldBlockData: FromPass<Matrix<1, N, I>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         SlidingWindowBlock {
-            data: <OldBlockData as FromPass<Matrix<1, N, I>>>::from_pass(
-                parameters.initial_condition.as_by(),
-            ),
             memory: Deque::new(),
             buffer: parameters.initial_condition,
             _phantom: core::marker::PhantomData,
@@ -75,7 +67,6 @@ where
 impl<const N: usize, I> ProcessBlock for SlidingWindowBlock<N, I, Matrix<1, N, I>>
 where
     I: Scalar + Debug,
-    OldBlockData: FromPass<Matrix<1, N, I>>,
 {
     type Inputs = I;
     type Output = Matrix<1, N, I>;
@@ -103,8 +94,6 @@ where
             self.buffer.data.as_flattened_mut()[i] = *value;
         }
 
-        self.data = OldBlockData::from_pass(&self.buffer);
-
         if self.memory.len() == N {
             self.memory.pop_front();
         }
@@ -117,13 +106,9 @@ impl<const N: usize, const ROWS: usize, const ICOLS: usize, const OCOLS: usize, 
     for SlidingWindowBlock<N, Matrix<ROWS, ICOLS, I>, Matrix<ROWS, OCOLS, I>>
 where
     I: Scalar + Debug,
-    OldBlockData: FromPass<Matrix<ROWS, OCOLS, I>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         SlidingWindowBlock {
-            data: <OldBlockData as FromPass<Matrix<ROWS, OCOLS, I>>>::from_pass(
-                parameters.initial_condition.as_by(),
-            ),
             memory: Deque::new(),
             buffer: parameters.initial_condition,
             _phantom: core::marker::PhantomData,
@@ -135,7 +120,6 @@ impl<const N: usize, const ROWS: usize, const ICOLS: usize, const OCOLS: usize, 
     for SlidingWindowBlock<N, Matrix<ROWS, ICOLS, I>, Matrix<ROWS, OCOLS, I>>
 where
     I: Scalar + Debug,
-    OldBlockData: FromPass<Matrix<ROWS, OCOLS, I>>,
 {
     type Inputs = Matrix<ROWS, ICOLS, I>;
     type Output = Matrix<ROWS, OCOLS, I>;
@@ -174,8 +158,6 @@ where
                 }
             }
         }
-
-        self.data = OldBlockData::from_pass(&self.buffer);
 
         if self.memory.len() == N {
             self.memory.pop_front();

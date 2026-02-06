@@ -1,5 +1,4 @@
 use crate::nalgebra_interop::MatrixExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters {}
@@ -24,27 +23,21 @@ pub struct VectorNormBlock<T>
 where
     T: Apply,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
 impl<T> Default for VectorNormBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 impl<T> ProcessBlock for VectorNormBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -57,7 +50,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

@@ -1,5 +1,3 @@
-use alloc::{vec, vec::Vec};
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{
     tuple_array_interop::TupleEquivalent, Matrix, Pass, PassBy, ProcessBlock, Scalar,
 };
@@ -35,7 +33,6 @@ pub struct VectorIndexBlock<const N: usize, T: Scalar, I: Pass>
 where
     [T; N]: TupleEquivalent<T, N>,
 {
-    pub data: Vec<OldBlockData>,
     buffer: <[T; N] as TupleEquivalent<T, N>>::TupleEquivalent,
     _phantom: core::marker::PhantomData<I>,
 }
@@ -46,7 +43,6 @@ where
 {
     fn default() -> Self {
         VectorIndexBlock {
-            data: vec![OldBlockData::from_scalar(0.0); N],
             buffer: [T::default(); N].into_tuple(),
             _phantom: core::marker::PhantomData,
         }
@@ -79,10 +75,8 @@ where
             if *x < flattened.len() {
                 let value = flattened[*x];
                 output[i] = value;
-                self.data[i] = OldBlockData::from_scalar(value.into());
             } else {
                 output[i] = T::default();
-                self.data[i] = OldBlockData::from_scalar(T::default().into());
             }
         }
 
@@ -96,7 +90,6 @@ mod tests {
     use super::*;
     use crate::std::string::ToString;
     use crate::testing::StubContext;
-    use pictorus_block_data::BlockData;
     use pictorus_traits::{Matrix, ProcessBlock};
     use std::string::String;
     use std::vec;

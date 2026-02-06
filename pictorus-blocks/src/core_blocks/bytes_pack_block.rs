@@ -2,12 +2,10 @@ extern crate alloc;
 use crate::byte_data::{parse_byte_data_spec, try_pack_data, ByteOrderSpec, DataType};
 use crate::traits::Scalar;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Packs scalar inputs into a byte buffer according to the provided data spec.
 pub struct BytesPackBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     _unused: core::marker::PhantomData<T>,
 }
@@ -15,7 +13,6 @@ pub struct BytesPackBlock<T: Apply> {
 impl<T: Apply> Default for BytesPackBlock<T> {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(b""),
             buffer: Vec::new(),
             _unused: core::marker::PhantomData,
         }
@@ -34,7 +31,6 @@ impl<T: Apply> ProcessBlock for BytesPackBlock<T> {
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = T::pack_bytes(inputs, parameters);
-        self.data = OldBlockData::from_bytes(&self.buffer);
         self.buffer.as_slice()
     }
 }

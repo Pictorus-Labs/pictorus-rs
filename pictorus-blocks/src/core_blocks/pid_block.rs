@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 use super::derivative_block::Parameters as DerivativeParameters;
@@ -17,10 +16,8 @@ use crate::{DerivativeBlock, IntegralBlock, Scalar};
 /// integrator.
 pub struct PidBlock<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize>
 where
-    OldBlockData: FromPass<T>,
     (T, R): IntegralApply<Output = T>,
 {
-    pub data: OldBlockData,
     buffer: T,
     integrator: IntegralBlock<(T, R)>,
     derivative: DerivativeBlock<T, ND_SAMPLES>,
@@ -28,12 +25,10 @@ where
 
 impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> Default for PidBlock<T, R, ND_SAMPLES>
 where
-    OldBlockData: FromPass<T>,
     (T, R): IntegralApply<Output = T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
             integrator: IntegralBlock::default(),
             derivative: DerivativeBlock::default(),
@@ -70,7 +65,6 @@ impl<T: IntegralApply> Parameters<T> {
 
 impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> PidBlock<T, R, ND_SAMPLES>
 where
-    OldBlockData: FromPass<T>,
     (T, R): IntegralApply<Output = T, Float = T::Float>,
 {
     fn integrator_params(parameters: &Parameters<(T, R)>) -> IntegralParameters<(T, R)> {
@@ -88,7 +82,6 @@ where
 impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> ProcessBlock
     for PidBlock<T, R, ND_SAMPLES>
 where
-    OldBlockData: FromPass<T>,
     DerivativeBlock<T, ND_SAMPLES>:
         ProcessBlock<Output = T, Inputs = T, Parameters = DerivativeParameters<T>>,
     IntegralBlock<(T, R)>:
@@ -127,7 +120,6 @@ where
         let d = T::component_mul(d_res, parameters.kd);
         self.buffer = T::component_add(p.as_by(), i, d.as_by());
 
-        self.data = OldBlockData::from_pass(self.buffer.as_by());
         self.buffer.as_by()
     }
 }
@@ -142,7 +134,6 @@ impl<const ND_SAMPLES: usize, R: Scalar> HasIc for PidBlock<f64, R, ND_SAMPLES> 
         let integrator_params = Self::integrator_params(parameters);
         let derivative_params = Self::derivative_params(parameters);
         Self {
-            data: OldBlockData::from_scalar(parameters.ic),
             buffer: 0.0,
             integrator: IntegralBlock::new(&integrator_params),
             derivative: DerivativeBlock::new(&derivative_params),
@@ -152,14 +143,11 @@ impl<const ND_SAMPLES: usize, R: Scalar> HasIc for PidBlock<f64, R, ND_SAMPLES> 
 
 impl<const ND_SAMPLES: usize, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
     for PidBlock<Matrix<NROWS, NCOLS, f64>, R, ND_SAMPLES>
-where
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, f64>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         let integrator_params = Self::integrator_params(parameters);
         let derivative_params = Self::derivative_params(parameters);
         Self {
-            data: OldBlockData::from_pass(parameters.ic.as_by()),
             buffer: Matrix::default(),
             integrator: IntegralBlock::new(&integrator_params),
             derivative: DerivativeBlock::new(&derivative_params),
@@ -227,12 +215,11 @@ mod tests {
         // Output should just be double the input
         let res = p_block.process(&params, &runtime.context(), (1.0, false));
         assert_eq!(res, 2.0);
-        assert_eq!(p_block.data.scalar(), 2.0);
+
         runtime.tick();
 
         let res = p_block.process(&params, &runtime.context(), (-2.0, false));
         assert_eq!(res, -4.0);
-        assert_eq!(p_block.data.scalar(), -4.0);
     }
 
     #[test]

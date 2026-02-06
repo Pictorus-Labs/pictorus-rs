@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
 #[derive(Debug, Clone)]
@@ -10,7 +9,6 @@ where
     f64: From<T>,
 {
     phantom: core::marker::PhantomData<T>,
-    pub data: BlockData,
 }
 
 impl<T> Default for TrianglewaveBlock<T>
@@ -21,7 +19,6 @@ where
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
-            data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
 }
@@ -49,7 +46,7 @@ where
         // y is in the range [0, 0.5] over a t value from 0 to 1. Scale it by 4 ( to a range of [0, 2] )
         // then shift it down by 1 to get it in the range [-1, 1], then scale it by the amplitude and add the bias.
         let val = (four * y - T::one()) * parameters.amplitude + parameters.bias;
-        self.data = BlockData::from_scalar(val.into());
+
         val
     }
 }

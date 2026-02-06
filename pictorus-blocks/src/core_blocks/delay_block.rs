@@ -1,53 +1,38 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Pass, ProcessBlock};
 
 use crate::traits::CopyInto;
 
 /// Delays the input signal by N steps.
-pub struct DelayBlock<T: Pass + Default + Copy, const N: usize>
-where
-    pictorus_block_data::BlockData: FromPass<T>,
-{
+pub struct DelayBlock<T: Pass + Default + Copy, const N: usize> {
     samples: [T; N],
     sample_index: usize,
     initial_accumulation: bool,
     output: T,
-    pub data: OldBlockData,
 }
 
-impl<T: Pass + Default + Copy + CopyInto<T>, const N: usize> HasIc for DelayBlock<T, N>
-where
-    pictorus_block_data::BlockData: FromPass<T>,
-{
+impl<T: Pass + Default + Copy + CopyInto<T>, const N: usize> HasIc for DelayBlock<T, N> {
     /// Constructs a new DelayBlock with the initial conditions from the parameters so that its output will be in a valid state before its first call to process.
     fn new(parameters: &Self::Parameters) -> Self {
         let mut output = Self::default();
         // Only setting the output and data fields here. After process has been called once the fields will be set with the IC on subsequent calls until N samples have been received.
         T::copy_into(parameters.ic.as_by(), &mut output.output);
-        output.data = OldBlockData::from_pass(parameters.ic.as_by());
+
         output
     }
 }
 
-impl<T: Pass + Default + Copy, const N: usize> Default for DelayBlock<T, N>
-where
-    pictorus_block_data::BlockData: FromPass<T>,
-{
+impl<T: Pass + Default + Copy, const N: usize> Default for DelayBlock<T, N> {
     fn default() -> Self {
         Self {
             samples: [T::default(); N],
             initial_accumulation: true,
             output: T::default(),
             sample_index: 0,
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
         }
     }
 }
 
-impl<T: Pass + Default + Copy + CopyInto<T>, const N: usize> ProcessBlock for DelayBlock<T, N>
-where
-    pictorus_block_data::BlockData: FromPass<T>,
-{
+impl<T: Pass + Default + Copy + CopyInto<T>, const N: usize> ProcessBlock for DelayBlock<T, N> {
     type Inputs = T;
     type Output = T;
     type Parameters = Parameters<T>;
@@ -91,7 +76,6 @@ where
             self.sample_index = 0;
         }
 
-        self.data = OldBlockData::from_pass(self.output.as_by());
         self.output.as_by()
     }
 }

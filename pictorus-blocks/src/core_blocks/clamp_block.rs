@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters<T> {
@@ -19,29 +18,21 @@ impl<T> Parameters<T> {
 /// If an input is larger than the max value, it will be set to the max value. If
 /// the input is less than the min value, it will be set to the min value.
 pub struct ClampBlock<T> {
-    pub data: OldBlockData,
     buffer: Option<T>,
 }
 
 impl<T> Default for ClampBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
 macro_rules! impl_clamp_block {
     ($type:ty) => {
-        impl ProcessBlock for ClampBlock<$type>
-        where
-            OldBlockData: FromPass<$type>,
-        {
+        impl ProcessBlock for ClampBlock<$type> {
             type Inputs = $type;
             type Output = $type;
             type Parameters = Parameters<$type>;
@@ -54,15 +45,12 @@ macro_rules! impl_clamp_block {
             ) -> PassBy<'_, Self::Output> {
                 let clamp = input.clamp(parameters.min, parameters.max);
                 let output = self.buffer.insert(clamp);
-                self.data = OldBlockData::from_scalar((*output).into());
                 *output
             }
         }
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for ClampBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -80,7 +68,6 @@ macro_rules! impl_clamp_block {
                         output.data[c][r] = input.data[c][r].clamp(parameters.min, parameters.max);
                     }
                 }
-                self.data = OldBlockData::from_pass(output);
                 output
             }
         }
@@ -101,7 +88,6 @@ mod test {
     use crate::testing::StubContext;
     use num_traits::{One, Zero};
     use paste::paste;
-    use pictorus_block_data::ToPass;
 
     use super::*;
 

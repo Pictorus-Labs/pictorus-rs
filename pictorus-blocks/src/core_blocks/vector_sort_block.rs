@@ -1,6 +1,5 @@
 use core::cmp::Ordering;
 
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, PartialEq)]
@@ -31,7 +30,6 @@ impl Parameters {
 ///
 /// This block also accepts scalars, though the output will always be the input.
 pub struct VectorSortBlock<I, O> {
-    pub data: OldBlockData,
     buffer: O,
     _phantom: core::marker::PhantomData<I>,
 }
@@ -39,11 +37,9 @@ pub struct VectorSortBlock<I, O> {
 impl<I, O> Default for VectorSortBlock<I, O>
 where
     O: Default + Pass,
-    OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<O>>::from_pass(O::default().as_by()),
             buffer: O::default(),
             _phantom: core::marker::PhantomData,
         }
@@ -88,7 +84,6 @@ macro_rules! impl_vector_sort {
                     }
                 }
 
-                self.data = <OldBlockData as FromPass<Self::Output>>::from_pass(&self.buffer);
                 &self.buffer
             }
         }
@@ -105,7 +100,6 @@ macro_rules! impl_vector_sort {
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 self.buffer = input;
-                self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
         }

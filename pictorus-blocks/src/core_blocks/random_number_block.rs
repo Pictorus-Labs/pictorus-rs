@@ -1,5 +1,4 @@
 use num_traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, Scalar};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use rand_distr::{Distribution, Normal, StandardNormal};
@@ -14,7 +13,6 @@ where
 {
     phantom: core::marker::PhantomData<T>,
     rng: SmallRng,
-    pub data: BlockData,
 }
 
 impl<T> Default for RandomNumberBlock<T>
@@ -27,7 +25,6 @@ where
         Self {
             phantom: core::marker::PhantomData,
             rng: SmallRng::seed_from_u64(0u64),
-            data: BlockData::from_scalar(f64::from(T::default())),
         }
     }
 }
@@ -50,7 +47,6 @@ where
             .rng
             //Will Fail if std2 is infinite: https://docs.rs/rand_distr/latest/src/rand_distr/normal.rs.html#156-161
             .sample(Normal::new(parameters.mean, parameters.std2).unwrap());
-        self.data = BlockData::from_scalar(f64::from(val));
         val
     }
 }

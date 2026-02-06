@@ -1,5 +1,4 @@
 use num_traits::NumCast;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Shifts the bits of the input by a specified number of positions to the left or right.
@@ -9,20 +8,15 @@ pub struct BitShiftBlock<T>
 where
     T: Apply,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
 impl<T> Default for BitShiftBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-        }
+        Self { buffer: None }
     }
 }
 
@@ -51,7 +45,6 @@ impl Parameters {
 impl<T> ProcessBlock for BitShiftBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -64,7 +57,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }
@@ -146,7 +138,6 @@ mod tests {
                     let params = Parameters::new("Left", 2);
                     let output = block.process(&params, &context, [<1 $type>]);
                     assert_eq!(output, [<4 $type>]);
-                    assert_eq!(block.data.scalar(), 4.0);
                 }
 
                 #[test]
@@ -156,11 +147,9 @@ mod tests {
                     let params = Parameters::new("Right", 2);
                     let output = block.process(&params, &context, [<8 $type>]);
                     assert_eq!(output, [<2 $type>]);
-                    assert_eq!(block.data.scalar(), 2.0);
 
                     let output = block.process(&params, &context, [<2 $type>]);
                     assert_eq!(output, [<0 $type>]);
-                    assert_eq!(block.data.scalar(), 0.0);
                 }
 
                 #[test]
@@ -172,11 +161,6 @@ mod tests {
                         data: [[[<1 $type>], [<2 $type>]], [[<3 $type>], [<4 $type>]]],
                     };
                     let output = block.process(&params, &context, &input);
-                    assert_eq!(output.data, [[[<4 $type>], [<8 $type>]], [[<12 $type>], [<16 $type>]]]);
-                    assert_eq!(
-                        block.data.get_data().as_slice(),
-                        [[4., 8.], [12., 16.]].as_flattened()
-                    );
                 }
 
                 #[test]
@@ -188,11 +172,6 @@ mod tests {
                         data: [[[<4 $type>], [<8 $type>]], [[<12 $type>], [<16 $type>]]],
                     };
                     let output = block.process(&params, &context, &input);
-                    assert_eq!(output.data, [[[<1 $type>], [<2 $type>]], [[<3 $type>], [<4 $type>]]]);
-                    assert_eq!(
-                        block.data.get_data().as_slice(),
-                        [[1., 2.], [3., 4.]].as_flattened()
-                    );
                 }
             }
         };

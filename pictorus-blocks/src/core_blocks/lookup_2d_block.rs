@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Float;
@@ -15,15 +14,12 @@ where
     S: Float,
     T: Apply<NX, NY, S>,
 {
-    pub data: OldBlockData,
     buffer: T,
     _unused: PhantomData<S>,
 }
 
 impl<const NX: usize, const NY: usize, S: Float, T: Apply<NX, NY, S>> ProcessBlock
     for Lookup2DBlock<NX, NY, S, T>
-where
-    OldBlockData: FromPass<T>,
 {
     type Inputs = (T, T); // X and Y inputs
     type Output = T; // Output has same type/dimensions as inputs
@@ -36,19 +32,15 @@ where
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }
 
 impl<const NX: usize, const NY: usize, S: Float, T: Apply<NX, NY, S>> Default
     for Lookup2DBlock<NX, NY, S, T>
-where
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
             _unused: PhantomData,
         }
@@ -78,9 +70,9 @@ pub struct Parameters<const NX: usize, const NY: usize, S: Float> {
 impl<const NX: usize, const NY: usize, S: Float> Parameters<NX, NY, S> {
     pub fn new(
         interp_method: &str,
-        break_points_u1: &OldBlockData,
-        break_points_u2: &OldBlockData,
-        data_points: &OldBlockData,
+        break_points_u1: &[S],
+        break_points_u2: &[S],
+        data_points: &[S],
     ) -> Self {
         let mut break_points_u1_arr = [S::default(); NX];
         for (i, val) in break_points_u1.iter().enumerate() {
@@ -101,8 +93,8 @@ impl<const NX: usize, const NY: usize, S: Float> Parameters<NX, NY, S> {
         for (i, row) in data_points_arr.iter_mut().enumerate() {
             for (j, cell) in row.iter_mut().enumerate() {
                 let idx = i * NY + j;
-                *cell =
-                    S::from(data_points.at(idx)).expect("Failed to convert data point to float");
+                *cell = S::from(*data_points.get(idx).expect("Index out of bounds"))
+                    .expect("Failed to convert data point to float");
             }
         }
 

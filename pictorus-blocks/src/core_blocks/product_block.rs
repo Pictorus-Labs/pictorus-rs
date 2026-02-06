@@ -1,5 +1,4 @@
 use core::marker::PhantomData;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
 // This Block is essentially two blocks hiding in a trench coat; Matrix Multiplication and Component Wise Multiplication.
@@ -17,26 +16,18 @@ use matrix::{ApplyMatMul, ParametersMatrixMult};
 pub struct ProductBlock<T: Apply<M>, M: ProductMethod> {
     _method: PhantomData<M>,
     store: Option<T::Output>,
-    pub data: OldBlockData,
 }
 
-impl<T: Apply<M>, M: ProductMethod> Default for ProductBlock<T, M>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply<M>, M: ProductMethod> Default for ProductBlock<T, M> {
     fn default() -> Self {
         Self {
             _method: PhantomData,
             store: None,
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
 }
 
-impl<T: Apply<M>, M: ProductMethod> ProcessBlock for ProductBlock<T, M>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply<M>, M: ProductMethod> ProcessBlock for ProductBlock<T, M> {
     type Inputs = T;
     type Output = T::Output;
     type Parameters = T::Parameters;
@@ -48,7 +39,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.store, parameters, inputs);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

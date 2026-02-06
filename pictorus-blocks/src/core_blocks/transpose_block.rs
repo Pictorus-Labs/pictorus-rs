@@ -1,5 +1,4 @@
 use crate::nalgebra_interop::MatrixExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
@@ -21,26 +20,16 @@ impl Default for Parameters {
 ///
 /// For scalar inputs this is just a pass-through
 pub struct TransposeBlock<T: Apply> {
-    pub data: OldBlockData,
     store: Option<T::Output>,
 }
 
-impl<T: Apply> Default for TransposeBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> Default for TransposeBlock<T> {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            store: None,
-        }
+        Self { store: None }
     }
 }
 
-impl<T: Apply> ProcessBlock for TransposeBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> ProcessBlock for TransposeBlock<T> {
     type Inputs = T;
     type Output = T::Output;
     type Parameters = Parameters;
@@ -52,7 +41,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.store, input);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

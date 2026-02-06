@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Float, MatrixOps};
@@ -15,14 +14,12 @@ where
     S: Float,
     T: Apply<N, S>,
 {
-    pub data: OldBlockData,
     buffer: T,
     _unused: PhantomData<S>,
 }
 
 impl<const N: usize, S: Float, T: Apply<N, S>> ProcessBlock for Lookup1DBlock<N, S, T>
 where
-    OldBlockData: FromPass<T>,
 {
     type Inputs = T;
     type Output = T;
@@ -35,18 +32,15 @@ where
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }
 
 impl<const N: usize, S: Float, T: Apply<N, S>> Default for Lookup1DBlock<N, S, T>
 where
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
             _unused: PhantomData,
         }

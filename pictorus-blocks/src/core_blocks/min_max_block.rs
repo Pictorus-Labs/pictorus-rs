@@ -1,7 +1,6 @@
 use crate::nalgebra_interop::MatrixExt;
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
 use nalgebra::SMatrix;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Copy, Clone)]
@@ -30,30 +29,17 @@ impl Parameters {
 ///
 /// If inputs are all scalars, the output will be a scalar
 /// Otherwise the output will be the component-wise minimum or maximum of the inputs
-pub struct MinMaxBlock<T: Apply<Parameters>>
-where
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
-{
-    pub data: OldBlockData,
+pub struct MinMaxBlock<T: Apply<Parameters>> {
     buffer: Option<T::Output>,
 }
 
-impl<T: Apply<Parameters>> Default for MinMaxBlock<T>
-where
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
-{
+impl<T: Apply<Parameters>> Default for MinMaxBlock<T> {
     fn default() -> Self {
-        MinMaxBlock {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-        }
+        MinMaxBlock { buffer: None }
     }
 }
 
-impl<T: Apply<Parameters>> ProcessBlock for MinMaxBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply<Parameters>> ProcessBlock for MinMaxBlock<T> {
     type Parameters = Parameters;
     type Inputs = T;
     type Output = T::Output;
@@ -65,7 +51,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let res = T::apply(inputs, parameters, &mut self.buffer);
-        self.data = OldBlockData::from_pass(res);
         res
     }
 }

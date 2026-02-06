@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{GeneratorBlock, Matrix, Pass, PassBy, Scalar};
 
 pub struct Parameters<T> {
@@ -16,27 +15,21 @@ pub struct ConstantBlock<T>
 where
     T: Apply,
 {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
 }
 
 impl<T> Default for ConstantBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            buffer: None,
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-        }
+        Self { buffer: None }
     }
 }
 
 impl<T> GeneratorBlock for ConstantBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Output = T::Output;
     type Parameters = Parameters<T>;
@@ -47,7 +40,6 @@ where
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, parameters);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 }

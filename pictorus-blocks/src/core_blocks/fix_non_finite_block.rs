@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
 // A block that ensures all data passed into it is finite, replacing non-finite values with zero.
@@ -7,21 +6,13 @@ use pictorus_traits::{Pass, PassBy, ProcessBlock};
 // This block is needed to support legacy behavior where we fix values passed in by user-defined functions
 // i.e. EquationBlock and RustBlock. It's unclear if we want to support this behavior in the future.
 #[doc(hidden)]
-pub struct FixNonFiniteBlock<T: Pass>
-where
-    OldBlockData: FromPass<T>,
-{
-    pub data: OldBlockData,
+pub struct FixNonFiniteBlock<T: Pass> {
     buffer: T,
 }
 
-impl<T: Float> Default for FixNonFiniteBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Float> Default for FixNonFiniteBlock<T> {
     fn default() -> Self {
         FixNonFiniteBlock {
-            data: OldBlockData::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -36,10 +27,7 @@ impl Parameters {
     }
 }
 
-impl<T: Float> ProcessBlock for FixNonFiniteBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Float> ProcessBlock for FixNonFiniteBlock<T> {
     type Parameters = Parameters;
     type Inputs = T;
     type Output = T;
@@ -56,7 +44,6 @@ where
             input
         };
         self.buffer = res;
-        self.data = OldBlockData::from_pass(res);
         res
     }
 }

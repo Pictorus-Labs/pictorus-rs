@@ -1,12 +1,10 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, Scalar};
 
 #[derive(Debug, Clone)]
 /// Outputs a signal that ramps up linearly from a specified start time at a specified rate.
 pub struct RampBlock<T: Scalar + Float> {
     phantom: core::marker::PhantomData<T>,
-    pub data: BlockData,
 }
 
 impl<T: Scalar + Float> Default for RampBlock<T>
@@ -16,7 +14,6 @@ where
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
-            data: BlockData::from_scalar(f64::from(T::default())),
         }
     }
 }
@@ -37,7 +34,7 @@ where
         let time = T::from_duration(context.time());
         let ramp_val =
             parameters.rate * num_traits::Float::max(time - parameters.start_time, T::zero());
-        self.data = BlockData::from_scalar(ramp_val.into());
+
         ramp_val
     }
 }

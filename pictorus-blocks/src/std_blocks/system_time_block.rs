@@ -1,5 +1,4 @@
 use chrono::{DateTime, Datelike, Local, Timelike};
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::GeneratorBlock;
 
 /// This block can be used in `std` environments to get the current system time.
@@ -8,7 +7,6 @@ use pictorus_traits::GeneratorBlock;
 /// Optionally, this accepts a sim input, in that case it must be instantiated with `SystemTimeBlock<Sim>`. In this case, the
 /// `data` field is assumed to be set externally
 pub struct SystemTimeBlock<T: TimeSource = Real> {
-    pub data: OldBlockData,
     output: f64,
     start_time: DateTime<Local>,
     _phantom: core::marker::PhantomData<T>,
@@ -23,7 +21,6 @@ impl TimeSource for Real {}
 impl<T: TimeSource> Default for SystemTimeBlock<T> {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_scalar(0.0),
             output: 0.0,
             start_time: Local::now(),
             _phantom: core::marker::PhantomData,
@@ -58,7 +55,6 @@ impl GeneratorBlock for SystemTimeBlock<Real> {
         let elpased_time = context.time();
         let time_now = self.start_time + elpased_time;
         self.output = get_output_value(time_now, parameters.method);
-        self.data = OldBlockData::from_scalar(self.output);
         self.output
     }
 }

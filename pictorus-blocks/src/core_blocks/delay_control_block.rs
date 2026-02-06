@@ -1,6 +1,5 @@
 use crate::traits::Scalar;
 use core::time::Duration;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Debounce or throttle an input signal.
@@ -11,29 +10,21 @@ use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 ///  - Debounce: Wait until the input signal stops being true for delay_time before emitting true.
 ///  - Throttle: Immediately emit true on first true input, but then wait delay_time before passing through a true input again.
 pub struct DelayControlBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Option<T::Output>,
     /// This is the state of the block used for the debounce and throttle functionality
     state: T::State,
 }
 
-impl<T: Apply> Default for DelayControlBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> Default for DelayControlBlock<T> {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: None,
             state: T::init_state(),
         }
     }
 }
 
-impl<T: Apply> ProcessBlock for DelayControlBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> ProcessBlock for DelayControlBlock<T> {
     type Inputs = T;
     type Output = T::Output;
     type Parameters = Parameters;
@@ -46,7 +37,6 @@ where
     ) -> PassBy<'b, Self::Output> {
         let buffer = self.buffer.get_or_insert(T::Output::default());
         let output = T::apply(buffer, inputs, &mut self.state, parameters, context);
-        self.data = <OldBlockData as FromPass<T::Output>>::from_pass(output);
         output
     }
 }

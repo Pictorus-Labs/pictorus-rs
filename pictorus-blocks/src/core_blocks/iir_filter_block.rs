@@ -1,38 +1,23 @@
 use crate::nalgebra_interop::MatrixExt;
 use crate::traits::Float;
 use core::time::Duration;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Block for applying an Infinite Impulse Response (IIR) filter to an input signal.
-pub struct IirFilterBlock<T: Pass + Default>
-where
-    OldBlockData: FromPass<T>,
-{
-    pub data: OldBlockData,
+pub struct IirFilterBlock<T: Pass + Default> {
     buffer: Option<T>,
 }
 
-impl<T: Pass + Default> Default for IirFilterBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Pass + Default> Default for IirFilterBlock<T> {
     fn default() -> Self {
-        IirFilterBlock {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
-        }
+        IirFilterBlock { buffer: None }
     }
 }
 
-impl<T: Float> HasIc for IirFilterBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Float> HasIc for IirFilterBlock<T> {
     fn new(parameters: &Self::Parameters) -> Self {
         IirFilterBlock::<T> {
             buffer: Some(parameters.ic),
-            data: <OldBlockData as FromPass<T>>::from_pass(parameters.ic),
         }
     }
 }
@@ -40,12 +25,10 @@ where
 impl<T, const NROWS: usize, const NCOLS: usize> HasIc for IirFilterBlock<Matrix<NROWS, NCOLS, T>>
 where
     T: Float,
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, T>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IirFilterBlock::<pictorus_traits::Matrix<NROWS, NCOLS, T>> {
             buffer: Some(parameters.ic),
-            data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, T>>>::from_pass(&parameters.ic),
         }
     }
 }
@@ -53,7 +36,6 @@ where
 impl<T> ProcessBlock for IirFilterBlock<T>
 where
     T: Float,
-    OldBlockData: FromPass<T>,
 {
     type Inputs = T;
     type Output = T;
@@ -68,7 +50,7 @@ where
         let alpha = timestep_s / (timestep_s + parameters.time_constant_s);
         let last_val = self.buffer.unwrap_or(parameters.ic);
         let res = alpha * inputs + ((T::one() - alpha) * last_val);
-        self.data = <OldBlockData as FromPass<T>>::from_pass(res);
+
         self.buffer.insert(res).as_by()
     }
 }
@@ -77,7 +59,6 @@ impl<T, const NROWS: usize, const NCOLS: usize> ProcessBlock
     for IirFilterBlock<Matrix<NROWS, NCOLS, T>>
 where
     T: Float,
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, T>>,
 {
     type Inputs = Matrix<NROWS, NCOLS, T>;
     type Output = Matrix<NROWS, NCOLS, T>;
@@ -95,7 +76,6 @@ where
         let last_val = self.buffer.as_ref().unwrap_or(&parameters.ic).as_view();
         let res = input * alpha + (last_val * (T::one() - alpha));
         let res = Self::Output::from_view(&res.as_view());
-        self.data = OldBlockData::from_pass(&res);
         self.buffer.insert(res)
     }
 }

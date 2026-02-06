@@ -1,9 +1,8 @@
-use crate::{nalgebra_interop::MatrixExt, IsValid};
+use crate::nalgebra_interop::MatrixExt;
 use nalgebra::{
     allocator::Allocator, ArrayStorage, Const, DefaultAllocator, DimDiff, DimMin, DimMinimum,
     DimSub, SMatrix, SquareMatrix, ToTypenum, SVD, U1,
 };
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Float, Scalar};
@@ -40,7 +39,6 @@ impl Parameters {
 /// The output type of the block is a tuple of (<input_type>, bool), where the
 /// bool indicates whether the inversion was successful.
 pub struct MatrixInverseBlock<T: Apply<M>, M: Method> {
-    pub data: OldBlockData,
     store: Option<T::Output>,
     is_data_valid: bool,
 }
@@ -49,11 +47,9 @@ impl<T, M> Default for MatrixInverseBlock<T, M>
 where
     M: Method,
     T: Apply<M>,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
             store: None,
             is_data_valid: false,
         }
@@ -64,7 +60,6 @@ impl<T, M> ProcessBlock for MatrixInverseBlock<T, M>
 where
     M: Method,
     T: Apply<M>,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = (T::Output, bool);
@@ -88,15 +83,7 @@ where
             }
         }
         .as_by();
-        self.data = OldBlockData::from_pass(output);
         (output, self.is_data_valid)
-    }
-}
-
-// TODO: Remove when we remove BlockData
-impl<T: Apply<M>, M: Method> IsValid for MatrixInverseBlock<T, M> {
-    fn is_valid(&self, _: f64) -> OldBlockData {
-        OldBlockData::scalar_from_bool(self.is_data_valid)
     }
 }
 

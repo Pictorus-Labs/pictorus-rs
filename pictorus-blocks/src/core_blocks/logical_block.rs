@@ -1,6 +1,5 @@
 use core::ops::Sub;
 use num_traits::One;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
@@ -16,23 +15,17 @@ pub struct LogicalBlock<T>
 where
     T: Apply<Parameters>,
     T::Output: Finalize,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     store: Option<T::Output>,
-    pub data: OldBlockData,
 }
 
 impl<T> Default for LogicalBlock<T>
 where
     T: Apply<Parameters>,
     T::Output: Finalize,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     fn default() -> Self {
-        Self {
-            store: None,
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-        }
+        Self { store: None }
     }
 }
 
@@ -40,7 +33,6 @@ impl<T> ProcessBlock for LogicalBlock<T>
 where
     T: Apply<Parameters>,
     T::Output: Finalize,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -54,7 +46,6 @@ where
         self.store = None;
         T::apply(inputs, parameters, &mut self.store);
         let result = T::Output::finalize(parameters.method, &mut self.store);
-        self.data = OldBlockData::from_pass(result);
         result
     }
 }
