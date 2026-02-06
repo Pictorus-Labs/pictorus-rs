@@ -208,7 +208,6 @@ mod tests {
 
         let expected_string = "1.0/ [[1.0,2.0,3.0],[4.0,5.0,6.0]]/ hello there".to_string();
         assert_eq!(res, expected_string.as_bytes());
-        assert_eq!(block.data.raw_string(), expected_string);
     }
 
     #[test]
@@ -223,7 +222,6 @@ mod tests {
 
         let expected_string = "привет⚡こんにちは".to_string();
         assert_eq!(res, expected_string.as_bytes());
-        assert_eq!(block.data.raw_string(), expected_string);
     }
 
     #[test]
@@ -238,6 +236,5 @@ mod tests {
 
         let expected = b"\x80\x81\x82\x83\x99\x84\x85\x86\x87";
         assert_eq!(res, expected);
-        assert_eq!(block.data.to_bytes().as_slice(), expected);
     }
 }

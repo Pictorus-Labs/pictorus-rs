@@ -118,8 +118,8 @@ mod tests {
                     let input = [<3 $type>];
 
                     let output = block.process(&parameters, &c, input);
+                    assert_eq!(output.data[0][0], [<3 $type>]);
 
-                    assert_eq!(output.data, [[[<3 $type>]]]);
                 }
 
                 #[test]

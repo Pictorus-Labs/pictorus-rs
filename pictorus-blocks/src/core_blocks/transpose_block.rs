@@ -94,11 +94,9 @@ mod tests {
 
         let output = transpose_block.process(&params, &ctxt, 1.0);
         assert_eq!(output, 1.0);
-        assert_eq!(transpose_block.data.scalar(), 1.0);
 
         let output = transpose_block.process(&params, &ctxt, 42.0);
         assert_eq!(output, 42.0);
-        assert_eq!(transpose_block.data.scalar(), 42.0);
     }
 
     #[test]
@@ -114,10 +112,6 @@ mod tests {
             data: [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]],
         };
         let output = transpose_block.process(&params, &ctxt, &input);
-        assert_eq!(output.data, expected.data);
-        assert_eq!(
-            transpose_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(output.data.as_flattened(), expected.data.as_flattened());
     }
 }

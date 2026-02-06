@@ -99,7 +99,6 @@ float_matrix_impl!(f32);
 mod tests {
 
     use crate::testing::StubContext;
-    use pictorus_block_data::{BlockData, ToPass};
     use pictorus_traits::ProcessBlock;
 
     use super::*;
@@ -110,13 +109,19 @@ mod tests {
         let p = Parameters::new();
         let mut cross_block =
             CrossProductBlock::<(Matrix<1, 3, f64>, Matrix<1, 3, f64>)>::default();
-        let input1 = BlockData::new(1, 3, &[1.0, 0.0, 0.0]);
-        let input2 = BlockData::new(1, 3, &[0.0, 1.0, 0.0]);
-        cross_block.process(&p, &context, (&input1.to_pass(), &input2.to_pass()));
+        let input1 = Matrix {
+            data: [[1.0], [0.0], [0.0]],
+        };
+        let input2 = Matrix {
+            data: [[0.0], [1.0], [0.0]],
+        };
+        let output = cross_block.process(&p, &context, (&input1, &input2));
 
         assert_eq!(
-            cross_block.data,
-            BlockData::from_matrix(&[&[0.0, 0.0, 1.0]])
+            output,
+            &Matrix {
+                data: [[0.0], [0.0], [1.0]]
+            }
         );
     }
 
@@ -126,13 +131,19 @@ mod tests {
         let p = Parameters::new();
         let mut cross_block =
             CrossProductBlock::<(Matrix<3, 1, f64>, Matrix<3, 1, f64>)>::default();
-        let input1 = BlockData::new(3, 1, &[1.0, 0.0, 0.0]);
-        let input2 = BlockData::new(3, 1, &[0.0, 1.0, 0.0]);
-        cross_block.process(&p, &context, (&input1.to_pass(), &input2.to_pass()));
+        let input1 = Matrix {
+            data: [[1.0, 0.0, 0.0]],
+        };
+        let input2 = Matrix {
+            data: [[0.0, 1.0, 0.0]],
+        };
+        let output = cross_block.process(&p, &context, (&input1, &input2));
 
         assert_eq!(
-            cross_block.data,
-            BlockData::from_matrix(&[&[0.0], &[0.0], &[1.0]])
+            output,
+            &Matrix {
+                data: [[0.0, 0.0, 1.0]]
+            }
         );
     }
 
@@ -149,7 +160,12 @@ mod tests {
             data: [[0.0], [1.0], [0.0]],
         };
         let output = cross_block.process(&p, &context, (&input1, &input2));
-        assert_eq!(output.data, [[0.0], [0.0], [1.0]]);
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[0.0], [0.0], [1.0]]
+            }
+        );
     }
 
     #[test]
@@ -165,7 +181,12 @@ mod tests {
             data: [[0.0, 1.0, 0.0]],
         };
         let output = cross_block.process(&p, &context, (&input1, &input2));
-        assert_eq!(output.data, [[0.0, 0.0, 1.0]]);
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[0.0, 0.0, 1.0]]
+            }
+        );
     }
 
     #[test]
@@ -181,7 +202,12 @@ mod tests {
             data: [[0.0], [1.0], [0.0]],
         };
         let output = cross_block.process(&p, &context, (&input1, &input2));
-        assert_eq!(output.data, [[0.0], [0.0], [1.0]]);
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[0.0], [0.0], [1.0]]
+            }
+        );
     }
 
     #[test]
@@ -197,6 +223,11 @@ mod tests {
             data: [[0.0, 1.0, 0.0]],
         };
         let output = cross_block.process(&p, &context, (&input1, &input2));
-        assert_eq!(output.data, [[0.0, 0.0, 1.0]]);
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[0.0, 0.0, 1.0]]
+            }
+        );
     }
 }

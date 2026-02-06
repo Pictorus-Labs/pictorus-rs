@@ -40,19 +40,17 @@ mod tests {
     use super::*;
 
     use crate::testing::StubContext;
-    use std::string::String;
 
     #[test]
     fn test_constant_block() {
         let mut block = BytesLiteralBlock::<11>::default();
 
-        let bytes_literal_ic = BlockData::from_bytes(String::from("Hello World").as_bytes());
+        let bytes_literal_ic = "Hello World".as_bytes();
 
-        let parameters = Parameters::new(bytes_literal_ic.to_pass());
+        let parameters = Parameters::new(bytes_literal_ic.try_into().unwrap());
         let context = StubContext::default();
 
         let output = block.generate(&parameters, &context);
         assert_eq!(output, "Hello World".as_bytes());
-        assert_eq!(block.data, BlockData::from_bytes("Hello World".as_bytes()));
     }
 }

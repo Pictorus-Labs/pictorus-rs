@@ -342,7 +342,10 @@ mod tests {
                 &runtime.context,
                 &Matrix { data: sine_data },
             );
-            assert_eq!(hp_mat_data.data, hp_scalar_data);
+            assert_eq!(hp_mat_data.data[0][0], hp_scalar_data[0][0]);
+            assert_eq!(hp_mat_data.data[0][1], hp_scalar_data[0][1]);
+            assert_eq!(hp_mat_data.data[1][0], hp_scalar_data[1][0]);
+            assert_eq!(hp_mat_data.data[1][1], hp_scalar_data[1][1]);
             runtime.tick();
         }
     }
@@ -419,7 +422,10 @@ mod tests {
                 &runtime.context,
                 &Matrix { data: sine_data },
             );
-            assert_eq!(hp_mat_data.data, hp_scalar_data);
+            assert_eq!(hp_mat_data.data[0][0], hp_scalar_data[0][0]);
+            assert_eq!(hp_mat_data.data[0][1], hp_scalar_data[0][1]);
+            assert_eq!(hp_mat_data.data[1][0], hp_scalar_data[1][0]);
+            assert_eq!(hp_mat_data.data[1][1], hp_scalar_data[1][1]);
             runtime.tick();
         }
     }

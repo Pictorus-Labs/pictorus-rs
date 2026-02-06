@@ -63,11 +63,9 @@ mod tests {
         let input = 99.999;
         let output = block.process(&params, &ctxt, input.as_by());
         assert_eq!(output, input);
-        assert_eq!(block.data.scalar(), input);
 
         let input = f64::NAN;
         let output = block.process(&params, &ctxt, input.as_by());
         assert_eq!(output, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
     }
 }

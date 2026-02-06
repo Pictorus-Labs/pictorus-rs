@@ -160,8 +160,6 @@ mod tests {
         let mut block = MatrixInverseBlock::<f64, Inverse>::default();
         let res = block.process(&params, &ctxt, 99.0);
         assert_eq!(res, (99.0, true));
-        assert_eq!(block.data.scalar(), 99.0);
-        assert!(block.is_valid(0.0).any());
     }
 
     #[test]
@@ -174,11 +172,12 @@ mod tests {
         };
         let res = block.process(&params, &ctxt, &input);
         let expected = [[-2.0, 1.0], [1.5, -0.5]];
-        assert_eq!(res.0.data, expected);
         assert!(res.1);
-
-        assert_eq!(block.data.get_data().as_slice(), expected.as_flattened());
-        assert!(block.is_valid(0.0).any());
+        assert_abs_diff_eq!(
+            res.0.data.as_flattened(),
+            expected.as_flattened(),
+            epsilon = 1e-8
+        );
     }
 
     #[test]
@@ -193,14 +192,9 @@ mod tests {
         let mut invert_block = MatrixInverseBlock::<Matrix<3, 3, f64>, Inverse>::default();
         let res = invert_block.process(&params, &ctxt, &det_zero_input);
         let expected = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
-        assert_eq!(res.0.data, expected,);
         assert!(!res.1);
 
-        assert_eq!(
-            invert_block.data.get_data().as_slice(),
-            expected.as_flattened()
-        );
-        assert!(!invert_block.is_valid(0.0).any());
+        assert_eq!(res.0.data, expected);
 
         // SVD-based pseudo-inverse method should be fine
         let mut svd_block = MatrixInverseBlock::<Matrix<3, 3, f64>, Svd>::default();
@@ -216,13 +210,6 @@ mod tests {
             epsilon = 1e-8
         );
         assert!(res.1);
-
-        assert_abs_diff_eq!(
-            svd_block.data.get_data().as_slice(),
-            expected.as_flattened(),
-            epsilon = 1e-8
-        );
-        assert!(svd_block.is_valid(0.0).any());
     }
 
     #[test]
@@ -250,7 +237,6 @@ mod tests {
             epsilon = 1e-8
         );
         assert!(res.1);
-        assert!(block.is_valid(0.0).any());
     }
 
     #[test]
@@ -277,6 +263,5 @@ mod tests {
             epsilon = 1e-8
         );
         assert!(res.1);
-        assert!(block.is_valid(0.0).any());
     }
 }

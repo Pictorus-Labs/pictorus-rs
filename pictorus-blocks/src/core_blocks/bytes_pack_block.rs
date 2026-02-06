@@ -215,7 +215,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 
     #[test]
@@ -238,7 +237,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
 
         // Make sure buffer is cleared between runs, this logic is just in one test because it is written
         // for the ProcessBlock impl and so is shared between all input possibilities
@@ -255,7 +253,6 @@ mod tests {
         };
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 
     #[test]
@@ -281,7 +278,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 
     #[test]
@@ -315,7 +311,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 
     #[test]
@@ -351,7 +346,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 
     #[test]
@@ -391,7 +385,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 
     #[test]
@@ -435,7 +428,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 
     #[test]
@@ -492,6 +484,5 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
     }
 }

@@ -136,7 +136,6 @@ mod tests {
 
                     let output = block.process(&p, &c, &input);
                     assert_eq!(output, [<5 $type>].into());
-                    assert_eq!(block.data, OldBlockData::from_scalar([<5 $type>].into()));
                 }
 
                 #[test]
@@ -150,7 +149,6 @@ mod tests {
                     };
                     let output = block.process(&p, &c, &input);
                     assert_eq!(output, [<6 $type>].into());
-                    assert_eq!(block.data, OldBlockData::from_scalar([<6 $type>].into()));
                 }
             }
         };

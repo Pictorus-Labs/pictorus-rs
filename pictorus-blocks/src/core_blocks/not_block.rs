@@ -187,19 +187,15 @@ mod tests {
 
                     let res = block.process(&parameters, &context, 1.0);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
 
                     let res = block.process(&parameters, &context, 0.0);
                     assert_eq!(res, 1.0);
-                    assert_eq!(block.data.scalar(), 1.0);
 
                     let res = block.process(&parameters, &context, -1.2);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
 
                     let res = block.process(&parameters, &context, 1.2);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
                 }
 
                 #[test]
@@ -212,8 +208,7 @@ mod tests {
                         data: [[1.0, 0.0, -1.2, 1.2]],
                     };
                     let res = block.process(&parameters, &context, &input);
-                    assert_eq!(res.data, [[0.0, 1.0, 0.0, 0.0]]);
-                    assert_eq!(block.data.get_data().as_slice(), [[0.0, 1.0, 0.0, 0.0]].as_flattened());
+                    assert_eq!(res.data.as_flattened(), &[0.0, 1.0, 0.0, 0.0]);
                 }
 
                 #[test]
@@ -224,19 +219,15 @@ mod tests {
 
                     let res = block.process(&parameters, &context, 1.0);
                     assert_eq!(res, -2.0);
-                    assert_eq!(block.data.scalar(), -2.0);
 
                     let res = block.process(&parameters, &context, 42.0);
                     assert_eq!(res, -43.0);
-                    assert_eq!(block.data.scalar(), -43.0);
 
                     let res = block.process(&parameters, &context, -1.2);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
 
                     let res = block.process(&parameters, &context, 1.2);
                     assert_eq!(res, -2.0);
-                    assert_eq!(block.data.scalar(), -2.0);
                 }
 
                 #[test]
@@ -249,8 +240,7 @@ mod tests {
                         data: [[1.0, 42.0], [-1.2, 1.2]],
                     };
                     let res = block.process(&parameters, &context, &input);
-                    assert_eq!(res.data, [[-2.0, -43.0], [0.0, -2.0]]);
-                    assert_eq!(block.data.get_data().as_slice(), [[-2.0, -43.0], [0.0, -2.0]].as_flattened());
+                    assert_eq!(res.data.as_flattened(), &[-2.0, -43.0, 0.0, -2.0]);
                 }
             }
         };
@@ -267,20 +257,16 @@ mod tests {
 
         let res = block.process(&parameters, &context, true);
         assert!(!res);
-        assert_eq!(block.data.scalar(), 0.0);
 
         let res = block.process(&parameters, &context, false);
         assert!(res);
-        assert_eq!(block.data.scalar(), 1.0);
 
         let parameters = Parameters::new("Bitwise");
         let res = block.process(&parameters, &context, true);
         assert!(!res);
-        assert_eq!(block.data.scalar(), 0.0);
 
         let res = block.process(&parameters, &context, false);
         assert!(res);
-        assert_eq!(block.data.scalar(), 1.0);
     }
 
     #[test]
@@ -294,9 +280,5 @@ mod tests {
         };
         let res = block.process(&parameters, &context, &input);
         assert_eq!(res.data, [[false, true], [true, false]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[0.0, 1.0], [1.0, 0.0]].as_flattened()
-        );
     }
 }

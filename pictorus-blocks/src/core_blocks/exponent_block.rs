@@ -178,12 +178,18 @@ mod tests {
             data: [[1.0, -2.0], [3.0, -4.0]],
         };
         let output = block.process(&parameters, &context, &input);
-        assert_eq!(output.data, [[1.0, 4.0], [9.0, 16.0]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[0][1], 4.0);
+        assert_eq!(output.data[1][0], 9.0);
+        assert_eq!(output.data[1][1], 16.0);
 
         // Preserve sign is true
         let parameters = Parameters::new(4.0, true);
         let output = block.process(&parameters, &context, &input);
-        assert_eq!(output.data, [[1.0, -16.0], [81.0, -256.0]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[0][1], -16.0);
+        assert_eq!(output.data[1][0], 81.0);
+        assert_eq!(output.data[1][1], -256.0);
 
         // Now try a Root
         let parameters = Parameters::new(0.5, false);
@@ -191,18 +197,27 @@ mod tests {
             data: [[1.0, 4.0], [9.0, 16.0]],
         };
         let output = block.process(&parameters, &context, &input);
-        assert_eq!(output.data, [[1.0, 2.0], [3.0, 4.0]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[0][1], 2.0);
+        assert_eq!(output.data[1][0], 3.0);
+        assert_eq!(output.data[1][1], 4.0);
 
         // Now try a Root with preserve sign
         let parameters = Parameters::new(0.5, true);
         let output = block.process(&parameters, &context, &input);
-        assert_eq!(output.data, [[1.0, 2.0], [3.0, 4.0]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[0][1], 2.0);
+        assert_eq!(output.data[1][0], 3.0);
+        assert_eq!(output.data[1][1], 4.0);
 
         let input = Matrix {
             data: [[1.0, -4.0], [9.0, -16.0]],
         };
         let output = block.process(&parameters, &context, &input);
-        assert_eq!(output.data, [[1.0, -2.0], [3.0, -4.0]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[0][1], -2.0);
+        assert_eq!(output.data[1][0], 3.0);
+        assert_eq!(output.data[1][1], -4.0);
     }
 
     #[test]

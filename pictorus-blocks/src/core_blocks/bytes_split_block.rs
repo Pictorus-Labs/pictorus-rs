@@ -764,41 +764,21 @@ mod tests {
         let input = br#"123:4.56:78.9:42.0"#;
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].to_bytes(), b"4.56");
-        assert_eq!(block.data.len(), 3);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
 
         context.time += context.fundamental_timestep;
         let input = br#"123:4.56:78.9"#;
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true)); // stale time has not elapsed
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].to_bytes(), b"4.56");
-        assert_eq!(block.data.len(), 3);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
 
         context.time = Duration::from_secs_f64(2.0);
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), false)); // stale time has elapsed
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].to_bytes(), b"4.56");
-        assert_eq!(block.data.len(), 3);
-        assert_eq!(block.is_valid(0.0).scalar(), 0.0);
 
         // Now input is valid again
         context.time += context.fundamental_timestep;
         let input = br#"1.03:17:23.4:11.0"#;
         let output = block.process(&params, &context, input);
         assert_eq!(output, (1.03, 11.0, b"17".as_slice(), true));
-        assert_eq!(block.data[0].scalar(), 1.03);
-        assert_eq!(block.data[1].scalar(), 11.0);
-        assert_eq!(block.data[2].to_bytes(), b"17");
-        assert_eq!(block.data.len(), 3);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -811,10 +791,6 @@ mod tests {
         let input = b"\x00\xAA\xAA\xAB\x01\xAA\xFF\xAB\x02";
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (b"\x00".as_ref(), b"\x02".as_ref(), true));
-        assert_eq!(block.data[0].to_bytes(), b"\x00");
-        assert_eq!(block.data[1].to_bytes(), b"\x02");
-        assert_eq!(block.data.len(), 2);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -826,9 +802,6 @@ mod tests {
         let input = b"123:4.56:78.9:42.0";
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (42.0, true));
-        assert_eq!(block.data[0].scalar(), 42.0);
-        assert_eq!(block.data.len(), 1);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -840,10 +813,6 @@ mod tests {
         let input = b"123:4.56:78.9:42.0";
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, b"42.0".as_slice(), true));
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].to_bytes(), b"42.0");
-        assert_eq!(block.data.len(), 2);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -855,11 +824,6 @@ mod tests {
         let input = b"123:4.56:78.9:42.0";
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].to_bytes(), b"4.56");
-        assert_eq!(block.data.len(), 3);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -875,12 +839,6 @@ mod tests {
         let input = b"123:4.56:78.9:42.0";
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, 42.0, 4.56, b"78.9".as_slice(), true));
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].scalar(), 4.56);
-        assert_eq!(block.data[3].to_bytes(), b"78.9");
-        assert_eq!(block.data.len(), 4);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -902,13 +860,6 @@ mod tests {
         let input = b"123:4.56:78.9:42.0";
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, 42.0, 4.56, 78.9, b"78.9".as_slice(), true));
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].scalar(), 4.56);
-        assert_eq!(block.data[3].scalar(), 78.9);
-        assert_eq!(block.data[4].to_bytes(), b"78.9");
-        assert_eq!(block.data.len(), 5);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -934,15 +885,6 @@ mod tests {
             output,
             (123.0, 42.0, b"78.9".as_slice(), 4.56, 78.9, 4.56, true)
         );
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].to_bytes(), b"78.9");
-        assert_eq!(block.data[3].scalar(), 4.56);
-        assert_eq!(block.data[4].scalar(), 78.9);
-        assert_eq!(block.data[5].scalar(), 4.56);
-
-        assert_eq!(block.data.len(), 6);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 
     #[test]
@@ -986,15 +928,5 @@ mod tests {
                 true
             )
         );
-        assert_eq!(block.data[0].scalar(), 123.0);
-        assert_eq!(block.data[1].scalar(), 42.0);
-        assert_eq!(block.data[2].to_bytes(), b"78.9");
-        assert_eq!(block.data[3].scalar(), 4.56);
-        assert_eq!(block.data[4].scalar(), 78.9);
-        assert_eq!(block.data[5].scalar(), 4.56);
-        assert_eq!(block.data[6].to_bytes(), b"78.9");
-
-        assert_eq!(block.data.len(), 7);
-        assert_ne!(block.is_valid(0.0).scalar(), 0.0);
     }
 }

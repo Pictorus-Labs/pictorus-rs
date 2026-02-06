@@ -200,15 +200,15 @@ mod tests {
         };
 
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[6.0]]);
+        assert_eq!(output.data[0][0], 6.0);
 
         let parameters = Parameters::new(0., 0.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[1.0]]);
+        assert_eq!(output.data[0][0], 1.0);
 
         let parameters = Parameters::new(2., 2.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[11.0]]);
+        assert_eq!(output.data[0][0], 11.0);
     }
 
     #[test]
@@ -230,15 +230,24 @@ mod tests {
         };
 
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[6.0, 7.0], [10.0, 11.0]]);
+        assert_eq!(output.data[0][0], 6.0);
+        assert_eq!(output.data[0][1], 7.0);
+        assert_eq!(output.data[1][0], 10.0);
+        assert_eq!(output.data[1][1], 11.0);
 
         let parameters = Parameters::new(0., 0.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[1.0, 2.0], [5.0, 6.0]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[0][1], 2.0);
+        assert_eq!(output.data[1][0], 5.0);
+        assert_eq!(output.data[1][1], 6.0);
 
         let parameters = Parameters::new(2., 2.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[11.0, 12.0], [15.0, 16.0]]);
+        assert_eq!(output.data[0][0], 11.0);
+        assert_eq!(output.data[0][1], 12.0);
+        assert_eq!(output.data[1][0], 15.0);
+        assert_eq!(output.data[1][1], 16.0);
     }
 
     #[test]
@@ -262,19 +271,31 @@ mod tests {
         };
 
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[1.], [5.], [9.], [13.]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[1][0], 5.0);
+        assert_eq!(output.data[2][0], 9.0);
+        assert_eq!(output.data[3][0], 13.0);
 
         let parameters = Parameters::new(1., 0.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[2.], [6.], [10.], [14.]]);
+        assert_eq!(output.data[0][0], 2.0);
+        assert_eq!(output.data[1][0], 6.0);
+        assert_eq!(output.data[2][0], 10.0);
+        assert_eq!(output.data[3][0], 14.0);
 
         let parameters = Parameters::new(2., 0.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[3.], [7.], [11.], [15.]]);
+        assert_eq!(output.data[0][0], 3.0);
+        assert_eq!(output.data[1][0], 7.0);
+        assert_eq!(output.data[2][0], 11.0);
+        assert_eq!(output.data[3][0], 15.0);
 
         let parameters = Parameters::new(3., 0.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[4.], [8.], [12.], [16.]]);
+        assert_eq!(output.data[0][0], 4.0);
+        assert_eq!(output.data[1][0], 8.0);
+        assert_eq!(output.data[2][0], 12.0);
+        assert_eq!(output.data[3][0], 16.0);
     }
 
     #[test]
@@ -298,19 +319,31 @@ mod tests {
         };
 
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[1., 2., 3., 4.]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[0][1], 2.0);
+        assert_eq!(output.data[0][2], 3.0);
+        assert_eq!(output.data[0][3], 4.0);
 
         let parameters = Parameters::new(0., 1.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[5., 6., 7., 8.]]);
+        assert_eq!(output.data[0][0], 5.0);
+        assert_eq!(output.data[0][1], 6.0);
+        assert_eq!(output.data[0][2], 7.0);
+        assert_eq!(output.data[0][3], 8.0);
 
         let parameters = Parameters::new(0., 2.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[9., 10., 11., 12.]]);
+        assert_eq!(output.data[0][0], 9.0);
+        assert_eq!(output.data[0][1], 10.0);
+        assert_eq!(output.data[0][2], 11.0);
+        assert_eq!(output.data[0][3], 12.0);
 
         let parameters = Parameters::new(0., 3.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[13., 14., 15., 16.]]);
+        assert_eq!(output.data[0][0], 13.0);
+        assert_eq!(output.data[0][1], 14.0);
+        assert_eq!(output.data[0][2], 15.0);
+        assert_eq!(output.data[0][3], 16.0);
     }
 
     #[test]
@@ -335,11 +368,17 @@ mod tests {
         // Test mostly out of bounds
         let parameters = Parameters::new(3., 3.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[16.0, 0.0], [0.0, 0.0]]);
+        assert_eq!(output.data[0][0], 16.0);
+        assert_eq!(output.data[0][1], 0.0);
+        assert_eq!(output.data[1][0], 0.0);
+        assert_eq!(output.data[1][1], 0.0);
 
         // Test completely
         let parameters = Parameters::new(4., 4.);
         let output = block.process(&parameters, &c, &input);
-        assert_eq!(output.data, [[0.0, 0.0], [0.0, 0.0]]);
+        assert_eq!(output.data[0][0], 0.0);
+        assert_eq!(output.data[0][1], 0.0);
+        assert_eq!(output.data[1][0], 0.0);
+        assert_eq!(output.data[1][1], 0.0);
     }
 }

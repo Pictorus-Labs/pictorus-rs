@@ -96,21 +96,19 @@ mod test {
         let c = StubContext::default();
         let lower_limit: f64 = -1.5;
         let upper_limit: f64 = -0.5;
-        let input = &OldBlockData::from_vector(&[1.0, -0.5, -1.2345, -1.6]);
+        let input = Matrix {
+            data: [[1.0], [-0.5], [-1.2345], [-1.6]],
+        };
         let mut block = ClampBlock::<Matrix<1, 4, f64>>::default();
         let p = Parameters::new(lower_limit, upper_limit);
 
-        let output = block.process(&p, &c, &input.to_pass());
+        let output = block.process(&p, &c, &input);
         assert_eq!(
             output,
             &Matrix {
                 data: [[-0.5], [-0.5], [-1.2345], [-1.5]]
             }
         );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[&[-0.5, -0.5, -1.2345, -1.5]])
-        )
     }
 
     macro_rules! impl_clamp_block_test_negatives {
@@ -155,10 +153,6 @@ mod test {
                         &Matrix {
                             data: [[$type::one(), $type::zero()], [$type::one(), -$type::one()]]
                         }
-                    );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[$type::one().into(), $type::one().into()], &[$type::zero().into(), (-$type::one()).into()]])
                     );
                 }
             }
@@ -218,10 +212,6 @@ mod test {
                         &Matrix {
                             data: [[pos_2, $type::one()], [$type::one(), pos_2]]
                         }
-                    );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[pos_2.into(), $type::one().into()], &[$type::one().into(), pos_2.into()]])
                     );
                 }
             }

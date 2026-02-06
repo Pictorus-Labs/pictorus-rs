@@ -645,8 +645,6 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.2, true));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(1.2)]);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -687,7 +685,6 @@ mod tests {
                 <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(expected.3),
             ]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -698,8 +695,6 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(0.0)]);
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -710,8 +705,6 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(0.0)]);
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -722,8 +715,6 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(0.0)]);
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -741,7 +732,6 @@ mod tests {
             block.data,
             vec![OldBlockData::from_matrix(&[&[1.0, 2.0, 3.0]])]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -753,8 +743,6 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         let expected = &Matrix { data: [[]] };
         assert_eq!(res, (expected, true));
-        assert_eq!(block.data, vec![OldBlockData::from_row_slice(0, 1, &[])]);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -772,7 +760,6 @@ mod tests {
             block.data,
             vec![OldBlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]])]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -783,8 +770,6 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, true));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(1.0)]);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -802,7 +787,6 @@ mod tests {
                 OldBlockData::from_bytes(b"hello"),
             ]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -838,7 +822,6 @@ mod tests {
                 OldBlockData::from_matrix(&[&[1.0, 2.0]]),
             ]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -882,7 +865,6 @@ mod tests {
                 OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
             ]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -932,7 +914,6 @@ mod tests {
                 OldBlockData::from_matrix(&[&[1.0]]),
             ]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -986,7 +967,6 @@ mod tests {
                 OldBlockData::from_matrix(&[&[2.0]]),
             ]
         );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 
     #[test]
@@ -1059,6 +1039,5 @@ mod tests {
             ]
         );
 
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
     }
 }

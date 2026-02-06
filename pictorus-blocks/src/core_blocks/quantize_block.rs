@@ -108,8 +108,6 @@ impl<const R: usize, const C: usize, I: Scalar + Float + ClosedDivAssign + MulAs
 
 #[cfg(test)]
 mod tests {
-    use std::vec::Vec;
-
     use crate::testing::StubContext;
     use paste::paste;
 
@@ -127,7 +125,6 @@ mod tests {
                     let res = block.process(&params, &context, input);
 
                     assert_eq!(res, 0.5);
-                    assert_eq!(block.data.scalar(), 0.5);
                 }
 
                 #[test]
@@ -143,15 +140,10 @@ mod tests {
                     };
                     let res = block.process(&params, &context, &input);
 
-                    assert_eq!(res.data, expected.data);
                     assert_eq!(
-                        block.data.get_data().as_slice(),
-                        expected
-                            .data
-                            .as_flattened()
-                            .iter()
-                            .map(|x| *x as f64)
-                            .collect::<Vec<f64>>()
+                        res,
+                        &expected
+
                     );
                 }
             }

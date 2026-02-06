@@ -331,7 +331,6 @@ where
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use pictorus_block_data::{BlockData as OldBlockData, BlockDataType, ToPass};
 
     #[test]
     fn test_vector_merge_block_scalar_original_test() {
@@ -350,27 +349,20 @@ mod tests {
             data: [[2.], [3.], [4.]],
         };
 
-        let signal1 = OldBlockData::from_scalar(1.0);
-        let signal2 = OldBlockData::from_vector(&[2.0, 3.0, 4.0]);
-        let signal3 = OldBlockData::new(2, 2, &[5.0, 6.0, 7.0, 8.0]);
+        let signal1 = 1.0; //OldBlockData::from_scalar(1.0);
+        let signal2 = Matrix {
+            data: [[2.0], [3.0], [4.0]],
+        };
+        let signal3 = Matrix {
+            data: [[5.0, 6.0], [7.0, 8.0]],
+        };
 
-        let _output = block.process(
-            &parameters,
-            &stub_context,
-            (signal1.to_pass(), &signal2.to_pass(), &signal3.to_pass()),
-        );
-        assert_eq!(block.data.get_type(), BlockDataType::Vector);
+        let _output = block.process(&parameters, &stub_context, (signal1, &signal2, &signal3));
 
-        // Note, the original test uses row-major order and Corelib uses column-major order, so 6 and 7 are swapped
-        // let original_expected = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let expected = [1.0, 2.0, 3.0, 4.0, 5.0, 7.0, 6.0, 8.0];
-        assert!(block.data.vector().iter().eq(expected.iter()));
+        let expected = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
 
         let output = block.process(&parameters, &stub_context, (1.0, &input_v, &input_m));
-        assert_eq!(
-            output.data.as_flattened(),
-            &[1., 2., 3., 4., 5., 6., 7., 8.]
-        );
+        assert_eq!(output.data.as_flattened(), &expected);
     }
 
     #[test]

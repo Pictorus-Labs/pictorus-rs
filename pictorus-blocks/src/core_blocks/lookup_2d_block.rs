@@ -302,17 +302,17 @@ mod tests {
         // [ 10.0,  20.0,  30.0 ]
         // [ 20.0,  30.0,  40.0 ]
 
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = &[0.0, 1.0, 2.0];
+        let break_points_u2 = &[0.0, 10.0, 20.0];
 
         // Create data points as a flattened 3x3 array in row-major order
-        let data_points = OldBlockData::from_vector(&[
+        let data_points = &[
             0.0, 10.0, 20.0, // First row: x=0
             10.0, 20.0, 30.0, // Second row: x=1
             20.0, 30.0, 40.0, // Third row: x=2
-        ]);
+        ];
 
-        let params = Parameters::new("Linear", &break_points_u1, &break_points_u2, &data_points);
+        let params = Parameters::new("Linear", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
@@ -364,13 +364,11 @@ mod tests {
         let ctxt = StubContext::default();
 
         // Create the same lookup table as above but with nearest neighbor interpolation
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = &[0.0, 1.0, 2.0];
+        let break_points_u2 = &[0.0, 10.0, 20.0];
 
-        let data_points =
-            OldBlockData::from_vector(&[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
-
-        let params = Parameters::new("Nearest", &break_points_u1, &break_points_u2, &data_points);
+        let data_points = &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0];
+        let params = Parameters::new("Nearest", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
@@ -404,13 +402,11 @@ mod tests {
         let ctxt = StubContext::default();
 
         // Create the same lookup table as previous tests
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = &[0.0, 1.0, 2.0];
+        let break_points_u2 = &[0.0, 10.0, 20.0];
 
-        let data_points =
-            OldBlockData::from_vector(&[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
-
-        let params = Parameters::new("Linear", &break_points_u1, &break_points_u2, &data_points);
+        let data_points = &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0];
+        let params = Parameters::new("Linear", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, Matrix<2, 2, f64>>::default();
 
@@ -434,11 +430,7 @@ mod tests {
             data: [[0.0, 20.0], [10.0, 40.0]],
         };
 
-        assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(res, &expected);
     }
 
     #[test]
@@ -446,13 +438,12 @@ mod tests {
         let ctxt = StubContext::default();
 
         // Create the same lookup table but with nearest neighbor interpolation
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = &[0.0, 1.0, 2.0];
+        let break_points_u2 = &[0.0, 10.0, 20.0];
 
-        let data_points =
-            OldBlockData::from_vector(&[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
+        let data_points = &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0];
 
-        let params = Parameters::new("Nearest", &break_points_u1, &break_points_u2, &data_points);
+        let params = Parameters::new("Nearest", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, Matrix<2, 2, f64>>::default();
 
@@ -476,10 +467,6 @@ mod tests {
             data: [[0.0, 20.0], [20.0, 40.0]],
         };
 
-        assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(res, &expected);
     }
 }

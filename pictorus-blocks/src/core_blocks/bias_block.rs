@@ -138,7 +138,6 @@ mod tests {
 
         let output = block.process(&parameters, &context, 2.0);
         assert_eq!(output, 5.0);
-        assert_eq!(block.data.scalar(), 5.0);
     }
 
     #[test]
@@ -150,7 +149,6 @@ mod tests {
 
         let output = block.process(&parameters, &context, input);
         assert_relative_eq!(output, -0.1);
-        assert_relative_eq!(block.data.scalar(), -0.1);
     }
 
     #[test]
@@ -163,23 +161,5 @@ mod tests {
         let parameters = Parameters::new(2.0);
         let output = block.process(&parameters, &context, &input);
         assert_eq!(output.data, [[3.0, 4.0], [5.0, 6.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[3.0, 4.0], [5.0, 6.0]].as_flattened()
-        );
-    }
-
-    #[test]
-    fn test_bias_matrix_to_pass() {
-        let mut block = BiasBlock::<f64, Matrix<2, 2, f64>>::default();
-        let context = StubContext::default();
-        let input = OldBlockData::from_matrix(&[&[1.0, 3.0], &[2.0, 4.0]]);
-        let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, &input.to_pass());
-        assert_eq!(output.data, [[3.0, 4.0], [5.0, 6.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[3.0, 4.0], [5.0, 6.0]].as_flattened()
-        );
     }
 }

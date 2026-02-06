@@ -249,15 +249,21 @@ mod tests {
         };
 
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
-        assert_eq!(output.data, [[0.0], [0.0], [0.0]]);
+        assert_eq!(output.data[0][0], 0.0);
+        assert_eq!(output.data[1][0], 0.0);
+        assert_eq!(output.data[2][0], 0.0);
         runtime.tick();
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
-        assert_eq!(output.data, [[1.0], [1.0], [15.0]]);
+        assert_eq!(output.data[0][0], 1.0);
+        assert_eq!(output.data[1][0], 1.0);
+        assert_eq!(output.data[2][0], 15.0);
 
         runtime.tick();
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
         // Hits clamp limit
-        assert_eq!(output.data, [[2.0], [2.0], [20.0]]);
+        assert_eq!(output.data[0][0], 2.0);
+        assert_eq!(output.data[1][0], 2.0);
+        assert_eq!(output.data[2][0], 20.0);
     }
 
     #[test]
@@ -271,7 +277,6 @@ mod tests {
         let parameters = Parameters::new(10.0, 50.0, "Rectangle");
         let mut block = IntegralBlock::<(f64, bool)>::new(&parameters);
         // Check the initial value is set
-        assert_eq!(block.data.scalar(), 10.0);
 
         let input = 25.0;
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
@@ -302,24 +307,25 @@ mod tests {
             "Rectangle",
         );
         let mut block = IntegralBlock::<(Matrix<1, 3, f64>, bool)>::new(&parameters);
-        // Check the initial value is set
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[10.0], [10.0], [10.0]].as_flattened()
-        );
 
         let input = Matrix {
             data: [[1.0], [1.0], [25.0]],
         };
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
-        assert_eq!(output.data, [[10.0], [10.0], [10.0]]);
+        assert_eq!(output.data[0][0], 10.0);
+        assert_eq!(output.data[1][0], 10.0);
+        assert_eq!(output.data[2][0], 10.0);
         runtime.tick();
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
-        assert_eq!(output.data, [[11.0], [11.0], [35.0]]);
+        assert_eq!(output.data[0][0], 11.0);
+        assert_eq!(output.data[1][0], 11.0);
+        assert_eq!(output.data[2][0], 35.0);
 
         runtime.tick();
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
         // Hits clamp limit
-        assert_eq!(output.data, [[12.0], [12.0], [50.0]]);
+        assert_eq!(output.data[0][0], 12.0);
+        assert_eq!(output.data[1][0], 12.0);
+        assert_eq!(output.data[2][0], 50.0);
     }
 }

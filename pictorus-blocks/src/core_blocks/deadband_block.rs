@@ -130,14 +130,20 @@ mod tests {
                         data: [[-1.0, 1.0], [1.0, -1.0]],
                     };
                     let output = block.process(&parameters, &ctxt, &input);
-                    assert_eq!(output.data, [[-1.0, 1.0], [1.0, -1.0]]);
+                    assert_eq!(output.data[0][0], -1.0);
+                    assert_eq!(output.data[0][1], 1.0);
+                    assert_eq!(output.data[1][0], 1.0);
+                    assert_eq!(output.data[1][1], -1.0);
 
                     // Anything between the deadband is set to zero.
                     let input = Matrix {
                         data: [[-0.999, 0.0], [0.0, 0.999]],
                     };
                     let output = block.process(&parameters, &ctxt, &input);
-                    assert_eq!(output.data, [[0.0, 0.0], [0.0, 0.0]]);
+                    assert_eq!(output.data[0][0], 0.0);
+                    assert_eq!(output.data[0][1], 0.0);
+                    assert_eq!(output.data[1][0], 0.0);
+                    assert_eq!(output.data[1][1], 0.0);
                 }
             }
         };

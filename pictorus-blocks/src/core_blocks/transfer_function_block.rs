@@ -278,9 +278,6 @@ mod tests {
         let num = [0.0, 1.0];
         let denom = [1.0];
 
-        let num = BlockData::from_vector(&num);
-        let denom = BlockData::from_vector(&denom);
-
         let parameters = super::Parameters::new(&num, &denom);
 
         let mut block = TransferFunctionBlock::<2, 1, f64, f64>::default();

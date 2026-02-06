@@ -131,32 +131,26 @@ mod tests {
 
                     let output = block.process(&parameters, &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
 
                     parameters.comparison_type = ComparisonType::NotEqual;
                     let output = block.process(&parameters, &context, <$type>::zero());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
 
                     parameters.comparison_type = ComparisonType::LessThan;
                     let output = block.process(&parameters, &context, <$type>::zero());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
 
                     parameters.comparison_type = ComparisonType::LessOrEqual;
                     let output = block.process(&parameters, &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
 
                     parameters.comparison_type = ComparisonType::GreaterThan;
                     let output = block.process(&parameters, &context, <$type>::one() + <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
 
                     parameters.comparison_type = ComparisonType::GreaterOrEqual;
                     let output = block.process(&parameters, &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
                 }
 
                 #[test]
@@ -173,68 +167,44 @@ mod tests {
                     };
 
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::zero());
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::zero().into()], &[<$type>::zero().into(), <$type>::zero().into()]])
+                        output,
+                       &Matrix{ data: [[<$type>::one().into(), <$type>::zero().into()], [<$type>::zero().into(), <$type>::zero().into()]]}
                     );
 
                     parameters.comparison_type = ComparisonType::NotEqual;
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::one());
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::zero().into(), <$type>::one().into()], &[<$type>::one().into(), <$type>::one().into()]])
+                        output,
+                       &Matrix{ data: [[<$type>::zero().into(), <$type>::one().into()], [<$type>::one().into(), <$type>::one().into()]]}
                     );
 
                     parameters.comparison_type = ComparisonType::LessThan;
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::zero());
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::zero().into(), <$type>::one().into()], &[<$type>::one().into(), <$type>::zero().into()]])
+                        output,
+                       &Matrix{ data: [[<$type>::zero().into(), <$type>::one().into()], [<$type>::one().into(), <$type>::zero().into()]]}
                     );
 
                     parameters.comparison_type = ComparisonType::LessOrEqual;
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::zero());
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::one().into()], &[<$type>::one().into(), <$type>::zero().into()]])
+                        output,
+                       &Matrix{ data: [[<$type>::one().into(), <$type>::one().into()], [<$type>::one().into(), <$type>::zero().into()]]}
                     );
 
                     parameters.comparison_type = ComparisonType::GreaterThan;
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::one());
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::zero().into(), <$type>::zero().into()], &[<$type>::zero().into(), <$type>::one().into()]])
+                        output,
+                       &Matrix{ data: [[<$type>::zero().into(), <$type>::zero().into()], [<$type>::zero().into(), <$type>::one().into()]]}
                     );
 
                     parameters.comparison_type = ComparisonType::GreaterOrEqual;
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::one());
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::zero().into()], &[<$type>::zero().into(), <$type>::one().into()]])
+                        output,
+                       &Matrix{ data: [[<$type>::one().into(), <$type>::zero().into()], [<$type>::zero().into(), <$type>::one().into()]]}
                     );
                 }
             }

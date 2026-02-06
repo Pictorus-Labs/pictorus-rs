@@ -133,7 +133,6 @@ mod tests {
         let parameters = Parameters::new(2.0);
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, 2.0);
-        assert_eq!(block.data.scalar(), 2.0);
     }
 
     #[test]
@@ -146,42 +145,5 @@ mod tests {
         let parameters = Parameters::new(2.0);
         let output = block.process(&parameters, &context, &input);
         assert_eq!(output.data, [[2.0, 4.0], [6.0, 8.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[2.0, 4.0], [6.0, 8.0]].as_flattened()
-        );
-    }
-
-    #[test]
-    fn test_scalar_with_to_pass() {
-        let mut block = GainBlock::<f64, f64>::default();
-        let context = StubContext::default();
-        let input = OldBlockData::from_scalar(1.0);
-        let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, input.to_pass());
-        assert_eq!(output, 2.0);
-        assert_eq!(block.data.scalar(), 2.0);
-    }
-
-    #[test]
-    fn test_matrix_with_to_pass() {
-        // Just to prove the test below makes sense. Rows and cols get flipped along the way in conversions
-        assert_eq!(
-            OldBlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]])
-                .get_data()
-                .as_slice(),
-            [[1.0, 3.0], [2.0, 4.0]].as_flattened()
-        );
-
-        let mut block = GainBlock::<f64, Matrix<2, 2, f64>>::default();
-        let context = StubContext::default();
-        let input = OldBlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]]);
-        let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, &input.to_pass());
-        assert_eq!(output.data, [[2.0, 6.0], [4.0, 8.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[2.0, 6.0], [4.0, 8.0]].as_flattened()
-        );
     }
 }

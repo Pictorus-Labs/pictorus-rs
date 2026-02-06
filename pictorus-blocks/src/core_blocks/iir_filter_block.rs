@@ -124,7 +124,6 @@ mod tests {
         // roughly 50% of final data
         let res = block.process(&parameters, &ctxt, 1.0);
         assert_relative_eq!(res, 0.5, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 0.5, max_relative = 0.01);
     }
 
     #[test]
@@ -162,11 +161,6 @@ mod tests {
             expected.as_flattened(),
             max_relative = 0.01
         );
-        assert_relative_eq!(
-            block.data.get_data().as_slice(),
-            expected.as_flattened(),
-            max_relative = 0.01
-        );
     }
 
     #[test]
@@ -188,14 +182,12 @@ mod tests {
         // roughly 50% of final data
         let res = block.process(&parameters, &ctxt, 1.0);
         assert_relative_eq!(res, 0.5, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 0.5, max_relative = 0.01);
 
         // Reset the block with a new initial condition
         let new_ic = 0.5;
         let parameters = Parameters::new(new_ic, time_constants_s);
         let res = block.process(&parameters, &ctxt, 1.0);
         assert_relative_eq!(res, 0.75, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 0.75, max_relative = 0.01);
     }
 
     #[test]
@@ -229,11 +221,6 @@ mod tests {
         let expected = [[0.75, 1.5]];
         assert_relative_eq!(
             res.data.as_flattened(),
-            expected.as_flattened(),
-            max_relative = 0.01
-        );
-        assert_relative_eq!(
-            block.data.get_data().as_slice(),
             expected.as_flattened(),
             max_relative = 0.01
         );

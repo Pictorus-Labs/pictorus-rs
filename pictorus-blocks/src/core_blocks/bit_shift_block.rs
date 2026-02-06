@@ -161,6 +161,10 @@ mod tests {
                         data: [[[<1 $type>], [<2 $type>]], [[<3 $type>], [<4 $type>]]],
                     };
                     let output = block.process(&params, &context, &input);
+                    assert_eq!(output.data[0][0], [<4 $type>]);
+                    assert_eq!(output.data[0][1], [<8 $type>]);
+                    assert_eq!(output.data[1][0], [<12 $type>]);
+                    assert_eq!(output.data[1][1], [<16 $type>]);
                 }
 
                 #[test]
@@ -172,6 +176,10 @@ mod tests {
                         data: [[[<4 $type>], [<8 $type>]], [[<12 $type>], [<16 $type>]]],
                     };
                     let output = block.process(&params, &context, &input);
+                    assert_eq!(output.data[0][0], [<1 $type>]);
+                    assert_eq!(output.data[0][1], [<2 $type>]);
+                    assert_eq!(output.data[1][0], [<3 $type>]);
+                    assert_eq!(output.data[1][1], [<4 $type>]);
                 }
             }
         };

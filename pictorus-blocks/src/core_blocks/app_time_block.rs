@@ -60,7 +60,7 @@ mod tests {
 
         for _ in 0..100 {
             let context = runtime.context();
-            let output = block.generate(&parameters, &context);
+            let _output = block.generate(&parameters, &context);
             runtime.tick();
         }
     }

@@ -235,31 +235,26 @@ mod tests {
 
         let res = i_block.process(&params, &runtime.context(), (0.0, false));
         assert_eq!(res, 0.0);
-        assert_eq!(i_block.data.scalar(), 0.0);
         runtime.tick();
 
         i_block.process(&params, &runtime.context(), (0.0, false));
         let res = i_block.process(&params, &runtime.context(), (1.0, false));
         assert_relative_eq!(res, 3.0, max_relative = 0.01);
-        assert_relative_eq!(i_block.data.scalar(), 3.0, max_relative = 0.01);
         runtime.tick();
 
         // Make sure it actually integrates
         let res = i_block.process(&params, &runtime.context(), (1.0, false));
         assert_relative_eq!(res, 6.0, max_relative = 0.01);
-        assert_relative_eq!(i_block.data.scalar(), 6.0, max_relative = 0.01);
         runtime.tick();
 
         // Check saturation
         let res = i_block.process(&params, &runtime.context(), (100.0, false));
         assert_relative_eq!(res, 10.0, max_relative = 0.01);
-        assert_relative_eq!(i_block.data.scalar(), 10.0, max_relative = 0.01);
         runtime.tick();
 
         // Test reset
         let res = i_block.process(&params, &runtime.context(), (1.0, true));
         assert_relative_eq!(res, 0.0, max_relative = 0.01);
-        assert_relative_eq!(i_block.data.scalar(), 0.0, max_relative = 0.01);
     }
 
     #[test]
@@ -277,7 +272,6 @@ mod tests {
 
         let res = d_block.process(&params, &runtime.context(), (100.0, false));
         assert_relative_eq!(res, 200.0, max_relative = 0.01);
-        assert_relative_eq!(d_block.data.scalar(), 200.0, max_relative = 0.01);
     }
     #[test]
     fn test_pid_scalar() {
@@ -296,7 +290,6 @@ mod tests {
         // p: 2, i: 4, d: 6
         let res = block.process(&params, &runtime.context(), (2.0, false));
         assert_relative_eq!(res, 12.0, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 12.0, max_relative = 0.01);
     }
 
     #[test]
@@ -316,7 +309,6 @@ mod tests {
         // p: 2, i: 5 + 4 = 9, d: 6
         let res = block.process(&params, &runtime.context(), (2.0, false));
         assert_relative_eq!(res, 17.0, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 17.0, max_relative = 0.01);
     }
 
     #[test]
@@ -337,10 +329,7 @@ mod tests {
             data: [[2.0, 4.0], [6.0, 8.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            p_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+
         runtime.tick();
 
         let input = Matrix {
@@ -351,10 +340,6 @@ mod tests {
             data: [[-4.0, -6.0], [-8.0, -10.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            p_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
     }
 
     #[test]
@@ -376,10 +361,7 @@ mod tests {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            i_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+
         runtime.tick();
 
         let input = Matrix {
@@ -390,10 +372,7 @@ mod tests {
             data: [[0.0, 0.0], [3.0, 3.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            i_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+
         runtime.tick();
 
         // Make sure it actually integrates
@@ -405,10 +384,7 @@ mod tests {
             data: [[0.0, 0.0], [6.0, 6.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            i_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+
         runtime.tick();
 
         // Check saturation
@@ -420,10 +396,7 @@ mod tests {
             data: [[0.0, 0.0], [10.0, 10.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            i_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+
         runtime.tick();
     }
 
@@ -448,10 +421,6 @@ mod tests {
             data: [[200.0, 400.0], [600.0, 800.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            d_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
     }
 
     #[test]
@@ -472,10 +441,7 @@ mod tests {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+
         runtime.tick();
 
         let input = Matrix {
@@ -486,10 +452,6 @@ mod tests {
             data: [[6.0, 12.0], [18.0, 24.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
     }
 
     #[test]
@@ -513,10 +475,7 @@ mod tests {
             data: [[4.0, 5.0], [6.0, 7.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+
         runtime.tick();
 
         let input = Matrix {
@@ -529,9 +488,5 @@ mod tests {
             data: [[10.0, 17.0], [22.0, 26.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
     }
 }

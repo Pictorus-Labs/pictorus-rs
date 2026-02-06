@@ -82,7 +82,6 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use paste::paste;
-    use pictorus_block_data::BlockDataType;
 
     macro_rules! impl_determinant_tests {
         ($type:ty) => {
@@ -99,8 +98,6 @@ mod tests {
                     let output = det_block.process(&p, &c, &input);
 
                     assert!(output == -2.0);
-                    assert!(det_block.data.scalar() == -2.0);
-                    assert!(det_block.data.get_type() == BlockDataType::Scalar);
 
                     let mut det_block_3x3 = DeterminantBlock::<$type, Matrix<3, 3, $type>>::default();
                     let input_3x3 = Matrix {
@@ -108,8 +105,6 @@ mod tests {
                     };
                     let output = det_block_3x3.process(&p, &c, &input_3x3);
                     assert!(output == -33.0);
-                    assert!(det_block_3x3.data.scalar() == -33.0);
-                    assert!(det_block_3x3.data.get_type() == BlockDataType::Scalar);
                 }
             }
         }

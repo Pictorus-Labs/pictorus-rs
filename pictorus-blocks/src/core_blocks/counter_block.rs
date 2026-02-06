@@ -125,14 +125,14 @@ mod tests {
         reset.data[0][0] = false;
 
         let output = block.process(&p, &c, (&increment, &reset));
-        assert!(output.data[0][0] == 1.0);
+        assert_eq!(output.data[0][0], 1.0);
 
         let output = block.process(&p, &c, (&increment, &reset));
-        assert!(output.data[0][0] == 2.0);
+        assert_eq!(output.data[0][0], 2.0);
 
         reset.data[0][0] = true;
         let output = block.process(&p, &c, (&increment, &reset));
-        assert!(output.data[0][0] == 0.0);
+        assert_eq!(output.data[0][0], 0.0);
     }
 
     #[test]

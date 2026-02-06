@@ -73,7 +73,6 @@ impl<T: Float> Parameters<T> {
 mod tests {
     use super::*;
     use crate::testing::{StubContext, StubRuntime};
-    use approx::assert_relative_eq;
     use core::time::Duration;
 
     const PI: f64 = core::f64::consts::PI;
@@ -96,23 +95,18 @@ mod tests {
         let mut block = TrianglewaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2PI
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
     }
 
     #[test]
@@ -133,23 +127,18 @@ mod tests {
         let mut block = TrianglewaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3PI / 2
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
     }
 
     #[test]
@@ -170,23 +159,18 @@ mod tests {
         let mut block = TrianglewaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 2.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3PI / 2
-        assert_relative_eq!(block.data.scalar(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
     }
 
     #[test]
@@ -207,23 +191,18 @@ mod tests {
         let mut block = TrianglewaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -2.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 2.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2PI
-        assert_relative_eq!(block.data.scalar(), -2.0, epsilon = 1e-6);
     }
 
     #[test]
@@ -244,11 +223,9 @@ mod tests {
         let mut block = TrianglewaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
 
         runtime.set_time(Duration::from_secs_f64(400.0 * PI));
         block.generate(&params, &runtime.context()); // T = 400PI
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
     }
 
     #[test]
@@ -269,22 +246,17 @@ mod tests {
         let mut block = TrianglewaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 4
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3PI / 4
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
     }
 }

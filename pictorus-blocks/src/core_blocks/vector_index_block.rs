@@ -149,10 +149,6 @@ mod tests {
         let output = index_block.process(&parameters, &c, &input);
         assert_eq!(output.0, 7.0);
         assert_eq!(output.1, 8.0);
-        assert_eq!(index_block.data[0].scalar(), 7.0);
-        assert_eq!(index_block.data[0], BlockData::from_scalar(7.0));
-        assert_eq!(index_block.data[1].scalar(), 8.0);
-        assert_eq!(index_block.data[1], BlockData::from_scalar(8.0));
     }
 
     #[test]
@@ -170,10 +166,6 @@ mod tests {
         let output = index_block.process(&parameters, &c, &input);
         assert_eq!(output.0, 7.0);
         assert_eq!(output.1, 0.0);
-        assert_eq!(index_block.data[0].scalar(), 7.0);
-        assert_eq!(index_block.data[0], BlockData::from_scalar(7.0));
-        assert_eq!(index_block.data[1].scalar(), 0.0);
-        assert_eq!(index_block.data[1], BlockData::from_scalar(0.0));
     }
 
     #[test]

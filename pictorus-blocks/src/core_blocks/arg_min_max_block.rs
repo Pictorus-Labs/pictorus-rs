@@ -141,7 +141,6 @@ mod tests {
         let params = Parameters::new("Min");
         let output = block.process(&params, &context, input);
         assert_eq!(output, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
     }
 
     #[test]
@@ -157,7 +156,6 @@ mod tests {
         let params = Parameters::new("Min");
         let output = block.process(&params, &context, &input);
         assert_eq!(output, 3.0);
-        assert_eq!(block.data.scalar(), 3.0);
 
         // |  1  3  5 |
         // | 12  4  6 |
@@ -168,6 +166,5 @@ mod tests {
         let params = Parameters::new("Max");
         let output = block.process(&params, &context, &input);
         assert_eq!(output, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
     }
 }

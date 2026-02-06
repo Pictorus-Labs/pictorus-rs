@@ -163,7 +163,6 @@ mod tests {
 
         let output = block.process(&p, &c, input);
         assert_relative_eq!(output, expected, max_relative = 0.00001);
-        assert_relative_eq!(block.data.scalar(), expected, max_relative = 0.00001);
     }
 
     #[test]

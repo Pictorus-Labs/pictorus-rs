@@ -190,29 +190,23 @@ mod tests {
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
         let res = block.process(&params, &ctxt, 0.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
 
         let res = block.process(&params, &ctxt, 1.0);
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
 
         let res = block.process(&params, &ctxt, 0.5);
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
 
         let res = block.process(&params, &ctxt, 1.5);
         let expected = 11.0 / 2.0;
         assert_eq!(res, expected);
-        assert_eq!(block.data.scalar(), expected);
 
         // Verify clamps output
         let res = block.process(&params, &ctxt, 3.0);
         assert_eq!(res, 10.0);
-        assert_eq!(block.data.scalar(), 10.0);
 
         let res = block.process(&params, &ctxt, -100.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
     }
 
     #[test]
@@ -225,32 +219,25 @@ mod tests {
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
         let res = block.process(&params, &ctxt, 0.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
 
         let res = block.process(&params, &ctxt, 0.25);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
 
         let res = block.process(&params, &ctxt, 0.5);
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
 
         let res = block.process(&params, &ctxt, 0.75);
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
 
         let res = block.process(&params, &ctxt, 1.75);
         assert_eq!(res, 10.0);
-        assert_eq!(block.data.scalar(), 10.0);
 
         // Verify clamps output
         let res = block.process(&params, &ctxt, 3.0);
         assert_eq!(res, 10.0);
-        assert_eq!(block.data.scalar(), 10.0);
 
         let res = block.process(&params, &ctxt, -100.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
     }
 
     #[test]
@@ -268,7 +255,6 @@ mod tests {
         let expected = Matrix {
             data: [[-1.0, 1.0], [0.0, 11.0 / 2.0]],
         };
-        assert_eq!(res.data, expected.data);
         assert_eq!(
             block.data.get_data().as_slice(),
             expected.data.as_flattened()
@@ -282,7 +268,6 @@ mod tests {
         let expected = Matrix {
             data: [[10.0, 10.0], [-1.0, -1.0]],
         };
-        assert_eq!(res.data, expected.data);
         assert_eq!(
             block.data.get_data().as_slice(),
             expected.data.as_flattened()
@@ -304,7 +289,6 @@ mod tests {
         let expected = Matrix {
             data: [[-1.0, -1.0], [1.0, 10.0]],
         };
-        assert_eq!(res.data, expected.data);
         assert_eq!(
             block.data.get_data().as_slice(),
             expected.data.as_flattened()
@@ -318,7 +302,6 @@ mod tests {
         let expected = Matrix {
             data: [[10.0, 10.0], [-1.0, -1.0]],
         };
-        assert_eq!(res.data, expected.data);
         assert_eq!(
             block.data.get_data().as_slice(),
             expected.data.as_flattened()

@@ -153,7 +153,6 @@ mod tests {
         };
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 28.0);
-        assert_relative_eq!(block.data.scalar(), 28.0);
     }
 
     #[test]
@@ -168,7 +167,6 @@ mod tests {
         };
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 28.0);
-        assert_relative_eq!(block.data.scalar(), 28.0);
     }
 
     #[test]
@@ -184,7 +182,6 @@ mod tests {
         input.data[5][3] = 42.0;
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 42.0);
-        assert_relative_eq!(block.data.scalar(), 42.0);
     }
 
     #[test]
@@ -200,7 +197,6 @@ mod tests {
         input.data[1][2] = 10.99;
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 10.99);
-        assert_relative_eq!(block.data.scalar(), 10.99);
     }
 
     #[test]
@@ -217,7 +213,6 @@ mod tests {
 
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 13.5);
-        assert_relative_eq!(block.data.scalar(), 13.5);
     }
 
     #[test]
@@ -234,7 +229,6 @@ mod tests {
 
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 13.5);
-        assert_relative_eq!(block.data.scalar(), 13.5);
     }
 
     #[test]

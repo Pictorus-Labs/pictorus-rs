@@ -84,10 +84,8 @@ mod tests {
         let mut context = StubContext::default();
 
         assert_eq!(block.generate(&parameters, &context), Float::sin(0.5));
-        assert_eq!(block.data.scalar(), Float::sin(0.5));
         context.time = Duration::from_secs(1);
 
         assert_eq!(block.generate(&parameters, &context), Float::sin(1.5));
-        assert_eq!(block.data.scalar(), Float::sin(1.5));
     }
 }

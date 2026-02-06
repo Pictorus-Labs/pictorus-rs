@@ -108,14 +108,12 @@ mod tests {
         let output = block.process(&parameters, &context, (11.0, 2.0));
 
         assert_eq!(output, 22.0);
-        assert_eq!(block.data.scalar(), 22.0);
 
         let mut block = ProductBlock::<(f32, f32, f32, f32, f32), ComponentWise>::default();
         let parameters = ParametersComponentWise::new([1.0, 1.0, 1.0, -1.0, 1.0]);
         let output = block.process(&parameters, &context, (11.0, 2.0, 3.0, 4.0, 5.0));
 
         assert_eq!(output, 82.5);
-        assert_eq!(block.data.scalar(), 82.5);
     }
     #[test]
     fn test_component_wise_scalar_matrix_mixed() {
@@ -140,10 +138,6 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(&expected)
-        );
     }
 
     #[test]
@@ -172,10 +166,6 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(&expected)
-        );
     }
 
     #[test]
@@ -202,10 +192,6 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(&expected)
-        );
 
         let mut block = ProductBlock::<
             (Matrix<4, 2, f64>, Matrix<2, 3, f64>, Matrix<3, 2, f64>),
@@ -234,9 +220,5 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<4, 2, f64>>>::from_pass(&expected)
-        );
     }
 }

@@ -171,7 +171,6 @@ where
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use pictorus_block_data::BlockData as OldBlockData;
     use pictorus_traits::{Matrix, ProcessBlock};
 
     #[test]
@@ -184,8 +183,12 @@ mod tests {
         };
 
         let output = block.process(&Parameters::new(initial_condition), &c, 1.0);
-        assert_eq!(output.data.as_flattened(), [-1.0, -1.0, 1.0]);
-        assert_eq!(block.data, OldBlockData::from_matrix(&[&[-1.0, -1.0, 1.0]]));
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[-1.0], [-1.0], [1.0]],
+            }
+        );
 
         let ic2 = Matrix {
             data: [[0.0], [0.0], [0.0]],
@@ -193,16 +196,28 @@ mod tests {
 
         // Test that parameters with an IC are irrelevant after the first run
         let output = block.process(&Parameters::new(ic2), &c, 2.0);
-        assert_eq!(output.data.as_flattened(), [-1.0, 1.0, 2.0]);
-        assert_eq!(block.data, OldBlockData::from_matrix(&[&[-1.0, 1.0, 2.0]]));
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[-1.0], [1.0], [2.0]],
+            }
+        );
 
         let output = block.process(&Parameters::new(ic2), &c, 3.0);
-        assert_eq!(output.data.as_flattened(), [1.0, 2.0, 3.0]);
-        assert_eq!(block.data, OldBlockData::from_matrix(&[&[1.0, 2.0, 3.0]]));
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[1.0], [2.0], [3.0]],
+            }
+        );
 
         let output = block.process(&Parameters::new(ic2), &c, 4.0);
-        assert_eq!(output.data.as_flattened(), [2.0, 3.0, 4.0]);
-        assert_eq!(block.data, OldBlockData::from_matrix(&[&[2.0, 3.0, 4.0]]));
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[2.0], [3.0], [4.0]],
+            }
+        );
     }
 
     #[test]
@@ -249,10 +264,6 @@ mod tests {
                 ]
             }
         );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[&[-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 2.0, 3.0]])
-        );
 
         let output = block.process(
             &p,
@@ -276,10 +287,6 @@ mod tests {
                     [6.0]
                 ]
             }
-        );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[&[-1.0, -1.0, -1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]])
         );
 
         let output = block.process(
@@ -305,10 +312,6 @@ mod tests {
                 ]
             }
         );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]])
-        );
 
         let output = block.process(
             &p,
@@ -332,10 +335,6 @@ mod tests {
                     [12.0]
                 ]
             }
-        );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[&[4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]])
         );
     }
 
@@ -377,13 +376,6 @@ mod tests {
                 ]
             }
         );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[
-                &[0.0, 0.0, 0.0, 0.0, 1.0, 3.0],
-                &[0.0, 0.0, 0.0, 0.0, 2.0, 4.0]
-            ])
-        );
 
         let output = block.process(
             &p,
@@ -405,13 +397,6 @@ mod tests {
                 ]
             }
         );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[
-                &[0.0, 0.0, 1.0, 3.0, 5.0, 7.0],
-                &[0.0, 0.0, 2.0, 4.0, 6.0, 8.0]
-            ])
-        );
 
         let output = block.process(
             &p,
@@ -432,13 +417,6 @@ mod tests {
                     [11.0, 12.0]
                 ]
             }
-        );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[
-                &[1.0, 3.0, 5.0, 7.0, 9.0, 11.0],
-                &[2.0, 4.0, 6.0, 8.0, 10.0, 12.0]
-            ])
         );
     }
 }

@@ -127,7 +127,6 @@ mod tests {
     use crate::testing::StubRuntime;
     use core::time::Duration;
     use paste::paste;
-    use pictorus_block_data::BlockData as OldBlockData;
 
     macro_rules! impl_rate_limit_test {
         ($type:ty) => {
@@ -149,37 +148,31 @@ mod tests {
                     // Test rising rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), 3.0);
-                    assert_eq!(block.data.scalar(), 2.0);
                     assert_eq!(output, 2.0);
 
                     // Test rising rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), 30.0);
-                    assert_eq!(block.data.scalar(), 4.0);
                     assert_eq!(output, 4.0);
 
                     // Value doesn't change if input matches current state
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), 4.0);
-                    assert_eq!(block.data.scalar(), 4.0);
                     assert_eq!(output, 4.0);
 
                     // Test falling rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), -30.0);
-                    assert_eq!(block.data.scalar(), 3.0);
                     assert_eq!(output, 3.0);
 
                     // Test falling rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), -0.5);
-                    assert_eq!(block.data.scalar(), 2.0);
                     assert_eq!(output, 2.0);
 
                     // Test passing in no timestep does not change output
                     runtime.context.timestep = Some(Duration::from_secs(0));
                     let output = block.process(&parameters, &runtime.context(), -30.0);
-                    assert_eq!(block.data.scalar(), 2.0);
                     assert_eq!(output, 2.0);
                 }
 
@@ -209,10 +202,7 @@ mod tests {
                             data: [[2.0, 2.0], [2.0, 2.0]],
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[2.0, 2.0], &[2.0, 2.0]])
-                    );
+
 
                     // Test rising rate
                     runtime.tick();
@@ -226,10 +216,7 @@ mod tests {
                             data: [[4.0, 4.0], [4.0, 4.0]],
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[4.0, 4.0], &[4.0, 4.0]])
-                    );
+
 
                     // Value doesn't change if input matches current state
                     runtime.tick();
@@ -243,10 +230,7 @@ mod tests {
                             data: [[4.0, 4.0], [4.0, 4.0]],
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[4.0, 4.0], &[4.0, 4.0]])
-                    );
+
 
                     // Test falling rate
                     runtime.tick();
@@ -260,10 +244,7 @@ mod tests {
                             data: [[3.0, 3.0], [3.0, 3.8]],
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[3.0, 3.0], &[3.0, 3.8]])
-                    );
+
 
                     // Test falling rate
                     runtime.tick();
@@ -277,10 +258,7 @@ mod tests {
                             data: [[2.0, 2.5], [2.0, 3.6]],
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[2.0, 2.0], &[2.5, 3.6]])
-                    );
+
 
                     // Test passing in no timestep does not change output
                     runtime.context.timestep = Some(Duration::from_secs(0));
@@ -294,10 +272,7 @@ mod tests {
                             data: [[2.0, 2.5], [2.0, 3.6]],
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[2.0, 2.0], &[2.5, 3.6]])
-                    );
+
                 }
             }
         };

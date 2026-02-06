@@ -145,7 +145,6 @@ mod tests {
         );
         let output = block.generate(&params, &context);
         assert_eq!(output, start_time.timestamp() as f64 + 42.0);
-        assert_eq!(block.data.scalar(), start_time.timestamp() as f64 + 42.0);
     }
 
     #[test]
@@ -160,6 +159,5 @@ mod tests {
         );
         let output = block.generate(&params, &context);
         assert_eq!(output, 1337.0);
-        assert_eq!(block.data.scalar(), 1337.0);
     }
 }
