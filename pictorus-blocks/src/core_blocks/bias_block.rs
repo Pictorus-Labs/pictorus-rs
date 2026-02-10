@@ -1,4 +1,6 @@
-use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
+use core::ops::Add;
+
+use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Outputs the input data with an added bias (offset).
 pub struct BiasBlock<B, T>
@@ -51,17 +53,18 @@ pub trait Apply<B: Scalar>: Pass {
 
 impl<B> Apply<B> for f64
 where
-    B: Promote<f64> + Scalar,
+    B: Scalar,
+    f64: Add<B>,
+    <f64 as Add<B>>::Output: Scalar,
 {
-    type Output = Promotion<B, f64>;
+    type Output = <f64 as Add<B>>::Output;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
         input: PassBy<Self>,
         offset: B,
     ) -> PassBy<'s, Self::Output> {
-        let output =
-            <B as Promote<f64>>::promote_left(offset) + <B as Promote<f64>>::promote_right(input);
+        let output = <f64 as Add<B>>::add(input, offset);
         *store = Some(output);
         output
     }
@@ -69,28 +72,31 @@ where
 
 impl<B> Apply<B> for f32
 where
-    B: Promote<f32> + Scalar,
+    B: Scalar,
+    f32: Add<B>,
+    <f32 as Add<B>>::Output: Scalar,
 {
-    type Output = Promotion<B, f32>;
+    type Output = <f32 as Add<B>>::Output;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
         input: PassBy<Self>,
         offset: B,
     ) -> PassBy<'s, Self::Output> {
-        let output =
-            <B as Promote<f32>>::promote_left(offset) + <B as Promote<f32>>::promote_right(input);
+        let output = <f32 as Add<B>>::add(input, offset);
         *store = Some(output);
-        output
+        output.as_by()
     }
 }
 
 impl<const NROWS: usize, const NCOLS: usize, B, T> Apply<B> for Matrix<NROWS, NCOLS, T>
 where
     T: Scalar,
-    B: Promote<T>,
+    B: Scalar,
+    T: Add<B>,
+    <T as Add<B>>::Output: Scalar,
 {
-    type Output = Matrix<NROWS, NCOLS, Promotion<B, T>>;
+    type Output = Matrix<NROWS, NCOLS, <T as Add<B>>::Output>;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
@@ -100,8 +106,7 @@ where
         let output = store.insert(Matrix::zeroed());
         for i in 0..NROWS {
             for j in 0..NCOLS {
-                output.data[j][i] = <B as Promote<T>>::promote_left(offset)
-                    + <B as Promote<T>>::promote_right(input.data[j][i]);
+                output.data[j][i] = <T as Add<B>>::add(input.data[j][i], offset);
             }
         }
         output

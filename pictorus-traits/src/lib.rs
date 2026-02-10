@@ -234,67 +234,6 @@
 //!
 //! It can be seen than even when some types want to be passed by value and others by reference the
 //! `PassBy<'a, (A,B,C)> = (PassBy<'a, A>, PassBy<'a, B>, PassBy<'a, C> )`
-//!
-//! ### Promotion
-//! The Rust core library is extremely deliberate about conversions between primitive numeric types only offering infallible
-//! conversions where there can be no overflow, or other loss of information (e.g. u8 -> u16 is infallible but i32 -> u64 is
-//! fallible since u64 cannot represent negative values). In order to handle similar cases in our core library we offer the
-//! `Promotion` trait:
-//!
-//! ```rust ignore
-//! pub trait Promote<RHS: Scalar>: Scalar {
-//!     type Output: Scalar;
-//!
-//!     fn promote_left(self) -> Self::Output;
-//!     fn promote_right(rhs: RHS) -> Self::Output;
-//! }
-//! ```
-//!
-//! When a scalar primitive type impls `Promote<T>` for some other scalar type the `Output` associated type indicates the
-//! type that can hold data from both types without loss of information. For convenience we offer the `Promotion<L,R>` type,
-//! defined as `pub type Promotion<L, R> = <L as Promote<R>>::Output;`.
-//! See the below example for how this plays out for the `u8`<->`f32` mapping.
-//!
-//! ```rust ignore
-//! <u8 as Promotion<f32>>::Output = f32
-//! <f32 as Promotion<u8>>::Output = f32
-//!
-//! // This implies:
-//! // Promotion<u8, f32> == Promotion<f32, u8> == f32
-//! ```
-//!
-//! It is worth noting that we implement no-op case of `impl<T:Scalar>  Promote<T> for T` for all of our base scalar types.
-//! The end result is that Block writers can then describe their inputs and outputs using the Promotion trait and type.
-//! See this example of the GainBlock which allows the Gain parameter and the passed in data to be of potentially two different
-//! types while still allowing us to specify that the output of that block will be the type that allows us to apply that gain
-//! without loss of information.
-//!
-//! ```rust ignore
-//! impl<const N: usize, G, T> Apply<G> for [T; N]
-//! where
-//!     T: Scalar,
-//!     G: Promote<T>,
-//!     Promotion<G, T>: MulAssign,
-//! {
-//!     type Output = [Promotion<G, T>; N];
-//!
-//!     fn apply<'s>(
-//!         store: &'s mut Option<Self::Output>,
-//!         input: PassBy<'_, Self>,
-//!         gain: G,
-//!     ) -> PassBy<'s, Self::Output> {
-//!         let output = store.insert(input.map(<G as Promote<T>>::promote_right));
-//!         let gain = Promote::promote_left(gain);
-//!         output.iter_mut().for_each(|lhs| lhs.mul_assign(gain));
-//!         output
-//!     }
-//! }
-//! ```
-//!
-//! While this functionality is undoubtedly useful and we will want to move towards eventually offering it on all of the core
-//! blocks we offer that could benefit from it it doesn't have to be implemented for all of our blocks at first and certainly
-//! won't have to be used in custom blocks where a user knows the type of data they expect to receive or send.
-//! It is just a way to make blocks more general.
 
 #![no_std]
 // and conditionally no_alloc
@@ -438,70 +377,6 @@ impl Sealed for f32 {}
 
 impl Scalar for f64 {}
 impl Sealed for f64 {}
-
-/// Auto-promotion
-pub trait Promote<RHS: Scalar>: Scalar {
-    type Output: Scalar
-        + core::ops::Add<Output = Self::Output>
-        + core::ops::Mul<Output = Self::Output>
-        + core::ops::Sub<Output = Self::Output>
-        + core::ops::Div<Output = Self::Output>;
-
-    fn promote_left(self) -> Self::Output;
-    fn promote_right(rhs: RHS) -> Self::Output;
-}
-
-macro_rules! promotions {
-    ($( ( $($from:ident),* ) -> $to:ident ),*) => {
-        $(
-            impl Promote<$to> for $to {
-                type Output = $to;
-
-                fn promote_left(self) -> Self::Output {
-                    self
-                }
-
-                fn promote_right(rhs: $to) -> Self::Output {
-                    rhs
-                }
-            }
-
-            $(
-                impl Promote<$from> for $to {
-                    type Output = $to;
-
-                    fn promote_left(self) -> Self::Output {
-                        self
-                    }
-
-                    fn promote_right(rhs: $from) -> Self::Output {
-                        rhs as $to
-                    }
-                }
-
-                impl Promote<$to> for $from {
-                    type Output = $to;
-
-                    fn promote_left(self) -> Self::Output {
-                        self as $to
-                    }
-
-                    fn promote_right(rhs: $to) -> Self::Output {
-                        rhs
-                    }
-                }
-            )*
-        )*
-    };
-}
-
-// TODO add more impls are needed
-promotions! {
-    (u8, u16) -> f32,
-    (f32) -> f64
-}
-
-pub type Promotion<L, R> = <L as Promote<R>>::Output;
 
 // a fixed-size array is like a mathematical vector
 // NOTE the `Scalar` trait bound prevents the creation of nested vectors

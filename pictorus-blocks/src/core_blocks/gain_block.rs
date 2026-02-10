@@ -1,4 +1,6 @@
-use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
+use core::ops::Mul;
+
+use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Multiplies the input by a gain factor.
 pub struct GainBlock<G, T>
@@ -51,45 +53,47 @@ pub trait Apply<G: Scalar>: Pass {
 
 impl<G> Apply<G> for f64
 where
-    G: Promote<f64> + Scalar,
+    G: Scalar,
+    f64: Mul<G>,
+    <f64 as Mul<G>>::Output: Scalar,
 {
-    type Output = Promotion<G, f64>;
+    type Output = <f64 as Mul<G>>::Output;
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
         input: PassBy<Self>,
         gain: G,
     ) -> PassBy<'s, Self::Output> {
-        let output =
-            <G as Promote<f64>>::promote_left(gain) * <G as Promote<f64>>::promote_right(input);
+        let output = input * gain;
         *store = Some(output);
-        output
+        output.as_by()
     }
 }
 
-impl<T> Apply<T> for f32
+impl<G> Apply<G> for f32
 where
-    T: Promote<f32> + Scalar,
+    G: Scalar,
+    f32: Mul<G>,
+    <f32 as Mul<G>>::Output: Scalar,
 {
-    type Output = Promotion<T, f32>;
+    type Output = <f32 as Mul<G>>::Output;
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
         input: PassBy<Self>,
-        gain: T,
+        gain: G,
     ) -> PassBy<'s, Self::Output> {
-        let output =
-            <T as Promote<f32>>::promote_left(gain) * <T as Promote<f32>>::promote_right(input);
+        let output = input * gain;
         *store = Some(output);
-        output
+        output.as_by()
     }
 }
 
 impl<const NROWS: usize, const NCOLS: usize, G, T> Apply<G> for Matrix<NROWS, NCOLS, T>
 where
     T: Scalar,
-    G: Promote<T>,
-    T: Promote<G>,
+    G: Scalar,
+    T: Mul<G, Output = T>,
 {
-    type Output = Matrix<NROWS, NCOLS, Promotion<G, T>>;
+    type Output = Matrix<NROWS, NCOLS, T>;
 
     fn apply<'s>(
         store: &'s mut Option<Self::Output>,
@@ -103,8 +107,8 @@ where
             .iter_mut()
             .enumerate()
             .for_each(|(i, lhs)| {
-                *lhs = <G as Promote<T>>::promote_right(input.data.as_flattened()[i])
-                    * <G as Promote<T>>::promote_left(gain);
+                let input_val = input.data.as_flattened()[i];
+                *lhs = input_val * gain;
             });
         output
     }
