@@ -1,14 +1,13 @@
 extern crate alloc;
 
 use alloc::string::String;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use miniserde::json::{self, Array, Number, Object, Value};
-use pictorus_block_data::{BlockData as OldBlockData, BlockDataType, FromPass};
+
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, traits::DefaultStorage};
+use crate::traits::DefaultStorage;
 
 /// Deserializes bytes encoded as JSON into the specified output signals.
 ///
@@ -17,20 +16,13 @@ use crate::{stale_tracker::StaleTracker, traits::DefaultStorage};
 /// select_data is a key in the object. If select_data is not provided, we assume
 /// that the passed in bytes represent a single value (either scalar or matrix).
 pub struct JsonLoadBlock<T: Apply> {
-    pub data: Vec<OldBlockData>,
     buffer: T::Storage,
-    stale_tracker: Option<StaleTracker>,
 }
 
 impl<T: Apply> Default for JsonLoadBlock<T> {
     fn default() -> Self {
         let buffer = T::default_storage();
-        let data = T::build_block_data(&buffer);
-        JsonLoadBlock {
-            data,
-            buffer,
-            stale_tracker: None,
-        }
+        JsonLoadBlock { buffer }
     }
 }
 
@@ -42,17 +34,10 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        _context: &dyn Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let success = T::apply(&mut self.buffer, inputs, parameters);
-        if success.is_ok() {
-            self.data = T::build_block_data(&self.buffer);
-            let tracker = self
-                .stale_tracker
-                .get_or_insert(StaleTracker::from_ms(parameters.stale_age_ms));
-            tracker.mark_updated(context.time().as_secs_f64());
-        }
+        let _success = T::apply(&mut self.buffer, inputs, parameters);
         T::storage_as_by(&self.buffer)
     }
 }
@@ -63,7 +48,7 @@ pub struct Parameters {
     /// type of the output and the second element is the key in the JSON object
     /// Note: The data type is not actually used in code, but encoded into the
     /// generics of the block instance.
-    pub select_data: Vec<(BlockDataType, String)>,
+    pub select_data: Vec<String>,
     /// The age in milliseconds after which the data is considered stale
     pub stale_age_ms: f64,
 }
@@ -80,10 +65,10 @@ impl Parameters {
         }
     }
 
-    fn parse_select_spec(data: &[String]) -> Vec<(BlockDataType, String)> {
+    fn parse_select_spec(data: &[String]) -> Vec<String> {
         data.iter()
             .map(|d| d.split_once(':').expect("Invalid select data format"))
-            .map(|(dt, field)| (dt.parse::<BlockDataType>().unwrap(), field.into()))
+            .map(|(_dt, field)| field.into())
             .collect()
     }
 }
@@ -198,7 +183,6 @@ pub trait Apply: Pass {
 
     fn default_storage() -> Self::Storage;
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output>;
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData>;
 }
 
 fn parse_number(num_val: &Number) -> f64 {
@@ -227,7 +211,7 @@ impl<A: Deserialize> Apply for A {
             A::from_json_value(&data)
         } else {
             let data: Object = json::from_str(data).or(Err(()))?;
-            A::from_json_object(&data, &parameters.select_data[0].1)
+            A::from_json_object(&data, &parameters.select_data[0])
         };
 
         if let Ok(v1) = v1 {
@@ -241,10 +225,6 @@ impl<A: Deserialize> Apply for A {
 
     fn default_storage() -> Self::Storage {
         (A::default_storage(), false)
-    }
-
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![OldBlockData::from_pass(A::from_storage(&storage.0))]
     }
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
@@ -264,8 +244,8 @@ impl<A: Deserialize, B: Deserialize> Apply for (A, B) {
     ) -> Result<(), ()> {
         let data = core::str::from_utf8(data).or(Err(()))?;
         let data: Object = json::from_str(data).or(Err(()))?;
-        let v1 = A::from_json_object(&data, &parameters.select_data[0].1);
-        let v2 = B::from_json_object(&data, &parameters.select_data[1].1);
+        let v1 = A::from_json_object(&data, &parameters.select_data[0]);
+        let v2 = B::from_json_object(&data, &parameters.select_data[1]);
         if let (Ok(v1), Ok(v2)) = (v1, v2) {
             *dest = (v1, v2, true);
             Ok(())
@@ -277,13 +257,6 @@ impl<A: Deserialize, B: Deserialize> Apply for (A, B) {
 
     fn default_storage() -> Self::Storage {
         (A::default_storage(), B::default_storage(), false)
-    }
-
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-        ]
     }
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
@@ -307,9 +280,9 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C) {
     ) -> Result<(), ()> {
         let data = core::str::from_utf8(data).or(Err(()))?;
         let data: Object = json::from_str(data).or(Err(()))?;
-        let v1 = A::from_json_object(&data, &parameters.select_data[0].1);
-        let v2 = B::from_json_object(&data, &parameters.select_data[1].1);
-        let v3 = C::from_json_object(&data, &parameters.select_data[2].1);
+        let v1 = A::from_json_object(&data, &parameters.select_data[0]);
+        let v2 = B::from_json_object(&data, &parameters.select_data[1]);
+        let v3 = C::from_json_object(&data, &parameters.select_data[2]);
         if let (Ok(v1), Ok(v2), Ok(v3)) = (v1, v2, v3) {
             *dest = (v1, v2, v3, true);
             Ok(())
@@ -326,14 +299,6 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C) {
             C::default_storage(),
             false,
         )
-    }
-
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-        ]
     }
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
@@ -358,10 +323,10 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (
     ) -> Result<(), ()> {
         let data = core::str::from_utf8(data).or(Err(()))?;
         let data: Object = json::from_str(data).or(Err(()))?;
-        let v1 = A::from_json_object(&data, &parameters.select_data[0].1);
-        let v2 = B::from_json_object(&data, &parameters.select_data[1].1);
-        let v3 = C::from_json_object(&data, &parameters.select_data[2].1);
-        let v4 = D::from_json_object(&data, &parameters.select_data[3].1);
+        let v1 = A::from_json_object(&data, &parameters.select_data[0]);
+        let v2 = B::from_json_object(&data, &parameters.select_data[1]);
+        let v3 = C::from_json_object(&data, &parameters.select_data[2]);
+        let v4 = D::from_json_object(&data, &parameters.select_data[3]);
         if let (Ok(v1), Ok(v2), Ok(v3), Ok(v4)) = (v1, v2, v3, v4) {
             *dest = (v1, v2, v3, v4, true);
             Ok(())
@@ -379,15 +344,6 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (
             D::default_storage(),
             false,
         )
-    }
-
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-        ]
     }
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
@@ -422,11 +378,11 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize, E: Deserial
     ) -> Result<(), ()> {
         let data = core::str::from_utf8(data).or(Err(()))?;
         let data: Object = json::from_str(data).or(Err(()))?;
-        let v1 = A::from_json_object(&data, &parameters.select_data[0].1);
-        let v2 = B::from_json_object(&data, &parameters.select_data[1].1);
-        let v3 = C::from_json_object(&data, &parameters.select_data[2].1);
-        let v4 = D::from_json_object(&data, &parameters.select_data[3].1);
-        let v5 = E::from_json_object(&data, &parameters.select_data[4].1);
+        let v1 = A::from_json_object(&data, &parameters.select_data[0]);
+        let v2 = B::from_json_object(&data, &parameters.select_data[1]);
+        let v3 = C::from_json_object(&data, &parameters.select_data[2]);
+        let v4 = D::from_json_object(&data, &parameters.select_data[3]);
+        let v5 = E::from_json_object(&data, &parameters.select_data[4]);
         if let (Ok(v1), Ok(v2), Ok(v3), Ok(v4), Ok(v5)) = (v1, v2, v3, v4, v5) {
             *dest = (v1, v2, v3, v4, v5, true);
             Ok(())
@@ -447,15 +403,6 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize, E: Deserial
         )
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-        ]
-    }
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -496,12 +443,12 @@ impl<
     ) -> Result<(), ()> {
         let data = core::str::from_utf8(data).or(Err(()))?;
         let data: Object = json::from_str(data).or(Err(()))?;
-        let v1 = A::from_json_object(&data, &parameters.select_data[0].1);
-        let v2 = B::from_json_object(&data, &parameters.select_data[1].1);
-        let v3 = C::from_json_object(&data, &parameters.select_data[2].1);
-        let v4 = D::from_json_object(&data, &parameters.select_data[3].1);
-        let v5 = E::from_json_object(&data, &parameters.select_data[4].1);
-        let v6 = F::from_json_object(&data, &parameters.select_data[5].1);
+        let v1 = A::from_json_object(&data, &parameters.select_data[0]);
+        let v2 = B::from_json_object(&data, &parameters.select_data[1]);
+        let v3 = C::from_json_object(&data, &parameters.select_data[2]);
+        let v4 = D::from_json_object(&data, &parameters.select_data[3]);
+        let v5 = E::from_json_object(&data, &parameters.select_data[4]);
+        let v6 = F::from_json_object(&data, &parameters.select_data[5]);
         if let (Ok(v1), Ok(v2), Ok(v3), Ok(v4), Ok(v5), Ok(v6)) = (v1, v2, v3, v4, v5, v6) {
             *dest = (v1, v2, v3, v4, v5, v6, true);
             Ok(())
@@ -521,16 +468,7 @@ impl<
             false,
         )
     }
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&storage.5)),
-        ]
-    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -574,13 +512,13 @@ impl<
     ) -> Result<(), ()> {
         let data = core::str::from_utf8(data).or(Err(()))?;
         let data: Object = json::from_str(data).or(Err(()))?;
-        let v1 = A::from_json_object(&data, &parameters.select_data[0].1);
-        let v2 = B::from_json_object(&data, &parameters.select_data[1].1);
-        let v3 = C::from_json_object(&data, &parameters.select_data[2].1);
-        let v4 = D::from_json_object(&data, &parameters.select_data[3].1);
-        let v5 = E::from_json_object(&data, &parameters.select_data[4].1);
-        let v6 = F::from_json_object(&data, &parameters.select_data[5].1);
-        let v7 = G::from_json_object(&data, &parameters.select_data[6].1);
+        let v1 = A::from_json_object(&data, &parameters.select_data[0]);
+        let v2 = B::from_json_object(&data, &parameters.select_data[1]);
+        let v3 = C::from_json_object(&data, &parameters.select_data[2]);
+        let v4 = D::from_json_object(&data, &parameters.select_data[3]);
+        let v5 = E::from_json_object(&data, &parameters.select_data[4]);
+        let v6 = F::from_json_object(&data, &parameters.select_data[5]);
+        let v7 = G::from_json_object(&data, &parameters.select_data[6]);
         if let (Ok(v1), Ok(v2), Ok(v3), Ok(v4), Ok(v5), Ok(v6), Ok(v7)) =
             (v1, v2, v3, v4, v5, v6, v7)
         {
@@ -603,18 +541,6 @@ impl<
             G::default_storage(),
             false,
         )
-    }
-
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&storage.5)),
-            <OldBlockData as FromPass<G>>::from_pass(G::from_storage(&storage.6)),
-        ]
     }
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
@@ -676,15 +602,6 @@ mod tests {
         );
 
         assert_eq!(res, expected);
-        assert_eq!(
-            block.data,
-            vec![
-                <OldBlockData as FromPass<f64>>::from_pass(expected.0),
-                <OldBlockData as FromPass<ByteSliceSignal>>::from_pass(expected.1),
-                <OldBlockData as FromPass<Matrix<2, 1, f64>>>::from_pass(expected.2),
-                <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(expected.3),
-            ]
-        );
     }
 
     #[test]
@@ -728,10 +645,6 @@ mod tests {
             data: [[1.0], [2.0], [3.0]],
         };
         assert_eq!(res, (expected, true));
-        assert_eq!(
-            block.data,
-            vec![OldBlockData::from_matrix(&[&[1.0, 2.0, 3.0]])]
-        );
     }
 
     #[test]
@@ -756,10 +669,6 @@ mod tests {
             data: [[1.0, 3.0], [2.0, 4.0]],
         };
         assert_eq!(res, (expected, true));
-        assert_eq!(
-            block.data,
-            vec![OldBlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]])]
-        );
     }
 
     #[test]
@@ -780,13 +689,6 @@ mod tests {
         let mut block = JsonLoadBlock::<(f64, ByteSliceSignal)>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, b"hello".as_slice(), true));
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-            ]
-        );
     }
 
     #[test]
@@ -813,14 +715,6 @@ mod tests {
                 },
                 true
             )
-        );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-            ]
         );
     }
 
@@ -855,15 +749,6 @@ mod tests {
                 },
                 true
             )
-        );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-            ]
         );
     }
 
@@ -903,16 +788,6 @@ mod tests {
                 &Matrix { data: [[1.0]] },
                 true
             )
-        );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-                OldBlockData::from_matrix(&[&[1.0]]),
-            ]
         );
     }
 
@@ -955,17 +830,6 @@ mod tests {
                 &Matrix { data: [[2.0]] },
                 true
             )
-        );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-                OldBlockData::from_matrix(&[&[1.0]]),
-                OldBlockData::from_matrix(&[&[2.0]]),
-            ]
         );
     }
 
@@ -1025,19 +889,5 @@ mod tests {
         );
 
         assert_eq!(res, expected);
-
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-                OldBlockData::from_matrix(&[&[1.0]]),
-                OldBlockData::from_matrix(&[&[2.0]]),
-                OldBlockData::from_matrix(&[&[3.0, 4.0], &[5.0, 6.0]]),
-            ]
-        );
-
     }
 }

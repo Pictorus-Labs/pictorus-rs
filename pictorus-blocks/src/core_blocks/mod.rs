@@ -102,6 +102,9 @@ pub use integral_block::IntegralBlock;
 mod json_dump_block;
 pub use json_dump_block::JsonDumpBlock;
 
+mod json_load_block;
+pub use json_load_block::JsonLoadBlock;
+
 mod logical_block;
 pub use logical_block::LogicalBlock;
 
