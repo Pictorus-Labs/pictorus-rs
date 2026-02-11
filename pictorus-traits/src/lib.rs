@@ -282,36 +282,6 @@ pub trait GeneratorBlock: Default {
     ) -> PassBy<'_, Self::Output>;
 }
 
-/// An output block
-///
-/// This block has no output signals and usually performs a "side effect" instead of outputting data.
-pub trait OutputBlock {
-    type Inputs: Pass;
-    type Parameters;
-
-    fn output(
-        &mut self,
-        parameters: &Self::Parameters,
-        context: &dyn Context,
-        inputs: PassBy<'_, Self::Inputs>,
-    );
-}
-
-/// An input block
-///
-/// This block has no inputs signals. Unlike a `GeneratorBlock` it outputs data from the real world rather
-/// than synthetic data.
-pub trait InputBlock {
-    type Output: Pass;
-    type Parameters;
-
-    fn input(
-        &mut self,
-        parameters: &Self::Parameters,
-        context: &dyn Context,
-    ) -> PassBy<'_, Self::Output>;
-}
-
 /// The execution context
 // this trait avoids leaking types associated to the "runtime" into the signature of
 // `{Block,Generator}::run`
@@ -321,8 +291,6 @@ pub trait Context {
     fn timestep(&self) -> Option<Duration>;
     /// Time elapsed since the start of the program / simulation
     fn time(&self) -> Duration;
-    // Fundamental Timestep, The goal timestep for the model
-    fn fundamental_timestep(&self) -> Duration;
 }
 
 /// Data can be passed between blocks

@@ -28,9 +28,6 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 ///         None
 ///     }
 ///
-///     fn fundamental_timestep(&self) -> Duration {
-///         Duration::from_millis(100)
-///     }
 /// }
 ///
 /// let ctxt = StubContext::default();

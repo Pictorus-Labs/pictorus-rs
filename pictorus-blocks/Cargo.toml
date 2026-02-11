@@ -49,3 +49,4 @@ derive-new = { version = "0.7.0", default-features = false }
 
 [features]
 std = ["dep:rustfft", "dep:chrono"]
+default = []

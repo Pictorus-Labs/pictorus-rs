@@ -34,10 +34,6 @@ impl Context for StubContext {
     fn timestep(&self) -> Option<Duration> {
         self.timestep
     }
-
-    fn fundamental_timestep(&self) -> Duration {
-        self.fundamental_timestep
-    }
 }
 
 /// A struct that wraps a [`StubContext`] and provides a convenient way to simulate the passage of time in a unit test.
