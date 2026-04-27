@@ -79,7 +79,7 @@ pub trait BlockDef {
     /// and a list of outputs corresponding to data that will be passed to downstream blocks.
     ///
     /// Each iteration of this block should modify the output data in place to reflect the current state
-    fn run(&mut self, inputs: &[impl BlockDataRead], outputs: &mut [impl BlockDataWrite]);
+    fn run(&mut self, inputs: &[&dyn BlockDataRead], outputs: &mut [&mut dyn BlockDataWrite]);
 
     /// Optional cleanup of any resources used by this block
     ///
@@ -114,7 +114,7 @@ macro_rules! scalar_block_data_read_impl {
                     }
                 }
 
-                 impl BlockDataRead for $t {
+                impl BlockDataRead for $t {
                     fn get_scalar(&self) -> f64 {
                         (*self).into()
                     }
@@ -164,6 +164,15 @@ macro_rules! scalar_block_data_write_impl {
                         unimplemented!("Can not set matrix for scalar {}", stringify!($t))
                     }
                 }
+
+                impl BlockDataWrite for $t {
+                    fn set_scalar_value(&mut self, value: f64) {
+                        *self = value as $t;
+                    }
+                    fn set_matrix_value(&mut self, _nrows: usize, _ncols: usize, _data: &[f64]) {
+                        unimplemented!("Can not set matrix for scalar {}", stringify!($t))
+                    }
+                }
             )+
         };
     }
@@ -171,6 +180,26 @@ scalar_block_data_write_impl!(u8, i8, u16, i16, u32, i32, f32, f64);
 
 impl<const NROWS: usize, const NCOLS: usize, T: Scalar> BlockDataWrite
     for &mut Matrix<NROWS, NCOLS, T>
+where
+    for<'a> &'a mut T: BlockDataWrite,
+{
+    fn set_scalar_value(&mut self, _value: f64) {
+        unimplemented!("Can not set scalar of matrix value")
+    }
+
+    fn set_matrix_value(&mut self, nrows: usize, ncols: usize, data: &[f64]) {
+        assert_eq!(nrows, NROWS);
+        assert_eq!(ncols, NCOLS);
+        self.data
+            .as_flattened_mut()
+            .iter_mut()
+            .zip(data.iter())
+            .for_each(|(mut a, b)| a.set_scalar_value(*b));
+    }
+}
+
+impl<const NROWS: usize, const NCOLS: usize, T: Scalar> BlockDataWrite 
+    for Matrix<NROWS, NCOLS, T>
 where
     for<'a> &'a mut T: BlockDataWrite,
 {
