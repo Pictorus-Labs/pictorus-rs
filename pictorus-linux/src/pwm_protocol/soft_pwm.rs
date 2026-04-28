@@ -50,10 +50,16 @@ impl SoftPwm {
                 sched_priority: unsafe { libc::sched_get_priority_max(SCHED_RR) },
             };
 
+            // sched_param's non-priority fields differ across musl versions (older musl
+            // exposes deprecated SS scheduling fields, newer musl replaces them with
+            // private padding), so initialize via zeroed() instead of naming them.
             #[cfg(target_env = "musl")]
-            let params = sched_param {
-                // SAFETY: this is a safe function
-                sched_priority: unsafe { libc::sched_get_priority_max(SCHED_RR) },
+            let params = {
+                // SAFETY: sched_param is plain data and is valid when zero-initialized.
+                let mut params: sched_param = unsafe { std::mem::zeroed() };
+                // SAFETY: sched_get_priority_max is a safe function.
+                params.sched_priority = unsafe { libc::sched_get_priority_max(SCHED_RR) };
+                params
             };
 
             #[cfg(target_os = "linux")]
