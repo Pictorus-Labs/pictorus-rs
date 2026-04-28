@@ -46,7 +46,8 @@ impl SoftPwm {
             // will silently fail if we're not running as root.
             #[cfg(target_env = "gnu")]
             let params = sched_param {
-                // SAFETY: this is a safe function
+                // SAFETY: sched_get_priority_max takes a scheduling policy constant
+                // (SCHED_RR is valid) and has no pointer arguments, so the FFI call is sound.
                 sched_priority: unsafe { libc::sched_get_priority_max(SCHED_RR) },
             };
 
@@ -57,7 +58,8 @@ impl SoftPwm {
             let params = {
                 // SAFETY: sched_param is plain data and is valid when zero-initialized.
                 let mut params: sched_param = unsafe { std::mem::zeroed() };
-                // SAFETY: sched_get_priority_max is a safe function.
+                // SAFETY: sched_get_priority_max takes a scheduling policy constant
+                // (SCHED_RR is valid) and has no pointer arguments, so the FFI call is sound.
                 params.sched_priority = unsafe { libc::sched_get_priority_max(SCHED_RR) };
                 params
             };

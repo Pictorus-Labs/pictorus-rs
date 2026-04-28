@@ -102,6 +102,20 @@ impl BlockDataRead for &bool {
     }
 }
 
+impl BlockDataRead for bool {
+    fn get_scalar(&self) -> f64 {
+        if *self {
+            1.0
+        } else {
+            0.0
+        }
+    }
+
+    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+        unimplemented!("Cannot get matrix of scalar bool value")
+    }
+}
+
 macro_rules! scalar_block_data_read_impl {
         ($($t:ty),+) => {
             $(
@@ -142,9 +156,30 @@ impl<const NROWS: usize, const NCOLS: usize> BlockDataRead for &Matrix<NROWS, NC
     }
 }
 
+impl<const NROWS: usize, const NCOLS: usize> BlockDataRead for Matrix<NROWS, NCOLS, f64> {
+    fn get_scalar(&self) -> f64 {
+        unimplemented!("Can not get scalar of matrix value")
+    }
+
+    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+        let data = self.data.as_flattened();
+        (NROWS, NCOLS, data)
+    }
+}
+
 impl BlockDataWrite for &mut bool {
     fn set_scalar_value(&mut self, value: f64) {
         **self = value != 0.0;
+    }
+
+    fn set_matrix_value(&mut self, _nrows: usize, _ncols: usize, _data: &[f64]) {
+        unimplemented!("Can not set matrix of scalar bool value")
+    }
+}
+
+impl BlockDataWrite for bool {
+    fn set_scalar_value(&mut self, value: f64) {
+        *self = value != 0.0;
     }
 
     fn set_matrix_value(&mut self, _nrows: usize, _ncols: usize, _data: &[f64]) {
@@ -258,5 +293,71 @@ mod tests {
 
         let param = BlockParam::String("not a matrix");
         assert_eq!(param.as_matrix(), None);
+    }
+
+    #[test]
+    fn test_block_data_write_scalar_f64_through_dyn() {
+        let mut x: f64 = 0.0;
+        let writer: &mut dyn BlockDataWrite = &mut x;
+        writer.set_scalar_value(42.5);
+        assert_eq!(x, 42.5);
+    }
+
+    #[test]
+    fn test_block_data_write_scalar_u8_through_dyn() {
+        let mut x: u8 = 0;
+        let writer: &mut dyn BlockDataWrite = &mut x;
+        writer.set_scalar_value(7.0);
+        assert_eq!(x, 7);
+    }
+
+    #[test]
+    fn test_block_data_write_scalar_bool_through_dyn() {
+        let mut x: bool = false;
+        {
+            let writer: &mut dyn BlockDataWrite = &mut x;
+            writer.set_scalar_value(1.0);
+        }
+        assert!(x);
+        {
+            let writer: &mut dyn BlockDataWrite = &mut x;
+            writer.set_scalar_value(0.0);
+        }
+        assert!(!x);
+    }
+
+    #[test]
+    fn test_block_data_write_matrix_through_dyn() {
+        let mut m: Matrix<2, 2, f64> = Matrix::zeroed();
+        let writer: &mut dyn BlockDataWrite = &mut m;
+        // Column-major: column 0 = [1.0, 3.0], column 1 = [2.0, 4.0]
+        writer.set_matrix_value(2, 2, &[1.0, 3.0, 2.0, 4.0]);
+        assert_eq!(m.data, [[1.0, 3.0], [2.0, 4.0]]);
+    }
+
+    #[test]
+    fn test_block_data_read_scalar_f64_through_dyn() {
+        let x: f64 = 3.5;
+        let reader: &dyn BlockDataRead = &x;
+        assert_eq!(reader.get_scalar(), 3.5);
+    }
+
+    #[test]
+    fn test_block_data_read_scalar_bool_through_dyn() {
+        let x = true;
+        let reader: &dyn BlockDataRead = &x;
+        assert_eq!(reader.get_scalar(), 1.0);
+    }
+
+    #[test]
+    fn test_block_data_read_matrix_through_dyn() {
+        let m: Matrix<2, 2, f64> = Matrix {
+            data: [[1.0, 3.0], [2.0, 4.0]],
+        };
+        let reader: &dyn BlockDataRead = &m;
+        let (nrows, ncols, data) = reader.get_matrix();
+        assert_eq!(nrows, 2);
+        assert_eq!(ncols, 2);
+        assert_eq!(data, &[1.0, 3.0, 2.0, 4.0]);
     }
 }
