@@ -198,8 +198,7 @@ where
     }
 }
 
-impl<const NROWS: usize, const NCOLS: usize, T: Scalar> BlockDataWrite 
-    for Matrix<NROWS, NCOLS, T>
+impl<const NROWS: usize, const NCOLS: usize, T: Scalar> BlockDataWrite for Matrix<NROWS, NCOLS, T>
 where
     for<'a> &'a mut T: BlockDataWrite,
 {

@@ -113,6 +113,7 @@ cfg_if::cfg_if! {
         use std::format;
         use std::io::Write;
         use std::prelude::rust_2021::*;
+        use std::panic;
 
         use log::{info, warn, LevelFilter};
         use chrono::Local;
