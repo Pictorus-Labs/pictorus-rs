@@ -54,16 +54,6 @@ impl SoftPwm {
             let params = sched_param {
                 // SAFETY: this is a safe function
                 sched_priority: unsafe { libc::sched_get_priority_max(SCHED_RR) },
-                sched_ss_low_priority: 0,
-                sched_ss_repl_period: timespec {
-                    tv_sec: 0,
-                    tv_nsec: 0,
-                },
-                sched_ss_init_budget: timespec {
-                    tv_sec: 0,
-                    tv_nsec: 0,
-                },
-                sched_ss_max_repl: 0,
             };
 
             #[cfg(target_os = "linux")]
