@@ -88,6 +88,12 @@ pub trait BlockDef {
     fn cleanup(&mut self) {}
 }
 
+// Returns a 'static [f64] of length 1 backing the bool's f64 representation.
+fn bool_as_matrix_data(b: bool) -> &'static [f64] {
+    static LUT: [f64; 2] = [0.0, 1.0];
+    core::slice::from_ref(&LUT[b as usize])
+}
+
 impl BlockDataRead for &bool {
     fn get_scalar(&self) -> f64 {
         if **self {
@@ -98,7 +104,7 @@ impl BlockDataRead for &bool {
     }
 
     fn get_matrix(&self) -> (usize, usize, &[f64]) {
-        unimplemented!("Cannot get matrix of scalar bool value")
+        (1, 1, bool_as_matrix_data(**self))
     }
 }
 
@@ -112,7 +118,7 @@ impl BlockDataRead for bool {
     }
 
     fn get_matrix(&self) -> (usize, usize, &[f64]) {
-        unimplemented!("Cannot get matrix of scalar bool value")
+        (1, 1, bool_as_matrix_data(*self))
     }
 }
 
@@ -124,7 +130,10 @@ macro_rules! scalar_block_data_read_impl {
                         (**self).into()
                     }
                     fn get_matrix(&self) -> (usize, usize, &[f64]) {
-                        unimplemented!("Can not get matrix of scalar {} value", stringify!($t))
+                        unimplemented!(
+                            "get_matrix on scalar {} is not supported; only f64 and bool scalars convert to 1x1 matrices",
+                            stringify!($t)
+                        )
                     }
                 }
 
@@ -133,14 +142,37 @@ macro_rules! scalar_block_data_read_impl {
                         (*self).into()
                     }
                     fn get_matrix(&self) -> (usize, usize, &[f64]) {
-                        unimplemented!("Can not get matrix of scalar {} value", stringify!($t))
+                        unimplemented!(
+                            "get_matrix on scalar {} is not supported; only f64 and bool scalars convert to 1x1 matrices",
+                            stringify!($t)
+                        )
                     }
                 }
             )+
         };
     }
 
-scalar_block_data_read_impl!(u8, i8, u16, i16, u32, i32, f32, f64);
+scalar_block_data_read_impl!(u8, i8, u16, i16, u32, i32, f32);
+
+impl BlockDataRead for &f64 {
+    fn get_scalar(&self) -> f64 {
+        **self
+    }
+
+    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+        (1, 1, core::slice::from_ref(*self))
+    }
+}
+
+impl BlockDataRead for f64 {
+    fn get_scalar(&self) -> f64 {
+        *self
+    }
+
+    fn get_matrix(&self) -> (usize, usize, &[f64]) {
+        (1, 1, core::slice::from_ref(self))
+    }
+}
 
 // We can't easily implement this for non f64 types because we need to have an array of f64
 // with a long enough lifetime to be passed to the caller. We would need to use some sort of
@@ -359,5 +391,62 @@ mod tests {
         assert_eq!(nrows, 2);
         assert_eq!(ncols, 2);
         assert_eq!(data, &[1.0, 3.0, 2.0, 4.0]);
+    }
+
+    #[test]
+    fn test_block_data_read_scalar_f64_get_matrix_through_dyn() {
+        let x: f64 = 3.5;
+        let reader: &dyn BlockDataRead = &x;
+        let (nrows, ncols, data) = reader.get_matrix();
+        assert_eq!(nrows, 1);
+        assert_eq!(ncols, 1);
+        assert_eq!(data, &[3.5]);
+    }
+
+    #[test]
+    fn test_block_data_read_scalar_f64_ref_get_matrix_through_dyn() {
+        let value: f64 = 9.25;
+        let x: &f64 = &value;
+        let reader: &dyn BlockDataRead = &x;
+        let (nrows, ncols, data) = reader.get_matrix();
+        assert_eq!(nrows, 1);
+        assert_eq!(ncols, 1);
+        assert_eq!(data, &[9.25]);
+    }
+
+    #[test]
+    fn test_block_data_read_scalar_bool_get_matrix_through_dyn() {
+        let t = true;
+        let reader: &dyn BlockDataRead = &t;
+        let (nrows, ncols, data) = reader.get_matrix();
+        assert_eq!(nrows, 1);
+        assert_eq!(ncols, 1);
+        assert_eq!(data, &[1.0]);
+
+        let f = false;
+        let reader: &dyn BlockDataRead = &f;
+        let (nrows, ncols, data) = reader.get_matrix();
+        assert_eq!(nrows, 1);
+        assert_eq!(ncols, 1);
+        assert_eq!(data, &[0.0]);
+    }
+
+    #[test]
+    fn test_block_data_read_scalar_bool_ref_get_matrix_through_dyn() {
+        let value = true;
+        let x: &bool = &value;
+        let reader: &dyn BlockDataRead = &x;
+        let (nrows, ncols, data) = reader.get_matrix();
+        assert_eq!(nrows, 1);
+        assert_eq!(ncols, 1);
+        assert_eq!(data, &[1.0]);
+    }
+
+    #[test]
+    #[should_panic(expected = "get_matrix on scalar u8 is not supported")]
+    fn test_block_data_read_scalar_u8_get_matrix_still_panics() {
+        let x: u8 = 5;
+        let reader: &dyn BlockDataRead = &x;
+        let _ = reader.get_matrix();
     }
 }
