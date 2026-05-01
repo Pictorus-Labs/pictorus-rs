@@ -90,8 +90,13 @@ pub trait BlockDef {
 
 // Returns a 'static [f64] of length 1 backing the bool's f64 representation.
 fn bool_as_matrix_data(b: bool) -> &'static [f64] {
-    static LUT: [f64; 2] = [0.0, 1.0];
-    core::slice::from_ref(&LUT[b as usize])
+    static TRUE_VAL: f64 = 1.0;
+    static FALSE_VAL: f64 = 0.0;
+    if b {
+        core::slice::from_ref(&TRUE_VAL)
+    } else {
+        core::slice::from_ref(&FALSE_VAL)
+    }
 }
 
 impl BlockDataRead for &bool {
