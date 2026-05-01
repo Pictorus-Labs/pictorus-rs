@@ -46,24 +46,22 @@ impl SoftPwm {
             // will silently fail if we're not running as root.
             #[cfg(target_env = "gnu")]
             let params = sched_param {
-                // SAFETY: this is a safe function
+                // SAFETY: sched_get_priority_max takes a scheduling policy constant
+                // (SCHED_RR is valid) and has no pointer arguments, so the FFI call is sound.
                 sched_priority: unsafe { libc::sched_get_priority_max(SCHED_RR) },
             };
 
+            // sched_param's non-priority fields differ across musl versions (older musl
+            // exposes deprecated SS scheduling fields, newer musl replaces them with
+            // private padding), so initialize via zeroed() instead of naming them.
             #[cfg(target_env = "musl")]
-            let params = sched_param {
-                // SAFETY: this is a safe function
-                sched_priority: unsafe { libc::sched_get_priority_max(SCHED_RR) },
-                sched_ss_low_priority: 0,
-                sched_ss_repl_period: timespec {
-                    tv_sec: 0,
-                    tv_nsec: 0,
-                },
-                sched_ss_init_budget: timespec {
-                    tv_sec: 0,
-                    tv_nsec: 0,
-                },
-                sched_ss_max_repl: 0,
+            let params = {
+                // SAFETY: sched_param is plain data and is valid when zero-initialized.
+                let mut params: sched_param = unsafe { std::mem::zeroed() };
+                // SAFETY: sched_get_priority_max takes a scheduling policy constant
+                // (SCHED_RR is valid) and has no pointer arguments, so the FFI call is sound.
+                params.sched_priority = unsafe { libc::sched_get_priority_max(SCHED_RR) };
+                params
             };
 
             #[cfg(target_os = "linux")]
