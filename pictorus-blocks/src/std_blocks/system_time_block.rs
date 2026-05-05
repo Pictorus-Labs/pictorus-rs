@@ -4,29 +4,18 @@ use pictorus_traits::GeneratorBlock;
 
 /// This block can be used in `std` environments to get the current system time.
 /// The time output can be in different formats, such as epoch time, second, minute, hour, day of the month, day of the year, month, or year.
-///
-/// Optionally, this accepts a sim input, in that case it must be instantiated with `SystemTimeBlock<Sim>`. In this case, the
-/// `data` field is assumed to be set externally
-pub struct SystemTimeBlock<T: TimeSource = Real> {
+pub struct SystemTimeBlock {
     pub data: OldBlockData,
     output: f64,
     start_time: DateTime<Local>,
-    _phantom: core::marker::PhantomData<T>,
 }
 
-pub trait TimeSource {}
-pub struct Sim;
-impl TimeSource for Sim {}
-pub struct Real;
-impl TimeSource for Real {}
-
-impl<T: TimeSource> Default for SystemTimeBlock<T> {
+impl Default for SystemTimeBlock {
     fn default() -> Self {
         Self {
             data: OldBlockData::from_scalar(0.0),
             output: 0.0,
             start_time: Local::now(),
-            _phantom: core::marker::PhantomData,
         }
     }
 }
@@ -44,7 +33,7 @@ fn get_output_value(time: DateTime<Local>, method: SystemTimeEnum) -> f64 {
     }
 }
 
-impl GeneratorBlock for SystemTimeBlock<Real> {
+impl GeneratorBlock for SystemTimeBlock {
     type Output = f64;
     type Parameters = Parameters;
 
@@ -63,23 +52,7 @@ impl GeneratorBlock for SystemTimeBlock<Real> {
     }
 }
 
-impl GeneratorBlock for SystemTimeBlock<Sim> {
-    type Output = f64;
-    type Parameters = Parameters;
-
-    fn generate(
-        &mut self,
-        _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
-    ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        // Assume that self.data was set externally and just use that
-        self.output = self.data.scalar();
-        self.output
-    }
-}
-
 /// The type of output wanted from the SystemTimeBlock.
-/// Has no affect when used with a sim input
 #[derive(strum::EnumString, Clone, Copy, Debug)]
 pub enum SystemTimeEnum {
     Epoch,
@@ -150,20 +123,5 @@ mod tests {
         let output = block.generate(&params, &context);
         assert_eq!(output, start_time.timestamp() as f64 + 42.0);
         assert_eq!(block.data.scalar(), start_time.timestamp() as f64 + 42.0);
-    }
-
-    #[test]
-    fn test_system_time_block_sim() {
-        let mut block: SystemTimeBlock<Sim> = Default::default();
-        block.data.set_scalar(1337.0);
-        let params = Parameters::new("Epoch");
-        let context = StubContext::new(
-            Duration::from_secs(42),
-            Some(Duration::from_millis(100)),
-            Duration::from_millis(100),
-        );
-        let output = block.generate(&params, &context);
-        assert_eq!(output, 1337.0);
-        assert_eq!(block.data.scalar(), 1337.0);
     }
 }
