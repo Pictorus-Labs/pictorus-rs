@@ -452,6 +452,13 @@ pub enum SumType {
 /// The parameters for the sum block
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(
+        serialize = "[SumType; NUM_INPUTS]: serde::Serialize",
+        deserialize = "[SumType; NUM_INPUTS]: serde::Deserialize<'de>"
+    ))
+)]
 pub struct Parameters<const NUM_INPUTS: usize> {
     pub operations: [SumType; NUM_INPUTS],
 }

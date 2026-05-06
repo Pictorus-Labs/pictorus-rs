@@ -64,6 +64,13 @@ pub enum InterpMethod {
 
 /// Parameters for the Lookup1DBlock
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(
+        serialize = "[S; N]: serde::Serialize",
+        deserialize = "[S; N]: serde::Deserialize<'de>"
+    ))
+)]
 pub struct Parameters<const N: usize, S: Float> {
     /// Interpolation method to use
     interp_method: InterpMethod,

@@ -1,21 +1,21 @@
-use generic_array::{ArrayLength, GenericArray};
 use pictorus_block_data::BlockData;
 use pictorus_traits::{ByteSliceSignal, GeneratorBlock};
-use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Parameters<N: ArrayLength> {
-    pub value: GenericArray<u8, N>,
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(
+        serialize = "[u8; CHARS]: serde::Serialize",
+        deserialize = "[u8; CHARS]: serde::Deserialize<'de>"
+    ))
+)]
+pub struct Parameters<const CHARS: usize> {
+    pub value: [u8; CHARS],
 }
 
-impl<const CHARS: usize> Parameters<Const<CHARS>>
-where
-    Const<CHARS>: ArrayLength,
-{
+impl<const CHARS: usize> Parameters<CHARS> {
     pub fn new(input: [u8; CHARS]) -> Self {
-        Self {
-            value: GenericArray::from(input),
-        }
+        Self { value: input }
     }
 }
 
@@ -34,12 +34,9 @@ impl<const CHARS: usize> Default for BytesLiteralBlock<CHARS> {
     }
 }
 
-impl<const CHARS: usize> GeneratorBlock for BytesLiteralBlock<CHARS>
-where
-    Const<CHARS>: ArrayLength,
-{
+impl<const CHARS: usize> GeneratorBlock for BytesLiteralBlock<CHARS> {
     type Output = ByteSliceSignal;
-    type Parameters = Parameters<Const<CHARS>>;
+    type Parameters = Parameters<CHARS>;
 
     fn generate(
         &mut self,
@@ -47,7 +44,7 @@ where
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         self.data = BlockData::from_bytes(&parameters.value);
-        self.buffer.copy_from_slice(&parameters.value);
+        self.buffer = parameters.value;
         &self.buffer
     }
 }

@@ -42,6 +42,13 @@ impl<T: Apply> ProcessBlock for BytesPackBlock<T> {
 /// Each input must be assigned a data spec that describes how to pack the input into bytes.
 /// The data spec consists of a data type and a byte order (e.g. (f32:BigEndian))
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(
+        serialize = "[(DataType, ByteOrderSpec); N]: serde::Serialize",
+        deserialize = "[(DataType, ByteOrderSpec); N]: serde::Deserialize<'de>"
+    ))
+)]
 pub struct Parameters<const N: usize> {
     pub pack_spec: [(DataType, ByteOrderSpec); N],
 }

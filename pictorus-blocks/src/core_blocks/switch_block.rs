@@ -96,6 +96,13 @@ where
 
 /// Parameters for the SwitchBlock
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(
+        serialize = "[C; N]: serde::Serialize",
+        deserialize = "[C; N]: serde::Deserialize<'de>"
+    ))
+)]
 pub struct Parameters<C: Scalar, const N: usize> {
     /// The cases to compare the input condition against
     /// The cases array must be exactly the same length as the number of inputs

@@ -6,6 +6,13 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the TransferFunctionBlock
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(
+        serialize = "[F; NUM_SIZE]: serde::Serialize, [F; DEN_SIZE]: serde::Serialize",
+        deserialize = "[F; NUM_SIZE]: serde::Deserialize<'de>, [F; DEN_SIZE]: serde::Deserialize<'de>"
+    ))
+)]
 pub struct Parameters<F: Float, const NUM_SIZE: usize, const DEN_SIZE: usize> {
     pub numerators: [F; NUM_SIZE],
     pub denominators: [F; DEN_SIZE],
@@ -21,7 +28,7 @@ impl<F: Float, const NUM_SIZE: usize, const DEN_SIZE: usize> Parameters<F, NUM_S
         }
 
         for (i, den) in denominators.iter().enumerate() {
-            l_denominators[i] = F::from(*den).expect("Failed to convert numerator to Float");
+            l_denominators[i] = F::from(*den).expect("Failed to convert denominator to Float");
         }
 
         Parameters {
@@ -39,7 +46,7 @@ impl<F: Float, const NUM_SIZE: usize, const DEN_SIZE: usize> Parameters<F, NUM_S
         }
 
         for (i, den) in denominators.iter().enumerate() {
-            l_denominators[i] = F::from(*den).expect("Failed to convert numerator to Float");
+            l_denominators[i] = F::from(*den).expect("Failed to convert denominator to Float");
         }
 
         Parameters {

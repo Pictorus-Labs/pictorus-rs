@@ -10,6 +10,7 @@ type RxCallback<C, S> = fn(&C, &mut [S]);
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// ID of the CAN frame
+    #[serde(with = "serde_compat::CanIdDef")]
     pub frame_id: embedded_can::Id,
     /// Number of bytes in the data frame
     length: usize,
@@ -214,6 +215,39 @@ impl<S: Float> ToTupleOutput<S> for (S, S, S, S, S, S, S) {
             Ok((
                 vec[0], vec[1], vec[2], vec[3], vec[4], vec[5], vec[6], is_valid,
             ))
+        }
+    }
+}
+
+#[doc(hidden)]
+#[cfg(feature = "serde")]
+pub(super) mod serde_compat {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(remote = "embedded_can::Id")]
+    pub enum CanIdDef {
+        Standard(#[serde(with = "StandardIdDef")] embedded_can::StandardId),
+        Extended(#[serde(with = "ExtendedIdDef")] embedded_can::ExtendedId),
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(remote = "embedded_can::StandardId")]
+    struct StandardIdDef(#[serde(getter = "embedded_can::StandardId::as_raw")] u16);
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(remote = "embedded_can::ExtendedId")]
+
+    struct ExtendedIdDef(#[serde(getter = "embedded_can::ExtendedId::as_raw")] u32);
+
+    impl From<StandardIdDef> for embedded_can::StandardId {
+        #[inline]
+        fn from(id: StandardIdDef) -> Self {
+            embedded_can::StandardId::new(id.0).expect("Invalid Standard ID")
+        }
+    }
+
+    impl From<ExtendedIdDef> for embedded_can::ExtendedId {
+        #[inline]
+        fn from(id: ExtendedIdDef) -> Self {
+            embedded_can::ExtendedId::new(id.0).expect("Invalid Extended ID")
         }
     }
 }

@@ -13,6 +13,7 @@ type TxCallback<S, C> = fn(&[S], &mut C) -> Result<Vec<u8>, ()>;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     // CAN frame ID
+    #[serde(with = "super::can_receive_block::serde_compat::CanIdDef")]
     pub frame_id: embedded_can::Id,
 }
 
