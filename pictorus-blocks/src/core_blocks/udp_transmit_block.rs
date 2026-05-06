@@ -8,6 +8,7 @@ use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Parameters for UDP Transmit Block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// Destination address for the UDP socket
     /// e.g. "192.168.0.1:12345"

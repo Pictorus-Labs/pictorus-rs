@@ -96,6 +96,7 @@ where
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T: Pass + Default + Copy> {
     ic: T,
     is_delayed: bool,

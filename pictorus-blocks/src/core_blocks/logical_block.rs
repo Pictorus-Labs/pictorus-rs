@@ -183,6 +183,7 @@ impl<const R: usize, const C: usize, S: Scalar + One + Sub<Output = S>> Finalize
 }
 
 #[derive(Debug, Clone, Copy, strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Logical methods that can be applied
 pub enum LogicalMethod {
     /// Logical AND operation
@@ -196,6 +197,7 @@ pub enum LogicalMethod {
 }
 
 /// Parameters for the logical block
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// The logical method to use
     method: LogicalMethod,

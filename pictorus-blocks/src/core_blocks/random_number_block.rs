@@ -55,6 +55,7 @@ where
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T: Scalar> {
     pub mean: T,
     pub std2: T,

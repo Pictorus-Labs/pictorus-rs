@@ -2,6 +2,7 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the VectorReshapeBlock
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {}
 
 impl Default for Parameters {

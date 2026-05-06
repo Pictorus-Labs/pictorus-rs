@@ -4,6 +4,7 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the VectorSliceBlock
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// Starting row to slice from
     pub rows: usize,

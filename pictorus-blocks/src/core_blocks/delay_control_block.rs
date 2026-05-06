@@ -191,6 +191,7 @@ fn throttle(
 }
 
 #[derive(strum::EnumString, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// The method used to control the delay
 pub enum DelayControlMethod {
     /// Debounce: Wait until the input signal stops being true for delay_time before emitting true.
@@ -200,6 +201,7 @@ pub enum DelayControlMethod {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     delay: Duration,
     method: DelayControlMethod,

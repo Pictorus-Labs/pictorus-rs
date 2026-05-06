@@ -4,6 +4,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {}
 
 impl Parameters {

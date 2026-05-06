@@ -54,6 +54,7 @@ impl GeneratorBlock for SystemTimeBlock {
 
 /// The type of output wanted from the SystemTimeBlock.
 #[derive(strum::EnumString, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SystemTimeEnum {
     Epoch,
     Second,
@@ -66,6 +67,7 @@ pub enum SystemTimeEnum {
 }
 
 /// Parameters for the SystemTimeBlock
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     pub method: SystemTimeEnum,
 }

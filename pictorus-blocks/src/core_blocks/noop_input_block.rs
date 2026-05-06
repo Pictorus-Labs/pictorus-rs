@@ -1,5 +1,6 @@
 use pictorus_traits::{Context, InputBlock, Pass, PassBy};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NoOpInputBlockParameters {}
 
 impl NoOpInputBlockParameters {

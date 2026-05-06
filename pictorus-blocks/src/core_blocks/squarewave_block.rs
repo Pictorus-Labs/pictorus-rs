@@ -2,6 +2,7 @@ use crate::traits::Float;
 use pictorus_block_data::BlockData;
 use pictorus_traits::GeneratorBlock;
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T: Float> {
     pub amplitude: T,
     pub on_duration: T,

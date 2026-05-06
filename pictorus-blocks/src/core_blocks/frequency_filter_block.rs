@@ -175,6 +175,7 @@ fn compute_alpha<T: Scalar + Float>(
 
 /// Parameters for the FrequencyFilterBlock
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T, C: Float> {
     /// Frequency in Hz of the filter cutoff
     pub cutoff_frequency: C,
@@ -195,6 +196,7 @@ impl<T: Pass, C: Float> Parameters<T, C> {
 
 /// Enum for the type of filter
 #[derive(strum::EnumString, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FrequencyFilterEnum {
     /// High Pass Filter
     HighPass,

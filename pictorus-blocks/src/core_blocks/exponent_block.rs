@@ -109,6 +109,7 @@ where
 
 /// Parameters for the ExponentBlock
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T: Scalar + num_traits::Float> {
     /// The coefficient to raise the input to
     /// has the effect of being a root if < 1.0

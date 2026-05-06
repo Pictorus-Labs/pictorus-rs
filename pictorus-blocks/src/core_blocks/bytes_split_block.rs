@@ -24,6 +24,7 @@ pub struct BytesSplitBlock<T: Apply> {
 }
 
 /// Parameters for the Bytes Split Block
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// The delimiter used to split the input bytes, can accept hex literals and wild cards, see the [web docs](https://www.docs.pictor.us/block_reference/bytes_split_block.html)
     delimiter: String,

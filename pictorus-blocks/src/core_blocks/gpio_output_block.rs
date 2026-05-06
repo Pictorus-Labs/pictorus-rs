@@ -15,6 +15,7 @@ pub struct GpioOutputBlock<T: ToBool> {
 }
 
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {}
 impl Default for Parameters {
     fn default() -> Self {

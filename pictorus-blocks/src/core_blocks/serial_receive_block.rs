@@ -17,6 +17,7 @@ use crate::{
 
 /// Parameters for the Serial Receive Block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// A tuple of values used to scan for the start delimiter
     /// - Vec<u8> - The start delimiter byte string

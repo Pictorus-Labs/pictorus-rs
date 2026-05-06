@@ -5,6 +5,7 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the TransferFunctionBlock
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<F: Float, const NUM_SIZE: usize, const DEN_SIZE: usize> {
     pub numerators: [F; NUM_SIZE],
     pub denominators: [F; DEN_SIZE],

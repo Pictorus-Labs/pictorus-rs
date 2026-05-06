@@ -120,11 +120,13 @@ impl<const NROWS: usize, const NCOLS: usize, T: ArgMinMaxScalar> Apply for Matri
 }
 
 #[derive(Debug, Clone, Copy, strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ArgMethod {
     Min,
     Max,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     pub method: ArgMethod,
 }

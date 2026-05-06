@@ -2,6 +2,7 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum NotMethod {
     Logical,
     Bitwise,
@@ -161,6 +162,7 @@ macro_rules! impl_not_apply {
     };
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     // The method to use for the NOT operation. Either 'Logical' or 'Bitwise'.
     pub method: NotMethod,

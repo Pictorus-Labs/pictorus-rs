@@ -3,6 +3,7 @@ use pictorus_traits::{Context, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the PWM block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {}
 
 impl Default for Parameters {

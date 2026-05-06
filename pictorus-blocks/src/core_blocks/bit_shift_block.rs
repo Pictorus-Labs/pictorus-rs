@@ -27,11 +27,13 @@ where
 }
 
 #[derive(strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ShiftDirection {
     Left,
     Right,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     // Direction of the bit shift: Left or Right
     pub direction: ShiftDirection,

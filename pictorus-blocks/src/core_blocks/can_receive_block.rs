@@ -7,6 +7,7 @@ use crate::{stale_tracker::StaleTracker, traits::Float, IsValid};
 type RxCallback<C, S> = fn(&C, &mut [S]);
 
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// ID of the CAN frame
     pub frame_id: embedded_can::Id,

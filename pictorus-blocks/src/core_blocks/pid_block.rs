@@ -42,6 +42,7 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Parameters for the PID block
 pub struct Parameters<T: IntegralApply> {
     /// Initial condition for the integrator

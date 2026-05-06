@@ -7,6 +7,7 @@ use crate::{stale_tracker::StaleTracker, IsValid};
 
 /// Parameters for I2C Input Block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// 8-bit address to read from
     pub address: u8,

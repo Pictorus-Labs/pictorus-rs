@@ -2,12 +2,14 @@ use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{PassBy, ProcessBlock, Scalar};
 
 #[derive(strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Method {
     CountDown,
     StopWatch,
 }
 
 /// Parameters for the TimerBlock
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// Method of the TimerBlock: CountDown or StopWatch. CountDown will count down from
     /// the countdown_time_s, while StopWatch will count up from 0.

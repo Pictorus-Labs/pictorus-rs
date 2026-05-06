@@ -43,6 +43,7 @@ where
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T: Scalar + Float> {
     pub start_time: T,
     pub rate: T,

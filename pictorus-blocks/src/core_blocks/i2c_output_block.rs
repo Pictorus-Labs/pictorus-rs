@@ -5,6 +5,7 @@ use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 /// Parameters for I2C Output Block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// 8-bit address to write to
     pub address: u8,

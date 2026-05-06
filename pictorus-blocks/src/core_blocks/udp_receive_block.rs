@@ -7,6 +7,7 @@ use crate::{stale_tracker::StaleTracker, IsValid};
 
 /// Parameters for UDP Receive Block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     pub stale_age_ms: f64,
 }

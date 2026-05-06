@@ -43,6 +43,7 @@ impl<T: Apply> ProcessBlock for JsonDumpBlock<T> {
 
 /// Option for how a specific signal should be encoded
 #[derive(Debug, Clone, Copy, PartialEq, strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum EncodingType {
     /// Just normal JSON encoding
     /// e.g. `42.0_f64` => `42.0`
@@ -60,6 +61,7 @@ pub enum EncodingType {
 /// The parameters are used to specify how each signal should be encoded and what its key name should be
 /// in the JSON object.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// The key name and encoding type for each data item
     ///

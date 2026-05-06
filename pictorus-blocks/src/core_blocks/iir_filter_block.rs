@@ -101,6 +101,7 @@ where
 }
 
 /// Parameters for the IIR filter block.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T, C: Float> {
     /// The time constant of the filter in seconds.
     pub time_constant_s: C,

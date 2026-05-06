@@ -55,6 +55,7 @@ pub trait Apply: Pass {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters;
 
 impl Parameters {

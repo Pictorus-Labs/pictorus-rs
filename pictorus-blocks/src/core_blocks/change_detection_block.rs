@@ -161,6 +161,7 @@ impl ChangeDetect for f32 {}
 impl ChangeDetect for f64 {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Represents the mode of change detection.
 pub enum ChangeMode {
     /// Detects any change, whether rising or falling.
@@ -171,6 +172,7 @@ pub enum ChangeMode {
     Falling,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T> {
     ic: T,
     change_mode: ChangeMode,

@@ -14,6 +14,7 @@ pub struct BytesJoinBlock<T: Apply> {
 }
 
 /// Parameters for the BytesJoinBlock
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// The delimiter to use when joining the signals
     pub delimiter: Vec<u8>,

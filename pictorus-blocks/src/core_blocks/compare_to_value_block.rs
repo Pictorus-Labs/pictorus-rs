@@ -3,6 +3,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 use super::comparison_block::ComparisonType;
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameter<S: Scalar> {
     /// The type of comparison to perform.
     pub comparison_type: ComparisonType,

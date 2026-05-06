@@ -5,6 +5,7 @@ use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the SlidingWindowBlock consist of the initial condition of the output. This is only
 /// used until N samples have been processed.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<I> {
     initial_condition: I,
 }

@@ -32,6 +32,7 @@ impl<const N: usize> Default for BytesUnpackBlock<N> {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<N: ArrayLength> {
     pub pack_spec: GenericArray<(DataType, ByteOrderSpec), N>,
     pub stale_age: Duration,

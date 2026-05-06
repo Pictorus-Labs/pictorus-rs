@@ -4,6 +4,7 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Rate limit block parameters
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<S: Scalar> {
     /// The maximum rate per second at which the value can increase
     pub rising_rate: S,

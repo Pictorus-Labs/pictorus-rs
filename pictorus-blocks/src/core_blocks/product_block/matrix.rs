@@ -6,6 +6,7 @@ use pictorus_traits::{Matrix, Pass, PassBy};
 /// There are no parameters when the block is set to MatrixMultiply
 /// we can use an empty struct as the ProcessBlock::Parameters.
 #[derive(Default, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ParametersMatrixMult {}
 
 impl ParametersMatrixMult {

@@ -10,6 +10,7 @@ type TxCallback<S, C> = fn(&[S], &mut C) -> Result<Vec<u8>, ()>;
 
 /// Parameters for the CanTransmitBlock
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     // CAN frame ID
     pub frame_id: embedded_can::Id,

@@ -179,11 +179,13 @@ impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> Apply
 /// Rectangle: Uses the value of the sample at the current time step and the time step duration to calculate the integral.
 /// Trapezoidal: Uses the average of the sample at the current time step and the previous time step and the time step duration to calculate the integral.
 #[derive(strum::EnumString, Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum IntgeralMethod {
     Rectangle,
     Trapezoidal,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T: Apply> {
     pub clamp_limit: T::Float,
     pub ic: T::Output,

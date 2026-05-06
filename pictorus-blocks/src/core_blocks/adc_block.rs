@@ -4,6 +4,7 @@ use pictorus_traits::{Context, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the ADC block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters;
 
 impl Default for Parameters {

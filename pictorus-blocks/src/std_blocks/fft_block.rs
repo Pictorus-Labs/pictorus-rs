@@ -71,6 +71,7 @@ impl<T: Float, const N: usize> ProcessBlock for FftBlock<T, N> {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters;
 
 impl Parameters {

@@ -5,6 +5,7 @@ use crate::traits::Float;
 
 /// Parameters for Dac Block
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {}
 
 impl Default for Parameters {

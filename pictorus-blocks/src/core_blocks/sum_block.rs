@@ -443,6 +443,7 @@ where
 
 /// The type of sum to perform
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SumType {
     Addition,
     Subtraction,
@@ -450,6 +451,7 @@ pub enum SumType {
 
 /// The parameters for the sum block
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<const NUM_INPUTS: usize> {
     pub operations: [SumType; NUM_INPUTS],
 }

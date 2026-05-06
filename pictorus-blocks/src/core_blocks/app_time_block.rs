@@ -3,6 +3,7 @@ use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, Scalar};
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {}
 
 impl Parameters {

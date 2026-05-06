@@ -35,7 +35,8 @@ chrono = { version = "0.4.40", default-features = false, features = [
   "clock",
 ], optional = true }
 typenum = { version = "1.19.0", features = ["no_std", "const-generics"] }
-generic-array = { version = "1.2.0", features = ["alloc"] }
+generic-array = { version = "1.2.0", features = ["alloc", "const-generics"] }
+serde = { version = "1.0.228", optional = true, features = ["derive"] }
 
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
@@ -49,4 +50,6 @@ byteorder = { version = "1.5.0", features = ["std"] }
 derive-new = { version = "0.7.0", default-features = false }
 
 [features]
-std = ["dep:rustfft", "dep:chrono"]
+default = ["std"]
+std = ["dep:rustfft", "dep:chrono", "serde"]
+serde = ["dep:serde", "generic-array/serde", "pictorus-block-data/serde", ]

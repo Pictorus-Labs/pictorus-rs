@@ -118,6 +118,7 @@ where
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<G: Scalar> {
     pub gain: G,
 }

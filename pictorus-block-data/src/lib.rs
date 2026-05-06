@@ -21,6 +21,7 @@ use pictorus_traits::custom_blocks::{BlockDataRead, BlockDataWrite};
 use pictorus_traits::{ByteSliceSignal, PassBy};
 
 #[derive(Clone, Debug, PartialEq, Copy, strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BlockDataType {
     BytesArray,
     Scalar,

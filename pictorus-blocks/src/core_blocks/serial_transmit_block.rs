@@ -9,6 +9,7 @@ use crate::traits::Serialize;
 
 /// Parameters for the SerialTransmitBlock
 #[doc(hidden)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// Start delimiter for the serial transmission, will be prepended to the data
     start_delimiter: Vec<u8>,

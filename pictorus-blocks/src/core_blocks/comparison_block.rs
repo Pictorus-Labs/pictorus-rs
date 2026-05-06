@@ -4,6 +4,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// The type of comparison operation to perform
 #[derive(Clone, Copy, Debug, PartialEq, strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ComparisonType {
     /// Check if the two inputs are equal
     Equal,

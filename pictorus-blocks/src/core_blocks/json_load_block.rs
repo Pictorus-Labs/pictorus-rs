@@ -67,6 +67,7 @@ impl<T: Apply> IsValid for JsonLoadBlock<T> {
 }
 
 /// Parameters for the JSON Load Block
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// The select data is a list of tuples where the first element is the
     /// type of the output and the second element is the key in the JSON object

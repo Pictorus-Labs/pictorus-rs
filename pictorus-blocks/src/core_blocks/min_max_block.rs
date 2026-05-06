@@ -5,6 +5,7 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// The method to use for the MinMaxBlock
 pub enum MinMaxMethod {
     /// Calculate the minimum of the inputs
@@ -13,6 +14,7 @@ pub enum MinMaxMethod {
     Max,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     // The method to use for the MinMaxBlock. Must be either "Min" or "Max"
     pub method: MinMaxMethod,

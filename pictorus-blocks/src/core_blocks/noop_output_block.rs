@@ -1,5 +1,6 @@
 use pictorus_traits::{OutputBlock, Pass};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NoOpOutputBlockParameters {}
 
 impl NoOpOutputBlockParameters {

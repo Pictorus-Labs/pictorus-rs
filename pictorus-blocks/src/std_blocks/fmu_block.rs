@@ -166,6 +166,7 @@ impl<const N_IN: usize, const N_OUT: usize> ProcessBlock for FmuBlock<N_IN, N_OU
 }
 
 /// Parameters for the FMU block.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     /// The path to the FMU file.
     pub fmu_path: String,

@@ -5,6 +5,7 @@ use crate::traits::Scalar;
 
 /// Parameters for VectorMergeBlock
 #[derive(Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {}
 
 impl Default for Parameters {

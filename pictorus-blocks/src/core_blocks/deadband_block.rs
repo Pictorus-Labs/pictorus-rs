@@ -3,6 +3,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::MatrixOps;
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T> {
     // Lower limit of the deadband
     pub lower_limit: T,

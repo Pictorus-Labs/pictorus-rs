@@ -13,6 +13,7 @@ pub enum ByteDataError {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, strum::EnumString)]
 #[strum(ascii_case_insensitive)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DataType {
     U8,
     I8,
@@ -56,6 +57,7 @@ impl DataType {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ByteOrderSpec {
     BigEndian,
     LittleEndian,

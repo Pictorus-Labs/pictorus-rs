@@ -1,6 +1,7 @@
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{GeneratorBlock, Matrix, Pass, PassBy, Scalar};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T> {
     pub constant: T,
 }

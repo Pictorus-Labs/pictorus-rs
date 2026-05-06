@@ -26,6 +26,9 @@ nalgebra = { version = "0.33.2", default-features = false, features = [
 ] }
 strum = { version = "0.26.1", default-features = false, features = ["derive"] }
 pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
+serde = { version = "1.0.228", optional = true, features = ["derive"] }
+
 
 [features]
-std = ["nalgebra/std", "miniserde/std"]
+std = ["nalgebra/std", "miniserde/std", "serde"]
+serde = ["dep:serde"]

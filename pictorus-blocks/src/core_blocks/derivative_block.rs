@@ -139,6 +139,7 @@ impl_process!(f64);
 impl_process!(f32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<T: Pass> {
     pub ic: T,
 }

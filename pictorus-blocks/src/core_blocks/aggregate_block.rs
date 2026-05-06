@@ -117,6 +117,7 @@ float_matrix_impl!(f32);
 
 /// Represents the method of aggregation to be performed.
 #[derive(Debug, Clone, Copy, PartialEq, strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AggregateMethod {
     /// Sum of all elements.
     Sum,
@@ -130,6 +131,7 @@ pub enum AggregateMethod {
     Max,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     pub method: AggregateMethod,
 }

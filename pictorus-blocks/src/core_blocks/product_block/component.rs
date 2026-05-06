@@ -4,6 +4,7 @@ use pictorus_traits::{Matrix, Pass, PassBy};
 
 // For the ComponentWise method the PArameters needs a multiply/divide parameter for each
 /// input signal
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ParametersComponentWise<const N: usize> {
     pub operations: [ProductOperation; N],
 }
@@ -23,6 +24,7 @@ impl<const N: usize> ParametersComponentWise<N> {
 }
 
 /// One of these is associated with each input signal
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum ProductOperation {
     Multiply,

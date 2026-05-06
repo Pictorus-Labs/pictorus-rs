@@ -6,6 +6,7 @@ use pictorus_traits::{
 
 /// An array of indices used to extract individual values from the input matrix. Invalid string values
 /// will cause a panic when parsed.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<const N: usize> {
     indices: [usize; N],
 }

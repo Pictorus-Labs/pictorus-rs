@@ -2,6 +2,7 @@ use crate::nalgebra_interop::MatrixExt;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters {
     // No parameters needed for this block
 }

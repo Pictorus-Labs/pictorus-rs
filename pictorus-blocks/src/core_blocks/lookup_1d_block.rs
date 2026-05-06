@@ -54,6 +54,7 @@ where
 }
 
 #[derive(strum::EnumString)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum InterpMethod {
     /// Linear interpolation
     Linear,
@@ -62,6 +63,7 @@ pub enum InterpMethod {
 }
 
 /// Parameters for the Lookup1DBlock
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Parameters<const N: usize, S: Float> {
     /// Interpolation method to use
     interp_method: InterpMethod,
