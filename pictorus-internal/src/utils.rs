@@ -59,15 +59,6 @@ pub fn parse_select_spec(data: &[String]) -> Vec<(BlockDataType, usize)> {
         .collect()
 }
 
-pub fn update_state_output(outputs: &mut [BlockData], block: &BlockData, index: usize) {
-    // Simple helper to only clone into the output of a State if the Block data has
-    // actually updated.
-    if *block == outputs[index] {
-        return;
-    }
-    outputs[index] = block.clone();
-}
-
 pub fn positive_duration(f: f64) -> Duration {
     Duration::from_secs_f64(f64::max(0.0, f))
 }
@@ -92,6 +83,8 @@ where
     (time_s * million).as_()
 }
 
+/// Transpose a 2D array of any size and type. Input is [[T; N]; M], output is [[T; M]; N].
+/// Currently only used in generated log data struct code
 pub fn transpose<const N: usize, const M: usize, T: Copy>(input: [[T; N]; M]) -> [[T; M]; N] {
     let mut result = [[input[0][0]; M]; N];
 
@@ -230,6 +223,17 @@ cfg_if::cfg_if! {
                 warn!("Error parsing params file, using empty params map.");
                 HashMap::<String, HashMap<String, String>>::new()
             })
+        }
+
+        pub fn parse_diagram_params<T: serde::de::DeserializeOwned>(vars: &PictorusVars) -> Option<T> {
+            let diagram_params_path =
+                std::path::PathBuf::from(&vars.run_path).join("diagram_params.json");
+            info!(
+                "Looking for diagram params file: {}",
+                diagram_params_path.display()
+            );
+            let params_file = std::fs::File::open(diagram_params_path).map_err(|err| info!("Error opening file: {err}")).ok()?;
+            serde_json::from_reader(params_file).map_err(|err| info!("Error parsing JSON: {err}")).ok()
         }
 
         pub fn get_pictorus_vars() -> PictorusVars {
