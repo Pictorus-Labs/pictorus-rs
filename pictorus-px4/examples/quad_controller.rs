@@ -1,3 +1,10 @@
+// TODO: This drifted out of sync before, and especially after, removing ComponentOutputBlock
+// Run: cargo check --example quad_controller -p pictorus-px4
+// Issues:
+//   - `ComponentOutputBlock` import + ~30 usages dangle now that the alias is gone.
+//   - `pictorus_internal` is referenced but isn't in this crate's dev-dependencies.
+//   - Several ToPassType errors
+
 //! Translated from https://www.app.pictor.us/app/68ae03a7aad158fcb5c48245
 #![no_std]
 extern crate alloc;
