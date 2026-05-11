@@ -7,6 +7,7 @@ use num_traits::{AsPrimitive, Float};
 
 use log::debug;
 use pictorus_block_data::{BlockData, BlockDataType};
+use pictorus_traits::Matrix;
 use serde::{Deserialize, Serialize};
 
 pub struct PictorusVars {
@@ -154,6 +155,59 @@ cfg_if::cfg_if! {
                     (len, Some(d)) if len == d.n_elements() => Some(BlockData::from_row_slice(d.nrows(), d.ncols(), &parsed_val)),
                     _ => Some(BlockData::from_vector(&parsed_val)),
                 }
+            }
+        }
+
+        impl<const N: usize> LoadableParams for [u8; N] {
+            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+                let mut buffer = [0u8; N];
+                for (i, byte) in source.split_terminator(&['[',']']).enumerate() {
+                    if i >= N {
+                        break;
+                    }
+                    if let Ok(parsed_byte) = byte.trim().parse::<u8>() {
+                        buffer[i] = parsed_byte;
+                    } else {
+                        return None; // Parsing failed
+                    }
+                }
+                Some(buffer)
+            }
+        }
+
+        impl<const N: usize> LoadableParams for [f64; N] {
+            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+                let mut buffer = [0.0; N];
+                for (i, num_str) in source.split_terminator(&['[',']']).enumerate() {
+                    if i >= N {
+                        break;
+                    }
+                    if let Ok(parsed_num) = num_str.trim().parse::<f64>() {
+                        buffer[i] = parsed_num;
+                    } else {
+                        return None; // Parsing failed
+                    }
+                }
+                Some(buffer)
+            }
+        }
+
+        impl<const NROWS: usize, const NCOLS: usize> LoadableParams for Matrix<NROWS, NCOLS, f64> {
+            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+                let mut matrix = Matrix::zeroed();
+                for (row_i, row_str) in source.split_terminator(']').enumerate() {
+                    for (col_i, num_str) in row_str.split_terminator(&['[',',']).enumerate() {
+                        if row_i >= NROWS || col_i >= NCOLS {
+                            break;
+                        }
+                        if let Ok(parsed_num) = num_str.trim().parse::<f64>() {
+                            matrix.data[col_i][row_i] = parsed_num; // Note the column-major order
+                        } else {
+                            return None; // Parsing failed
+                        }
+                    }
+                }
+                Some(matrix)
             }
         }
 

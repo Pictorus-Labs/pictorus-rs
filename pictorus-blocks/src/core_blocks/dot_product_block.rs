@@ -1,6 +1,6 @@
 use core::ops::{AddAssign, Mul, MulAssign};
 
-use crate::nalgebra_interop::MatrixExt;
+use crate::matrix_ext::MatrixNalgebraExt;
 use crate::traits::Scalar;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};

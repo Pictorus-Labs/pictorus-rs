@@ -1,4 +1,4 @@
-use crate::{nalgebra_interop::MatrixExt, IsValid};
+use crate::{matrix_ext::MatrixNalgebraExt, IsValid};
 use nalgebra::{
     allocator::Allocator, ArrayStorage, Const, DefaultAllocator, DimDiff, DimMin, DimMinimum,
     DimSub, SMatrix, SquareMatrix, ToTypenum, SVD, U1,

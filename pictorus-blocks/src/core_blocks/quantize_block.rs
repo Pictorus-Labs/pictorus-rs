@@ -1,6 +1,6 @@
 use core::ops::MulAssign;
 
-use crate::nalgebra_interop::MatrixExt;
+use crate::matrix_ext::MatrixNalgebraExt;
 use crate::traits::{MatrixOps, Scalar};
 use nalgebra::ClosedDivAssign;
 use num_traits::Float;

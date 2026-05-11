@@ -1,4 +1,4 @@
-use crate::nalgebra_interop::MatrixExt;
+use crate::matrix_ext::MatrixNalgebraExt;
 /// Functionality for matrix multiplication mode of the ProductBlock.
 use crate::traits::Scalar;
 use pictorus_traits::{Matrix, Pass, PassBy};
@@ -38,7 +38,7 @@ impl<
     type Output = Matrix<OROWS, OCOLS, S>;
 
     fn mat_mul(lhs: PassBy<Self>, rhs: PassBy<Matrix<INNER, OCOLS, S>>) -> Self::Output {
-        <Self::Output as MatrixExt>::from_view(&(lhs.as_view() * rhs.as_view()).as_view())
+        <Self::Output as MatrixNalgebraExt>::from_view(&(lhs.as_view() * rhs.as_view()).as_view())
     }
 }
 

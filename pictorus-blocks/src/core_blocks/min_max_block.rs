@@ -1,4 +1,4 @@
-use crate::nalgebra_interop::MatrixExt;
+use crate::matrix_ext::MatrixNalgebraExt;
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
 use nalgebra::SMatrix;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
