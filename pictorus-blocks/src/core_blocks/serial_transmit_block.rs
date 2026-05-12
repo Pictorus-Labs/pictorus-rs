@@ -17,10 +17,10 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new(start_delimiter: &str, end_delimiter: &str) -> Self {
+    pub fn new(start_delimiter: &[u8], end_delimiter: &[u8]) -> Self {
         Parameters {
-            start_delimiter: parse_string_to_bytes(start_delimiter),
-            end_delimiter: parse_string_to_bytes(end_delimiter),
+            start_delimiter: start_delimiter.to_vec(),
+            end_delimiter: end_delimiter.to_vec(),
         }
     }
 }
@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn test_write_byteslicesignal_no_delimiters() {
         let context = StubContext::default();
-        let parameters = Parameters::new("", "");
+        let parameters = Parameters::new(&[], &[]);
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
         let expected = "42".as_bytes();
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_write_byteslicesignal_delimited_data() {
         let context = StubContext::default();
-        let parameters = Parameters::new("$GPGSA,", "\r\n");
+        let parameters = Parameters::new(b"$GPGSA,", b"\r\n");
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
         let expected = "$GPGSA,123\r\n".as_bytes();
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_write_matrix() {
         let context = StubContext::default();
-        let parameters = Parameters::new("$GPGSA,", "\r\n");
+        let parameters = Parameters::new(b"$GPGSA,", b"\r\n");
         let mut block = SerialTransmitBlock::<Matrix<2, 3, f64>>::default();
 
         // Second input is a matrix
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn test_write_scalar() {
         let context = StubContext::default();
-        let parameters = Parameters::new("$GPGSA,", "\r\n");
+        let parameters = Parameters::new(b"$GPGSA,", b"\r\n");
         let mut block = SerialTransmitBlock::<f64>::default();
 
         let expected = "$GPGSA,8675.309\r\n".as_bytes();
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_write_vector() {
         let context = StubContext::default();
-        let parameters = Parameters::new("$GPGSA,", "\r\n");
+        let parameters = Parameters::new(b"$GPGSA,", b"\r\n");
         let mut block = SerialTransmitBlock::<Matrix<1, 3, f64>>::default();
 
         let expected = "$GPGSA,[[1.2,3.4,5.6]]\r\n".as_bytes();
@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn test_write_hex() {
         let context = StubContext::default();
-        let parameters = Parameters::new("", "");
+        let parameters = Parameters::new(&[], &[]);
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
         let expected = "\x12\x34".as_bytes();

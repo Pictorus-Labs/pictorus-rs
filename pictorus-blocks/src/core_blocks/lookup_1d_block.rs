@@ -72,27 +72,13 @@ pub struct Parameters<const N: usize, S: Float> {
 }
 
 impl<const N: usize, S: Float> Parameters<N, S> {
-    pub fn new(
-        interp_method: &str,
-        break_points_u1: &OldBlockData,
-        data_points: &OldBlockData,
-    ) -> Self {
-        let mut break_points_u1_arr = [S::default(); N];
-        for (i, val) in break_points_u1.iter().enumerate() {
-            break_points_u1_arr[i] = S::from(*val).expect("Failed to convert break point to float");
-        }
-
-        let mut data_points_arr = [S::default(); N];
-        for (i, val) in data_points.iter().enumerate() {
-            data_points_arr[i] = S::from(*val).expect("Failed to convert data point to float");
-        }
-
+    pub fn new(interp_method: &str, break_points_u1: [S; N], data_points: [S; N]) -> Self {
         Self {
             interp_method: interp_method
                 .parse()
                 .expect("Invalid interp method. Must be Linear or Nearest"),
-            break_points_u1: break_points_u1_arr,
-            data_points: data_points_arr,
+            break_points_u1,
+            data_points,
         }
     }
 }
@@ -189,9 +175,7 @@ mod tests {
     #[test]
     fn test_scalar_linear() {
         let ctxt = StubContext::default();
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let data_points = OldBlockData::from_vector(&[-1.0, 1.0, 10.0]);
-        let params = Parameters::new("Linear", &break_points_u1, &data_points);
+        let params = Parameters::new("Linear", [0.0, 1.0, 2.0], [-1.0, 1.0, 10.0]);
 
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
         let res = block.process(&params, &ctxt, 0.0);
@@ -224,9 +208,9 @@ mod tests {
     #[test]
     fn test_scalar_nearest() {
         let ctxt = StubContext::default();
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let data_points = OldBlockData::from_vector(&[-1.0, 1.0, 10.0]);
-        let params = Parameters::new("Nearest", &break_points_u1, &data_points);
+        let break_points_u1 = [0.0, 1.0, 2.0];
+        let data_points = [-1.0, 1.0, 10.0];
+        let params = Parameters::new("Nearest", break_points_u1, data_points);
 
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
         let res = block.process(&params, &ctxt, 0.0);
@@ -262,9 +246,9 @@ mod tests {
     #[test]
     fn test_matrix_linear() {
         let ctxt = StubContext::default();
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let data_points = OldBlockData::from_vector(&[-1.0, 1.0, 10.0]);
-        let params = Parameters::new("Linear", &break_points_u1, &data_points);
+        let break_points_u1 = [0.0, 1.0, 2.0];
+        let data_points = [-1.0, 1.0, 10.0];
+        let params = Parameters::new("Linear", break_points_u1, data_points);
 
         let mut block = Lookup1DBlock::<3, f64, Matrix<2, 2, f64>>::default();
         let input = Matrix {
@@ -298,9 +282,9 @@ mod tests {
     #[test]
     fn test_matrix_nearest() {
         let ctxt = StubContext::default();
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let data_points = OldBlockData::from_vector(&[-1.0, 1.0, 10.0]);
-        let params = Parameters::new("Nearest", &break_points_u1, &data_points);
+        let break_points_u1 = [0.0, 1.0, 2.0];
+        let data_points = [-1.0, 1.0, 10.0];
+        let params = Parameters::new("Nearest", break_points_u1, data_points);
 
         let mut block = Lookup1DBlock::<3, f64, Matrix<2, 2, f64>>::default();
         let input = Matrix {

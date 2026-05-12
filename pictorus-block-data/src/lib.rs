@@ -859,6 +859,8 @@ impl ToPass<bool> for BlockData {
 
 impl<const N: usize> ToPass<[u8; N]> for BlockData {
     fn to_pass(&self) -> [u8; N] {
+        // This is doing a lot of heavy lifting!
+        //If an undersized Vec is passed in, this will just take the first N elements of the data.
         let mut data = [0; N];
         for (i, v) in self._data.iter().enumerate() {
             data[i] = *v as u8;
