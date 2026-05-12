@@ -7,7 +7,6 @@ use num_traits::{AsPrimitive, Float};
 
 use log::debug;
 use pictorus_block_data::{BlockData, BlockDataType};
-use pictorus_traits::Matrix;
 use serde::{Deserialize, Serialize};
 
 pub struct PictorusVars {
@@ -108,13 +107,13 @@ pub fn transpose<const N: usize, const M: usize, T: Copy>(input: [[T; N]; M]) ->
 cfg_if::cfg_if! {
     if #[cfg(feature = "std")] {
         use super::*;
+        use pictorus_traits::Matrix;
         use std::panic::PanicHookInfo;
         use std::collections::HashMap;
         use std::fs;
         use std::format;
         use std::io::Write;
         use std::prelude::rust_2021::*;
-        use std::panic;
 
         use log::{info, warn, LevelFilter};
         use chrono::Local;
@@ -236,17 +235,6 @@ cfg_if::cfg_if! {
 
             // Otherwise return the default
             default
-        }
-
-        pub fn load_ic(block_name: &str, var_name: &str, default: BlockData, blocks_map: &DiagramParams) -> BlockData {
-            let ic = load_param::<BlockData>(block_name, var_name, default.clone(), blocks_map);
-
-            if !ic.same_size(&default) {
-                panic!(
-                    "Cannot load parameter {}:{} with size {:?}, required size is {:?}",
-                    block_name, var_name, ic.size(), default.size());
-            }
-            ic
         }
 
         fn string_to_vec<T: str::FromStr>(vec_str: &str) -> Vec<T> {
@@ -538,22 +526,6 @@ mod tests {
         let result_default =
             load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
         assert_eq!(result_default, default.clone());
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "Cannot load parameter test_block:test_var with size (1, 2), required size is (1, 3)"
-    )]
-    fn test_load_ic_vec_f64_vector_override_vector_default() {
-        let mut diagram_params = DiagramParams::new();
-        diagram_params.insert("test_block".to_string(), {
-            let mut params = HashMap::new();
-            params.insert("test_var".to_string(), "[42.0, 43.0]".to_string());
-            params
-        });
-
-        let default = BlockData::from_vector(&[1.0, 1.0, 1.0]);
-        load_ic("test_block", "test_var", default.clone(), &diagram_params);
     }
 
     #[test]

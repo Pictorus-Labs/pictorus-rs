@@ -86,9 +86,9 @@ impl<const NX: usize, const NY: usize, S: Float> Parameters<NX, NY, S> {
             interp_method: interp_method
                 .parse()
                 .expect("Invalid interp method. Must be Linear or Nearest"),
-            break_points_u1: break_points_u1,
-            break_points_u2: break_points_u2,
-            data_points: data_points,
+            break_points_u1,
+            break_points_u2,
+            data_points,
         }
     }
 }
