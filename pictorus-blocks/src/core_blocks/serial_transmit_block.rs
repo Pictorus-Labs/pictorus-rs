@@ -4,7 +4,7 @@ use log::debug;
 use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, Pass, PassBy, ProcessBlock};
 
-use crate::byte_data::{parse_string_to_bytes, BUFF_SIZE_BYTES};
+use crate::byte_data::BUFF_SIZE_BYTES;
 use crate::traits::Serialize;
 
 /// Parameters for the SerialTransmitBlock
