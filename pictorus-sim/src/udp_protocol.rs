@@ -8,7 +8,7 @@ use pictorus_internal::protocols::UdpProtocol;
 pub struct UdpConnection {}
 
 impl UdpConnection {
-    pub fn new(_addr: &str, _transmit_enabled: bool) -> Result<Self, Infallible> {
+    pub fn new(_addr: &[u8], _transmit_enabled: bool) -> Result<Self, Infallible> {
         Ok(UdpConnection {})
     }
 }

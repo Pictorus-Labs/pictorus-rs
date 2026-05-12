@@ -10,7 +10,7 @@ use pictorus_internal::protocols::BUFF_SIZE_BYTES;
 use pictorus_internal::utils::PictorusError;
 
 pub fn create_serial_port(
-    port: &str,
+    port: &[u8],
     baud_rate: f64,
     transmit_enabled: bool,
 ) -> Result<Option<Box<dyn SerialPort>>, PictorusError> {
@@ -19,15 +19,16 @@ pub fn create_serial_port(
     }
 
     let baud_rate = baud_rate as u32;
-    let port = serialport::new(port, baud_rate).open().map_err(|err| {
+    let port_str = str::from_utf8(port).expect("port is invalid utf-8");
+    let port = serialport::new(port_str, baud_rate).open().map_err(|err| {
                 let message = match err.kind() {
                     serialport::ErrorKind::NoDevice => {
-                        format!("Failed to bind to serial port: {port} - This could indicate that the device is in use by another process or was disconnected while performing I/O.")
+                        format!("Failed to bind to serial port: {port_str} - This could indicate that the device is in use by another process or was disconnected while performing I/O.")
                     }
                     serialport::ErrorKind::Io(_) => {
-                        format!("Failed to bind to serial port: {port} - Does it exist?")
+                        format!("Failed to bind to serial port: {port_str} - Does it exist?")
                     }
-                    _ => format!("Unknown error! Unable to connect to serial port: {port} ({err})"),
+                    _ => format!("Unknown error! Unable to connect to serial port: {port_str} ({err})"),
                 };
                 PictorusError::new("SerialProtocol".into(), message)
             })?;
@@ -42,12 +43,13 @@ pub struct SerialConnection {
 }
 
 impl SerialConnection {
-    pub fn new(port: &str, baud: f64, transmit_enabled: bool) -> Result<Self, PictorusError> {
-        info!("Opening serial port {port} with baud {baud}");
+    pub fn new(port: &[u8], baud: f64, transmit_enabled: bool) -> Result<Self, PictorusError> {
+        let port_str = str::from_utf8(port).expect("port is invalid utf-8");
+        info!("Opening serial port {port_str} with baud {baud}");
         Ok(SerialConnection {
             port: create_serial_port(port, baud, transmit_enabled)?,
             cache: Vec::new(),
-            port_addr: port.to_string(),
+            port_addr: port_str.to_string(),
             is_cache_valid: false,
         })
     }

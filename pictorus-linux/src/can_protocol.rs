@@ -17,18 +17,19 @@ pub struct CanConnection {
 }
 
 impl CanConnection {
-    pub fn new(iface: &str) -> Result<Self, PictorusError> {
-        let socket = CanSocket::open(iface).map_err(|err| {
+    pub fn new(iface: &[u8]) -> Result<Self, PictorusError> {
+        let iface_str = std::str::from_utf8(iface).expect("iface is invalid utf-8");
+        let socket = CanSocket::open(iface_str).map_err(|err| {
             PictorusError::new(
                 ERR_TYPE.into(),
-                format!("Failed to open CAN socket on interface: {iface} ({err})",),
+                format!("Failed to open CAN socket on interface: {iface_str} ({err})",),
             )
         })?;
 
         socket.set_nonblocking(true).map_err(|err| {
             PictorusError::new(
                 ERR_TYPE.into(),
-                format!("Failed to set CAN socket to non-blocking mode: {iface} ({err})",),
+                format!("Failed to set CAN socket to non-blocking mode: {iface_str} ({err})",),
             )
         })?;
 

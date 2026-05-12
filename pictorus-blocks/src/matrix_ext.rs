@@ -42,8 +42,8 @@ where
 pub trait MatrixExt {
     type Elem;
     fn from_flat_array(rows: usize, cols: usize, data: &[Self::Elem]) -> Self;
-    fn nrows() -> usize;
-    fn ncols() -> usize;
+    fn nrows(&self) -> usize;
+    fn ncols(&self) -> usize;
     fn as_col_slice(&self) -> &[Self::Elem];
 }
 
@@ -63,11 +63,11 @@ impl<const NROWS: usize, const NCOLS: usize, T: pictorus_traits::Scalar> MatrixE
         m
     }
 
-    fn nrows() -> usize {
+    fn nrows(&self) -> usize {
         NROWS
     }
 
-    fn ncols() -> usize {
+    fn ncols(&self) -> usize {
         NCOLS
     }
 
