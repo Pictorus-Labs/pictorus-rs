@@ -15,9 +15,9 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new(destination: &str) -> Self {
+    pub fn new(destination: &[u8]) -> Self {
         Self {
-            destination: destination.to_string(),
+            destination: String::from_utf8_lossy(destination).to_string(),
         }
     }
 
