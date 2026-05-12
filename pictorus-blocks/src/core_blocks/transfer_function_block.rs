@@ -11,21 +11,10 @@ pub struct Parameters<F: Float, const NUM_SIZE: usize, const DEN_SIZE: usize> {
 }
 
 impl<F: Float, const NUM_SIZE: usize, const DEN_SIZE: usize> Parameters<F, NUM_SIZE, DEN_SIZE> {
-    pub fn new(numerators: &OldBlockData, denominators: &OldBlockData) -> Self {
-        let mut l_numerators = [F::zero(); NUM_SIZE];
-        let mut l_denominators = [F::zero(); DEN_SIZE];
-
-        for (i, num) in numerators.iter().enumerate() {
-            l_numerators[i] = F::from(*num).expect("Failed to convert numerator to Float");
-        }
-
-        for (i, den) in denominators.iter().enumerate() {
-            l_denominators[i] = F::from(*den).expect("Failed to convert numerator to Float");
-        }
-
+    pub fn new(numerators: [F; NUM_SIZE], denominators: [F; DEN_SIZE]) -> Self {
         Parameters {
-            numerators: l_numerators,
-            denominators: l_denominators,
+            numerators,
+            denominators,
         }
     }
 
@@ -258,7 +247,6 @@ mod tests {
     use super::Parameters;
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
-    use pictorus_block_data::BlockData;
     use pictorus_traits::{Matrix, ProcessBlock};
 
     use crate::TransferFunctionBlock;
@@ -288,10 +276,7 @@ mod tests {
         let num = [0.0, 1.0];
         let denom = [1.0];
 
-        let num = BlockData::from_vector(&num);
-        let denom = BlockData::from_vector(&denom);
-
-        let parameters = super::Parameters::new(&num, &denom);
+        let parameters = super::Parameters::new(num, denom);
 
         let mut block = TransferFunctionBlock::<2, 1, f64, f64>::default();
 
