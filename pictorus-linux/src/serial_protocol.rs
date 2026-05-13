@@ -9,6 +9,8 @@ use serialport::{self, SerialPort};
 use pictorus_internal::protocols::BUFF_SIZE_BYTES;
 use pictorus_internal::utils::PictorusError;
 
+const ERR_TYPE: &str = "SerialProtocol";
+
 pub fn create_serial_port(
     port: &str,
     baud_rate: f64,
@@ -29,7 +31,7 @@ pub fn create_serial_port(
                     }
                     _ => format!("Unknown error! Unable to connect to serial port: {port} ({err})"),
                 };
-                PictorusError::new("SerialProtocol".into(), message)
+                PictorusError::new(ERR_TYPE.into(), message)
             })?;
     Ok(Some(port))
 }
@@ -42,12 +44,20 @@ pub struct SerialConnection {
 }
 
 impl SerialConnection {
-    pub fn new(port: &str, baud: f64, transmit_enabled: bool) -> Result<Self, PictorusError> {
-        info!("Opening serial port {port} with baud {baud}");
+    pub fn new(port: &[u8], baud: f64, transmit_enabled: bool) -> Result<Self, PictorusError> {
+        let port_str = str::from_utf8(port).map_err(|err| {
+            PictorusError::new(
+                ERR_TYPE.into(),
+                format!(
+                    "Couldn't bind to serial port because port bytes are not valid UTF-8 ({err})"
+                ),
+            )
+        })?;
+        info!("Opening serial port {port_str} with baud {baud}");
         Ok(SerialConnection {
-            port: create_serial_port(port, baud, transmit_enabled)?,
+            port: create_serial_port(port_str, baud, transmit_enabled)?,
             cache: Vec::new(),
-            port_addr: port.to_string(),
+            port_addr: port_str.to_string(),
             is_cache_valid: false,
         })
     }

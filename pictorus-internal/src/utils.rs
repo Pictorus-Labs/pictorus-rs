@@ -104,205 +104,279 @@ pub fn transpose<const N: usize, const M: usize, T: Copy>(input: [[T; N]; M]) ->
 }
 
 // All remaining std-only methods here
-cfg_if::cfg_if! {
-    if #[cfg(feature = "std")] {
-        use super::*;
-        use std::panic::PanicHookInfo;
-        use std::collections::HashMap;
-        use std::fs;
-        use std::format;
-        use std::io::Write;
-        use std::prelude::rust_2021::*;
-        use std::panic;
+#[cfg(feature = "std")]
+mod std_utils {
+    use super::*;
+    use pictorus_traits::Matrix;
+    use std::collections::HashMap;
+    use std::format;
+    use std::fs;
+    use std::io::Write;
+    use std::panic::PanicHookInfo;
+    use std::prelude::rust_2021::*;
 
-        use log::{info, warn, LevelFilter};
-        use chrono::Local;
-        use env_logger::Builder;
+    use chrono::Local;
+    use env_logger::Builder;
+    use log::{LevelFilter, info, warn};
 
+    pub type DiagramParams = HashMap<String, HashMap<String, String>>;
 
-        pub type DiagramParams = HashMap<String, HashMap<String, String>>;
+    // Trait definition for parameters loadable from DiagramParams or env vars
+    pub trait LoadableParams: Sized {
+        fn parse(source: &str, default: Option<&Self>) -> Option<Self>;
+    }
 
-        // Trait definition for parameters loadable from DiagramParams or env vars
-        pub trait LoadableParams: Sized {
-            fn parse(source: &str, default: Option<&Self>) -> Option<Self>;
-        }
-
-        impl LoadableParams for String {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                Some(source.to_string())
-            }
-        }
-
-        impl LoadableParams for f64 {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                source.parse().ok()
-            }
-        }
-
-        impl LoadableParams for Vec<String> {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                Some(string_to_vec(source))
-            }
-        }
-
-        impl LoadableParams for BlockData {
-            fn parse(source: &str, default: Option<&Self>) -> Option<Self> {
-                let parsed_val: Vec<f64> = string_to_vec::<f64>(source);
-
-                match (parsed_val.len(), default) {
-                    (1, Some(d)) => Some(BlockData::scalar_sizeof(parsed_val[0], d)),
-                    (len, Some(d)) if len == d.n_elements() => Some(BlockData::from_row_slice(d.nrows(), d.ncols(), &parsed_val)),
-                    _ => Some(BlockData::from_vector(&parsed_val)),
-                }
-            }
-        }
-
-        // Generic function to load a parameter from env or params
-        pub fn load_param<T: LoadableParams + std::fmt::Debug>(
-            block_name: &str,
-            var_name: &str,
-            default: T,
-            blocks_map: &DiagramParams,
-        ) -> T {
-            let env_var_name = format!("{}_{}", block_name.to_uppercase(), var_name.to_uppercase());
-
-            // Try loading from ENV
-            if let Ok(env_var) = std::env::var(&env_var_name)
-                && let Some(parsed) = T::parse(&env_var, Some(&default)) {
-                    info!("Found env variable {env_var_name} with value '{parsed:?}'");
-                    return parsed;
-            }
-
-            // Try loading from DiagramParams
-            if let Some(params_map) = blocks_map.get(block_name).and_then(|map| map.get(var_name))
-                && let Some(parsed) = T::parse(params_map, Some(&default)) {
-                    info!("Parsing and loading {block_name}_{var_name} from params file with value {parsed:?}");
-                    return parsed;
-            }
-
-            // Otherwise return the default
-            default
-        }
-
-        pub fn load_ic(block_name: &str, var_name: &str, default: BlockData, blocks_map: &DiagramParams) -> BlockData {
-            let ic = load_param::<BlockData>(block_name, var_name, default.clone(), blocks_map);
-
-            if !ic.same_size(&default) {
-                panic!(
-                    "Cannot load parameter {}:{} with size {:?}, required size is {:?}",
-                    block_name, var_name, ic.size(), default.size());
-            }
-            ic
-        }
-
-        fn string_to_vec<T: str::FromStr>(vec_str: &str) -> Vec<T> {
-            let cleaned_str = vec_str.replace(['[', ']', '\"'], "").replace(", ", ",");
-            if cleaned_str.is_empty() {
-                return Vec::new();
-            }
-
-            cleaned_str
-                .split(',')
-                .filter_map(|s| s.parse::<T>().ok())
-                .collect::<Vec<_>>()
-        }
-
-        pub fn get_diagram_params(vars: &PictorusVars) -> DiagramParams {
-            // Load diagram variables from diagram_params.json, if present.
-            let diagram_params_path =
-                std::path::PathBuf::from(&vars.run_path).join("diagram_params.json");
-            info!(
-                "Looking for diagram params file: {}",
-                diagram_params_path.display()
-            );
-            let params_file = std::fs::read_to_string(diagram_params_path);
-            let input_params_json = match params_file {
-                Ok(val) => {
-                    info!("Found params file!");
-                    val
-                }
-                Err(_err) => {
-                    info!("No params file found.");
-                    String::from("{}")
-                }
-            };
-            serde_json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
-                warn!("Error parsing params file, using empty params map.");
-                HashMap::<String, HashMap<String, String>>::new()
-            })
-        }
-
-        pub fn get_pictorus_vars() -> PictorusVars {
-            // Load special environment variables that control app execution, or use safe defaults if not present.
-            PictorusVars {
-                data_log_rate_hz: std::env::var("APP_DATA_LOG_RATE_HZ")
-                    .unwrap_or("0".to_string())
-                    .trim()
-                    .parse()
-                    .unwrap(),
-                run_path: std::env::var("APP_RUN_PATH").unwrap_or("".to_string()),
-                transmit_enabled: std::env::var("APP_TRANSMIT_ENABLED")
-                    .unwrap_or("true".to_string())
-                    .parse()
-                    .unwrap(),
-                publish_socket: std::env::var("APP_PUBLISH_SOCKET").unwrap_or("".to_string()),
-            }
-        }
-
-        pub fn dump_error(err: &PictorusError, run_path: &str) {
-            let path = std::path::PathBuf::from(run_path).join("pictorus_errors.json");
-            info!("Error log path: {path:?}");
-            fs::write(path, serde_json::to_string(err)
-                .expect("Serde JSON Could not parse string")).ok();
-        }
-
-        pub fn custom_panic_handler(panic_info: &PanicHookInfo, run_path: &str) {
-            warn!("Unhandled panic, dumping stack trace to error log...");
-            let err = PictorusError {
-                err_type: "unhandled".to_string(),
-                message: panic_info.to_string(),
-            };
-            dump_error(&err, run_path);
-        }
-
-        pub fn get_block_type<T>(_: &T) -> String {
-            // Pass in a block, get back it's name!
-            let name_str = std::any::type_name::<T>().to_string();
-            let name_vec: Vec<&str> = name_str.split("::").collect();
-            String::from(name_vec[name_vec.len() - 1])
-        }
-
-        pub fn initialize_logging() {
-            let mut log_level: LevelFilter = LevelFilter::Info;
-            if std::env::var("LOG_LEVEL").is_ok() {
-                log_level = std::env::var("LOG_LEVEL")
-                    .unwrap()
-                    .parse()
-                    .unwrap_or(LevelFilter::Info);
-            }
-
-            Builder::new()
-                .format(|buf, record| {
-                    writeln!(
-                        buf,
-                        "{} [{}] - {}",
-                        Local::now().format("%+"),
-                        record.level(),
-                        record.args()
-                    )
-                })
-                .filter(None, log_level)
-                .init();
-            log::info!("Log level: {log_level}");
+    impl LoadableParams for String {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            Some(source.to_string())
         }
     }
+
+    impl LoadableParams for f64 {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            source.parse().ok()
+        }
+    }
+
+    impl LoadableParams for Vec<String> {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            let cleaned_str = source.replace(['[', ']', '\"'], "").replace(", ", ",");
+            if cleaned_str.is_empty() {
+                return None;
+            }
+            Some(
+                cleaned_str
+                    .split(',')
+                    .filter_map(|s| s.parse::<String>().ok())
+                    .collect::<Vec<_>>(),
+            )
+        }
+    }
+
+    impl<const N: usize> LoadableParams for [u8; N]
+    where
+        [u8; N]: serde::de::DeserializeOwned,
+    {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            // Try to parse as an array of bytes first
+            if let Ok(parsed) = serde_json::from_str(source) {
+                return Some(parsed);
+            }
+            // handle single element case
+            if let Ok(parsed) = serde_json::from_str::<u8>(source)
+                .or_else(|_| serde_json::from_str::<[u8; 1]>(source).map(|[val]| val))
+            {
+                return Some([parsed; N]);
+            }
+            // Fall back to taking the string as bytes
+            // We need to handle `/x**` hex format and turn it into raw bytes
+            let escaped_bytes = smashquote::unescape_bytes(source.as_bytes())
+                .map_err(|e| warn!("Error unescaping string for bytes: {e}"))
+                .ok()?;
+            if escaped_bytes.len() != N {
+                warn!(
+                    "Source string \"{source}\" of length {} is not the expected length of {N}, result will be truncated or padded with zeros",
+                    escaped_bytes.len()
+                );
+            }
+            let copy_len = usize::min(escaped_bytes.len(), N);
+            let mut array = [0u8; N];
+            array[..copy_len].copy_from_slice(&escaped_bytes[..copy_len]);
+            Some(array)
+        }
+    }
+
+    impl<const N: usize> LoadableParams for [f64; N]
+    where
+        [f64; N]: serde::de::DeserializeOwned,
+    {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            // Try and parse as a 1d array
+            if let Ok(parsed) = serde_json::from_str(source) {
+                return Some(parsed);
+            }
+            // If that fails check for scalar special case
+            // We check for a bare scalar, or a 1d array with 1 element,
+            serde_json::from_str::<[f64; 1]>(source)
+                .map(|[scalar]| [scalar; N])
+                .or_else(|_| serde_json::from_str::<f64>(source).map(|scalar| [scalar; N]))
+                .ok()
+        }
+    }
+
+    impl<const NROWS: usize, const NCOLS: usize> LoadableParams for Matrix<NROWS, NCOLS, f64>
+    where
+        [[f64; NCOLS]; NROWS]: serde::de::DeserializeOwned,
+    {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            // Try and parse as a 2d array
+            if let Ok(parsed) = serde_json::from_str::<[[f64; NCOLS]; NROWS]>(source) {
+                let mut matrix = Matrix::zeroed();
+                // transpose
+                #[allow(clippy::needless_range_loop)]
+                for row_i in 0..NROWS {
+                    for col_i in 0..NCOLS {
+                        matrix.data[col_i][row_i] = parsed[row_i][col_i];
+                    }
+                }
+                return Some(matrix);
+            }
+            // If that fails check for scalar special case
+            // We check for a bare scalar, a 1x1 matrix, or a 1d array with 1 element,
+            // all of which we interpret as scalars that fill the whole matrix
+            serde_json::from_str::<[[f64; 1]; 1]>(source)
+                .map(|[[scalar]]| scalar)
+                .or_else(|_| serde_json::from_str::<[f64; 1]>(source).map(|[scalar]| scalar))
+                .or_else(|_| serde_json::from_str::<f64>(source))
+                .map(|scalar| Matrix {
+                    data: [[scalar; NROWS]; NCOLS],
+                })
+                .ok()
+        }
+    }
+
+    // Generic function to load a parameter from env or params
+    pub fn load_param<T: LoadableParams + std::fmt::Debug>(
+        block_name: &str,
+        var_name: &str,
+        default: T,
+        blocks_map: &DiagramParams,
+    ) -> T {
+        let env_var_name = format!("{}_{}", block_name.to_uppercase(), var_name.to_uppercase());
+
+        // Try loading from ENV
+        if let Ok(env_var) = std::env::var(&env_var_name) {
+            if let Some(parsed) = T::parse(&env_var, Some(&default)) {
+                info!("Parsing and loading env variable {env_var_name} with value '{parsed:?}'");
+                return parsed;
+            } else {
+                warn!(
+                    "Environment variable {env_var_name} was found but could not be parsed, falling back to diagram params or default. Value was: '{env_var}'"
+                );
+            }
+        }
+
+        // Try loading from DiagramParams
+        if let Some(params_map) = blocks_map.get(block_name).and_then(|map| map.get(var_name)) {
+            if let Some(parsed) = T::parse(params_map, Some(&default)) {
+                info!(
+                    "Parsing and loading {block_name}_{var_name} from params file with value {parsed:?}"
+                );
+                return parsed;
+            } else {
+                warn!(
+                    "Found {block_name}_{var_name} in params file but could not parse it, falling back to default. Value was: '{params_map}'"
+                );
+            }
+        }
+
+        // Otherwise return the default
+        default
+    }
+
+    pub fn get_diagram_params(vars: &PictorusVars) -> DiagramParams {
+        // Load diagram variables from diagram_params.json, if present.
+        let diagram_params_path =
+            std::path::PathBuf::from(&vars.run_path).join("diagram_params.json");
+        info!(
+            "Looking for diagram params file: {}",
+            diagram_params_path.display()
+        );
+        let params_file = std::fs::read_to_string(diagram_params_path);
+        let input_params_json = match params_file {
+            Ok(val) => {
+                info!("Found params file!");
+                val
+            }
+            Err(_err) => {
+                info!("No params file found.");
+                String::from("{}")
+            }
+        };
+        serde_json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
+            warn!("Error parsing params file, using empty params map.");
+            HashMap::<String, HashMap<String, String>>::new()
+        })
+    }
+
+    pub fn get_pictorus_vars() -> PictorusVars {
+        // Load special environment variables that control app execution, or use safe defaults if not present.
+        PictorusVars {
+            data_log_rate_hz: std::env::var("APP_DATA_LOG_RATE_HZ")
+                .unwrap_or("0".to_string())
+                .trim()
+                .parse()
+                .unwrap(),
+            run_path: std::env::var("APP_RUN_PATH").unwrap_or("".to_string()),
+            transmit_enabled: std::env::var("APP_TRANSMIT_ENABLED")
+                .unwrap_or("true".to_string())
+                .parse()
+                .unwrap(),
+            publish_socket: std::env::var("APP_PUBLISH_SOCKET").unwrap_or("".to_string()),
+        }
+    }
+
+    pub fn dump_error(err: &PictorusError, run_path: &str) {
+        let path = std::path::PathBuf::from(run_path).join("pictorus_errors.json");
+        info!("Error log path: {path:?}");
+        fs::write(
+            path,
+            serde_json::to_string(err).expect("Serde JSON Could not parse string"),
+        )
+        .ok();
+    }
+
+    pub fn custom_panic_handler(panic_info: &PanicHookInfo, run_path: &str) {
+        warn!("Unhandled panic, dumping stack trace to error log...");
+        let err = PictorusError {
+            err_type: "unhandled".to_string(),
+            message: panic_info.to_string(),
+        };
+        dump_error(&err, run_path);
+    }
+
+    pub fn get_block_type<T>(_: &T) -> String {
+        // Pass in a block, get back it's name!
+        let name_str = std::any::type_name::<T>().to_string();
+        let name_vec: Vec<&str> = name_str.split("::").collect();
+        String::from(name_vec[name_vec.len() - 1])
+    }
+
+    pub fn initialize_logging() {
+        let mut log_level: LevelFilter = LevelFilter::Info;
+        if std::env::var("LOG_LEVEL").is_ok() {
+            log_level = std::env::var("LOG_LEVEL")
+                .unwrap()
+                .parse()
+                .unwrap_or(LevelFilter::Info);
+        }
+
+        Builder::new()
+            .format(|buf, record| {
+                writeln!(
+                    buf,
+                    "{} [{}] - {}",
+                    Local::now().format("%+"),
+                    record.level(),
+                    record.args()
+                )
+            })
+            .filter(None, log_level)
+            .init();
+        log::info!("Log level: {log_level}");
+    }
 }
+#[cfg(feature = "std")]
+pub use std_utils::*;
 
 #[cfg(all(test, feature = "std"))]
 #[allow(clippy::approx_constant)]
 mod tests {
     use super::*;
+    use alloc::string::ToString;
     use alloc::vec;
+    use pictorus_traits::Matrix;
+    use std::collections::HashMap;
     use temp_env::with_vars;
 
     #[test]
@@ -409,7 +483,7 @@ mod tests {
 
         let result_default =
             load_param::<Vec<String>>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -424,7 +498,7 @@ mod tests {
             params
         });
 
-        let default = BlockData::new(2, 3, &[7., 8., 9., 10., 11., 12.]);
+        let default = [7., 8., 9., 10., 11., 12.];
 
         with_vars(
             vec![(
@@ -432,30 +506,19 @@ mod tests {
                 Some("[-1.0, -2.0, -3.0, -4.0, -5.0, -6.0]"),
             )],
             || {
-                let result_env = load_param::<BlockData>(
-                    "test_block",
-                    "test_var",
-                    default.clone(),
-                    &diagram_params,
-                );
-                assert_eq!(
-                    result_env,
-                    BlockData::new(2, 3, &[-1., -2., -3., -4., -5., -6.])
-                );
+                let result_env =
+                    load_param::<[f64; 6]>("test_block", "test_var", default, &diagram_params);
+                assert_eq!(result_env, [-1., -2., -3., -4., -5., -6.]);
             },
         );
 
         let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[f64; 6]>("test_block", "test_var", default, &diagram_params);
 
-        assert_eq!(
-            result_param,
-            BlockData::new(2, 3, &[1., 2., 3., 4., 5., 6.])
-        );
+        assert_eq!(result_param, [1., 2., 3., 4., 5., 6.]);
 
-        let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        let result_default = load_param::<[f64; 6]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -467,39 +530,116 @@ mod tests {
             params
         });
 
-        let default = BlockData::from_vector(&[1.0, 1.0, 1.0]);
+        let default = [1.0, 1.0, 1.0];
 
         with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("[-13.0]"))], || {
             let result_env =
-                load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
-            assert_eq!(result_env, BlockData::from_vector(&[-13., -13., -13.]));
+                load_param::<[f64; 3]>("test_block", "test_var", default, &diagram_params);
+            assert_eq!(result_env, [-13., -13., -13.]);
         });
 
         let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[f64; 3]>("test_block", "test_var", default, &diagram_params);
 
         // If override is a scalar of different dimensions from default, use default dimensions
-        assert_eq!(result_param, BlockData::from_vector(&[42.0, 42.0, 42.0]));
+        assert_eq!(result_param, [42.0, 42.0, 42.0]);
 
-        let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        let result_default = load_param::<[f64; 3]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
     }
 
     #[test]
-    #[should_panic(
-        expected = "Cannot load parameter test_block:test_var with size (1, 2), required size is (1, 3)"
-    )]
-    fn test_load_ic_vec_f64_vector_override_vector_default() {
+    fn test_load_param_vec_u8() {
         let mut diagram_params = DiagramParams::new();
         diagram_params.insert("test_block".to_string(), {
             let mut params = HashMap::new();
-            params.insert("test_var".to_string(), "[42.0, 43.0]".to_string());
+            params.insert(
+                "test_var".to_string(),
+                "[10, 20, 30, 40, 50, 60]".to_string(),
+            );
             params
         });
 
-        let default = BlockData::from_vector(&[1.0, 1.0, 1.0]);
-        load_ic("test_block", "test_var", default.clone(), &diagram_params);
+        let default = [0u8, 0, 0, 0, 0, 0];
+
+        with_vars(
+            vec![(
+                "TEST_BLOCK_TEST_VAR",
+                Some("[1, 2, 3, 4, 5, 6]".to_string()),
+            )],
+            || {
+                let result_env =
+                    load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
+                assert_eq!(result_env, [1, 2, 3, 4, 5, 6]);
+            },
+        );
+
+        let result_param =
+            load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
+
+        assert_eq!(result_param, [10, 20, 30, 40, 50, 60]);
+
+        let result_default = load_param::<[u8; 6]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
+    }
+
+    #[test]
+    fn test_load_param_vec_u8_scalar_override_vector_default() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("test_var".to_string(), "255".to_string());
+            params
+        });
+
+        let default = [0u8, 0, 0, 0, 0, 0];
+
+        with_vars(
+            vec![("TEST_BLOCK_TEST_VAR", Some("[128]".to_string()))],
+            || {
+                let result_env =
+                    load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
+                assert_eq!(result_env, [128, 128, 128, 128, 128, 128]);
+            },
+        );
+
+        let result_param =
+            load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
+
+        // If override is a scalar of different dimensions from default, use default dimensions
+        assert_eq!(result_param, [255u8; 6]);
+
+        let result_default = load_param::<[u8; 6]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
+    }
+
+    #[test]
+    fn test_load_param_vec_u8_str_special_case() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("test_var".to_string(), "HELLO".to_string());
+            params
+        });
+
+        let default = *b"hello";
+
+        with_vars(
+            vec![("TEST_BLOCK_TEST_VAR", Some("N\\x00ne".to_string()))],
+            || {
+                let result_env =
+                    load_param::<[u8; 5]>("test_block", "test_var", default, &diagram_params);
+                assert_eq!(result_env, *b"N\x00ne\x00");
+            },
+        );
+
+        let result_param =
+            load_param::<[u8; 5]>("test_block", "test_var", default, &diagram_params);
+
+        assert_eq!(result_param, *b"HELLO");
+
+        let result_default = load_param::<[u8; 5]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -514,43 +654,83 @@ mod tests {
             params
         });
 
-        let default = BlockData::new(2, 2, &[7., 8., 9., 10.]);
+        let default: Matrix<2, 2, f64> = Matrix {
+            data: [[7., 9.], [8., 10.]],
+        };
 
         with_vars(
             vec![("TEST_BLOCK_TEST_VAR", Some("[[3.0, 4.0],[5.0, 6.0]]"))],
             || {
-                let result_env = load_param::<BlockData>(
+                let result_env = load_param::<Matrix<_, _, _>>(
                     "test_block",
                     "test_var",
-                    default.clone(),
+                    default,
                     &diagram_params,
                 );
-                assert_eq!(result_env, BlockData::new(2, 2, &[3., 4., 5., 6.]));
+                assert_eq!(
+                    result_env,
+                    Matrix {
+                        data: [[3., 5.], [4., 6.]]
+                    }
+                );
             },
         );
 
         let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<Matrix<_, _, _>>("test_block", "test_var", default, &diagram_params);
 
-        assert_eq!(result_param, BlockData::new(2, 2, &[1., 2., 3., 4.]));
+        assert_eq!(
+            result_param,
+            Matrix {
+                data: [[1., 3.], [2., 4.]]
+            }
+        );
 
         let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
+            load_param::<Matrix<_, _, _>>("test_block", "foo", default, &diagram_params);
 
-        assert_eq!(result_default, default.clone());
+        assert_eq!(result_default, default);
     }
 
     #[test]
-    fn test_string_to_vec_f64() {
+    fn test_load_param_matrix_scalar_overide_default() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("test_var".to_string(), "42.0".to_string());
+            params
+        });
+
+        let default: Matrix<2, 2, f64> = Matrix {
+            data: [[1., 1.], [1., 1.]],
+        };
+
+        with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("[[3.0]]"))], || {
+            let result_env =
+                load_param::<Matrix<_, _, _>>("test_block", "test_var", default, &diagram_params);
+            assert_eq!(
+                result_env,
+                Matrix {
+                    data: [[3., 3.], [3., 3.]]
+                }
+            );
+        });
+
+        let result_param =
+            load_param::<Matrix<_, _, _>>("test_block", "test_var", default, &diagram_params);
+
+        // If override is a scalar of different dimensions from default, use default dimensions
         assert_eq!(
-            string_to_vec::<f64>(&String::from("[1, 2, 3]")),
-            vec![1., 2., 3.]
+            result_param,
+            Matrix {
+                data: [[42., 42.], [42., 42.]]
+            }
         );
-        // If just a single value without brackets passed in, should still get a vector back
-        assert_eq!(
-            string_to_vec::<f64>(&String::from("3.14159")),
-            vec![3.14159]
-        );
+
+        let result_default =
+            load_param::<Matrix<_, _, _>>("test_block", "foo", default, &diagram_params);
+
+        assert_eq!(result_default, default);
     }
 
     #[test]

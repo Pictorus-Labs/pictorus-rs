@@ -4,7 +4,7 @@
 use nalgebra::{Const, Dim, MatrixView, MatrixViewMut};
 use pictorus_traits::Matrix;
 
-pub trait MatrixExt {
+pub trait MatrixNalgebraExt {
     type NROWS: Dim;
     type NCOLS: Dim;
     type Elem;
@@ -14,7 +14,7 @@ pub trait MatrixExt {
     fn from_view(view: &MatrixView<Self::Elem, Self::NROWS, Self::NCOLS>) -> Self;
 }
 
-impl<T, const NROWS: usize, const NCOLS: usize> MatrixExt for Matrix<NROWS, NCOLS, T>
+impl<T, const NROWS: usize, const NCOLS: usize> MatrixNalgebraExt for Matrix<NROWS, NCOLS, T>
 where
     T: pictorus_traits::Scalar + nalgebra::Scalar,
 {
@@ -36,5 +36,49 @@ where
         let mut m = pictorus_traits::Matrix::<NROWS, NCOLS, T>::zeroed();
         m.as_view_mut().copy_from(view);
         m
+    }
+}
+
+pub trait MatrixExt {
+    type Elem;
+    fn from_flat_array(data: &[Self::Elem]) -> Self;
+    fn nrows(&self) -> usize;
+    fn ncols(&self) -> usize;
+    fn as_col_slice(&self) -> &[Self::Elem];
+}
+
+impl<const NROWS: usize, const NCOLS: usize, T: pictorus_traits::Scalar> MatrixExt
+    for Matrix<NROWS, NCOLS, T>
+{
+    type Elem = T;
+
+    fn from_flat_array(data: &[Self::Elem]) -> Self {
+        if data.len() != NROWS * NCOLS {
+            panic!(
+                "Data length {} does not match expected size {}",
+                data.len(),
+                NROWS * NCOLS
+            );
+        }
+        // This accepts data as row-major, but pictorus_traits::Matrix is column-major, so we need to transpose the data
+        let mut m = Self::zeroed();
+        for r in 0..NROWS {
+            for c in 0..NCOLS {
+                m.data[c][r] = data[r * NCOLS + c];
+            }
+        }
+        m
+    }
+
+    fn nrows(&self) -> usize {
+        NROWS
+    }
+
+    fn ncols(&self) -> usize {
+        NCOLS
+    }
+
+    fn as_col_slice(&self) -> &[Self::Elem] {
+        self.data.as_flattened()
     }
 }

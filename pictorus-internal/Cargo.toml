@@ -22,7 +22,6 @@ num-traits = { version = "0.2.19", default-features = false, features = [
   "libm",
 ] }
 log = "0.4.21"
-cfg-if = "1.0.0"
 embedded-can = "0.4.1"
 nb = "1.1.0"
 chrono = { version = "0.4.40", optional = true }
@@ -32,11 +31,12 @@ postcard = { version = "1.1.1" }
 serde = { version = "1.0.219", default-features = false, features = ["derive", "alloc"]}
 serde_json = { version = "1.0", default-features = false, features = ["alloc", "preserve_order"], optional = true }
 heapless = { version = "0.7.0" }
+smashquote = { version = "0.1.2", optional = true }
 
 [dev-dependencies]
 temp-env = "0.3"
 cobs = "0.4.0"
 
 [features]
-std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json"]
+std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json", "dep:smashquote"]
 rtt = ["dep:rtt-target"]

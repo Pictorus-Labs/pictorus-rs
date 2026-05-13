@@ -178,9 +178,6 @@ pub use passthrough_block::PassthroughBlock as ComponentInputBlock;
 /// Reads data from a data store or variable and outputs it as a signal.
 #[doc(inline)]
 pub use passthrough_block::PassthroughBlock as DataReadBlock;
-/// Writes the input data to a data store or variable.
-#[doc(inline)]
-pub use passthrough_block::PassthroughBlock as DataWriteBlock;
 /// Stores the data from a GPIO input pin and outputs it as a signal.
 #[doc(inline)]
 pub use passthrough_block::PassthroughBlock as GpioInputBlock;

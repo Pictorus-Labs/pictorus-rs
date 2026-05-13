@@ -71,48 +71,24 @@ pub struct Parameters<const NX: usize, const NY: usize, S: Float> {
     break_points_u1: [S; NX],
     /// Break points for the Y-axis lookup
     break_points_u2: [S; NY],
-    /// 2D Data points for the lookup, stored as [NX][NY]
-    data_points: [[S; NY]; NX],
+    /// 2D Data points for the lookup, stored as Matrix<NX,NY> (i.e. NX rows and NY columns)
+    data_points: Matrix<NX, NY, S>,
 }
 
 impl<const NX: usize, const NY: usize, S: Float> Parameters<NX, NY, S> {
     pub fn new(
         interp_method: &str,
-        break_points_u1: &OldBlockData,
-        break_points_u2: &OldBlockData,
-        data_points: &OldBlockData,
+        break_points_u1: [S; NX],
+        break_points_u2: [S; NY],
+        data_points: Matrix<NX, NY, S>,
     ) -> Self {
-        let mut break_points_u1_arr = [S::default(); NX];
-        for (i, val) in break_points_u1.iter().enumerate() {
-            break_points_u1_arr[i] =
-                S::from(*val).expect("Failed to convert X break point to float");
-        }
-
-        let mut break_points_u2_arr = [S::default(); NY];
-        for (i, val) in break_points_u2.iter().enumerate() {
-            break_points_u2_arr[i] =
-                S::from(*val).expect("Failed to convert Y break point to float");
-        }
-
-        let mut data_points_arr = [[S::default(); NY]; NX];
-
-        // Convert the flat array into a 2D array
-        // We use array_chunks when possible, but for fixed-size arrays we need to do it manually
-        for (i, row) in data_points_arr.iter_mut().enumerate() {
-            for (j, cell) in row.iter_mut().enumerate() {
-                let idx = i * NY + j;
-                *cell =
-                    S::from(data_points.at(idx)).expect("Failed to convert data point to float");
-            }
-        }
-
         Self {
             interp_method: interp_method
                 .parse()
                 .expect("Invalid interp method. Must be Linear or Nearest"),
-            break_points_u1: break_points_u1_arr,
-            break_points_u2: break_points_u2_arr,
-            data_points: data_points_arr,
+            break_points_u1,
+            break_points_u2,
+            data_points,
         }
     }
 }
@@ -209,7 +185,7 @@ fn bilinear_interpolation<const NX: usize, const NY: usize, S: Float>(
 
     // Handle edge cases where we're at/beyond the limits
     if x >= params.break_points_u1[NX - 1] && y >= params.break_points_u2[NY - 1] {
-        return params.data_points[NX - 1][NY - 1];
+        return params.data_points.data[NY - 1][NX - 1];
     }
     if x >= params.break_points_u1[NX - 1] {
         // Interpolate only in Y dimension
@@ -217,8 +193,8 @@ fn bilinear_interpolation<const NX: usize, const NY: usize, S: Float>(
             y,
             params.break_points_u2[y_idx - 1],
             params.break_points_u2[y_idx],
-            params.data_points[NX - 1][y_idx - 1],
-            params.data_points[NX - 1][y_idx],
+            params.data_points.data[y_idx - 1][NX - 1],
+            params.data_points.data[y_idx][NX - 1],
         );
     }
     if y >= params.break_points_u2[NY - 1] {
@@ -227,8 +203,8 @@ fn bilinear_interpolation<const NX: usize, const NY: usize, S: Float>(
             x,
             params.break_points_u1[x_idx - 1],
             params.break_points_u1[x_idx],
-            params.data_points[x_idx - 1][NY - 1],
-            params.data_points[x_idx][NY - 1],
+            params.data_points.data[NY - 1][x_idx - 1],
+            params.data_points.data[NY - 1][x_idx],
         );
     }
 
@@ -238,10 +214,10 @@ fn bilinear_interpolation<const NX: usize, const NY: usize, S: Float>(
     let y1 = params.break_points_u2[y_idx - 1];
     let y2 = params.break_points_u2[y_idx];
 
-    let q11 = params.data_points[x_idx - 1][y_idx - 1];
-    let q12 = params.data_points[x_idx - 1][y_idx];
-    let q21 = params.data_points[x_idx][y_idx - 1];
-    let q22 = params.data_points[x_idx][y_idx];
+    let q11 = params.data_points.data[y_idx - 1][x_idx - 1];
+    let q12 = params.data_points.data[y_idx][x_idx - 1];
+    let q21 = params.data_points.data[y_idx - 1][x_idx];
+    let q22 = params.data_points.data[y_idx][x_idx];
 
     // Perform bilinear interpolation
     // First interpolate in x-direction
@@ -289,12 +265,13 @@ fn nearest_interpolation<const NX: usize, const NY: usize, S: Float>(
     };
 
     // Return the value at the nearest coordinate
-    params.data_points[nearest_x_idx][nearest_y_idx]
+    params.data_points.data[nearest_y_idx][nearest_x_idx]
 }
 
 #[cfg(test)]
 mod tests {
     use crate::testing::StubContext;
+    use pictorus_block_data::ToPass;
 
     use super::*;
 
@@ -310,17 +287,26 @@ mod tests {
         // [ 10.0,  20.0,  30.0 ]
         // [ 20.0,  30.0,  40.0 ]
 
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = [0.0, 1.0, 2.0];
+        let break_points_u2 = [0.0, 10.0, 20.0];
 
         // Create data points as a flattened 3x3 array in row-major order
-        let data_points = OldBlockData::from_vector(&[
-            0.0, 10.0, 20.0, // First row: x=0
-            10.0, 20.0, 30.0, // Second row: x=1
-            20.0, 30.0, 40.0, // Third row: x=2
-        ]);
+        let data_points = OldBlockData::new(
+            3,
+            3,
+            &[
+                0.0, 10.0, 20.0, // First row: x=0
+                10.0, 20.0, 30.0, // Second row: x=1
+                20.0, 30.0, 40.0, // Third row: x=2
+            ],
+        );
 
-        let params = Parameters::new("Linear", &break_points_u1, &break_points_u2, &data_points);
+        let params = Parameters::new(
+            "Linear",
+            break_points_u1,
+            break_points_u2,
+            data_points.to_pass(),
+        );
 
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
@@ -372,13 +358,18 @@ mod tests {
         let ctxt = StubContext::default();
 
         // Create the same lookup table as above but with nearest neighbor interpolation
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = [0.0, 1.0, 2.0];
+        let break_points_u2 = [0.0, 10.0, 20.0];
 
         let data_points =
-            OldBlockData::from_vector(&[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
+            OldBlockData::new(3, 3, &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
 
-        let params = Parameters::new("Nearest", &break_points_u1, &break_points_u2, &data_points);
+        let params = Parameters::new(
+            "Nearest",
+            break_points_u1,
+            break_points_u2,
+            data_points.to_pass(),
+        );
 
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
@@ -412,13 +403,18 @@ mod tests {
         let ctxt = StubContext::default();
 
         // Create the same lookup table as previous tests
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = [0.0, 1.0, 2.0];
+        let break_points_u2 = [0.0, 10.0, 20.0];
 
         let data_points =
-            OldBlockData::from_vector(&[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
+            OldBlockData::new(3, 3, &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
 
-        let params = Parameters::new("Linear", &break_points_u1, &break_points_u2, &data_points);
+        let params = Parameters::new(
+            "Linear",
+            break_points_u1,
+            break_points_u2,
+            data_points.to_pass(),
+        );
 
         let mut block = Lookup2DBlock::<3, 3, f64, Matrix<2, 2, f64>>::default();
 
@@ -454,13 +450,18 @@ mod tests {
         let ctxt = StubContext::default();
 
         // Create the same lookup table but with nearest neighbor interpolation
-        let break_points_u1 = OldBlockData::from_vector(&[0.0, 1.0, 2.0]);
-        let break_points_u2 = OldBlockData::from_vector(&[0.0, 10.0, 20.0]);
+        let break_points_u1 = [0.0, 1.0, 2.0];
+        let break_points_u2 = [0.0, 10.0, 20.0];
 
         let data_points =
-            OldBlockData::from_vector(&[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
+            OldBlockData::new(3, 3, &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
 
-        let params = Parameters::new("Nearest", &break_points_u1, &break_points_u2, &data_points);
+        let params = Parameters::new(
+            "Nearest",
+            break_points_u1,
+            break_points_u2,
+            data_points.to_pass(),
+        );
 
         let mut block = Lookup2DBlock::<3, 3, f64, Matrix<2, 2, f64>>::default();
 

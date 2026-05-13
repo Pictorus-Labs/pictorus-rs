@@ -11,18 +11,24 @@ use pictorus_internal::utils::PictorusError;
 const ERR_TYPE: &str = "UdpProtocol";
 
 fn create_udp_socket(
-    address: &str,
+    address: &[u8],
     transmit_enabled: bool,
 ) -> Result<Option<UdpSocket>, PictorusError> {
     if !transmit_enabled {
         return Ok(None);
     }
+    let address_str = std::str::from_utf8(address).map_err(|err| {
+        PictorusError::new(
+            ERR_TYPE.into(),
+            format!("Couldn't bind UDP receiver because address bytes are not valid UTF-8 ({err})"),
+        )
+    })?;
 
-    let socket = UdpSocket::bind(address).map_err(|err| {
+    let socket = UdpSocket::bind(address_str).map_err(|err| {
         let message = match err.kind() {
-            ErrorKind::InvalidInput => format!("Couldn't bind UDP receiver at invalid address: {address} - Is this address valid?"),
-            ErrorKind::AddrInUse => format!("Couldn't bind UDP receiver at already bound address: {address} - Is another process currently bound here?"),
-            _ => format!("Unknown error! Couldn't bind UDP receiver at address: {address} ({err})"),
+            ErrorKind::InvalidInput => format!("Couldn't bind UDP receiver at invalid address: {address_str} - Is this address valid?"),
+            ErrorKind::AddrInUse => format!("Couldn't bind UDP receiver at already bound address: {address_str} - Is another process currently bound here?"),
+            _ => format!("Unknown error! Couldn't bind UDP receiver at address: {address_str} ({err})"),
         };
         PictorusError::new(
             ERR_TYPE.into(),
@@ -33,7 +39,7 @@ fn create_udp_socket(
     socket.set_nonblocking(true).map_err(|_| {
         PictorusError::new(
             ERR_TYPE.into(),
-            format!("Failed to set nonblocking on UDP port at address: {address}",),
+            format!("Failed to set nonblocking on UDP port at address: {address_str}",),
         )
     })?;
     Ok(Some(socket))
@@ -45,7 +51,7 @@ pub struct UdpConnection {
 }
 
 impl UdpConnection {
-    pub fn new(address: &str, transmit_enabled: bool) -> Result<Self, PictorusError> {
+    pub fn new(address: &[u8], transmit_enabled: bool) -> Result<Self, PictorusError> {
         Ok(UdpConnection {
             cache: None,
             socket: create_udp_socket(address, transmit_enabled)?,

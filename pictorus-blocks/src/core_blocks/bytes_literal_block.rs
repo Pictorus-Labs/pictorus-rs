@@ -46,16 +46,14 @@ mod tests {
     use super::*;
 
     use crate::testing::StubContext;
-    use pictorus_block_data::ToPass;
-    use std::string::String;
 
     #[test]
     fn test_constant_block() {
         let mut block = BytesLiteralBlock::<11>::default();
 
-        let bytes_literal_ic = BlockData::from_bytes(String::from("Hello World").as_bytes());
+        let bytes_literal_ic = *b"Hello World";
 
-        let parameters = Parameters::new(bytes_literal_ic.to_pass());
+        let parameters = Parameters::new(bytes_literal_ic);
         let context = StubContext::default();
 
         let output = block.generate(&parameters, &context);

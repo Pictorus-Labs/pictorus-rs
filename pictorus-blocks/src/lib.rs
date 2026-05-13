@@ -34,7 +34,8 @@ mod std_blocks;
 pub use std_blocks::*;
 
 pub mod byte_data;
-mod nalgebra_interop;
+mod matrix_ext;
+pub use matrix_ext::{MatrixExt, MatrixNalgebraExt};
 mod stale_tracker;
 pub(crate) mod traits;
 pub use traits::Scalar;

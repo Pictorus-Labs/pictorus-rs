@@ -42,7 +42,7 @@ pub struct SimCan {
 }
 
 impl SimCan {
-    pub fn new(_iface: &str) -> Result<Self, Infallible> {
+    pub fn new(_iface: &[u8]) -> Result<Self, Infallible> {
         Ok(Self {
             frame_buffer: [0; 8],
         })

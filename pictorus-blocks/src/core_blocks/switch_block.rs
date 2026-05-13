@@ -15,7 +15,6 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 /// use core::time::Duration;
 /// use pictorus_blocks::SwitchBlock;
 /// use pictorus_traits::ProcessBlock;
-/// use pictorus_block_data::BlockData as OldBlockData;
 /// use pictorus_traits::Context;
 ///
 /// #[derive(Default)]
@@ -40,8 +39,8 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 /// // If condition is 0, output the signal at index 0
 /// // If condition is 1, output the signal at index 1
 /// // If condition is anything else, output the signal at index 1
-/// let cases = OldBlockData::from_vector(&[0.0, 1.0]);
-/// let parameters = <SwitchBlock<(f64, f64, f64)> as ProcessBlock>::Parameters::new(&cases);
+/// let cases = [0.0, 1.0];
+/// let parameters = <SwitchBlock<(f64, f64, f64)> as ProcessBlock>::Parameters::new(cases);
 /// // Here we have a condition of 0.0, and inputs of [1.0, 2.0]
 /// // Since condition matches case 0, the output will be 1.0
 /// let input = (0.0, 1.0, 2.0);
@@ -102,17 +101,9 @@ pub struct Parameters<C: Scalar, const N: usize> {
     pub cases: [C; N],
 }
 
-// TODO: This is currently only implemented for f64 and is constructed from OldBlockData.
-// In the future this should either accept an array of [C; N] or a &[C]
 impl<const N: usize> Parameters<f64, N> {
-    pub fn new(cases: &OldBlockData) -> Self {
-        assert!(cases.len() == N, "Invalid number of switch cases");
-
-        let mut case_arr: [f64; N] = [0.0; N];
-        for (idx, case) in cases.iter().enumerate() {
-            case_arr[idx] = *case;
-        }
-        Self { cases: case_arr }
+    pub fn new(cases: [f64; N]) -> Self {
+        Self { cases }
     }
 }
 
@@ -326,7 +317,7 @@ mod tests {
         let ctxt = StubContext::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64)>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[0.0, 1.0]));
+        let parameters = Parameters::new([0.0, 1.0]);
 
         let input = (0.0, 1.0, 2.0);
         let output = block.process(&parameters, &ctxt, input);
@@ -339,9 +330,7 @@ mod tests {
         let ctxt = StubContext::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64, f64, f64, f64, f64, f64)>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[
-            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
-        ]));
+        let parameters = Parameters::new([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 
         let input = (6.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0);
         let output = block.process(&parameters, &ctxt, input);
@@ -354,7 +343,7 @@ mod tests {
         let ctxt = StubContext::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64)>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[0.0, 1.0]));
+        let parameters = Parameters::new([0.0, 1.0]);
 
         // Should use the last value by default
         let input = (1.2345, 1.0, 2.0);
@@ -368,7 +357,7 @@ mod tests {
         let ctxt = StubContext::default();
 
         let mut block = SwitchBlock::<(f64, Matrix<3, 3, f64>, Matrix<3, 3, f64>)>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[0.0, 1.0]));
+        let parameters = Parameters::new([0.0, 1.0]);
 
         let input = (0.0, &Matrix::from_element(1.0), &Matrix::from_element(2.0));
         let output = block.process(&parameters, &ctxt, input);
@@ -394,9 +383,7 @@ mod tests {
             Matrix<3, 3, f64>,
             Matrix<3, 3, f64>,
         )>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[
-            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
-        ]));
+        let parameters = Parameters::new([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 
         let input = (
             6.0,
@@ -422,7 +409,7 @@ mod tests {
         let ctxt = StubContext::default();
 
         let mut block = SwitchBlock::<(f64, Matrix<3, 3, f64>, Matrix<3, 3, f64>)>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[0.0, 1.0]));
+        let parameters = Parameters::new([0.0, 1.0]);
 
         // Should use the last value by default
         let input = (
@@ -444,7 +431,7 @@ mod tests {
         let ctxt = StubContext::default();
 
         let mut block = SwitchBlock::<(f64, ByteSliceSignal, ByteSliceSignal)>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[0.0, 1.0]));
+        let parameters = Parameters::new([0.0, 1.0]);
 
         let input = (0.0, b"foo".as_slice(), b"bar".as_slice());
         let output = block.process(&parameters, &ctxt, input);
@@ -457,7 +444,7 @@ mod tests {
         let ctxt = StubContext::default();
 
         let mut block = SwitchBlock::<(f64, ByteSliceSignal, ByteSliceSignal)>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[0.0, 1.0]));
+        let parameters = Parameters::new([0.0, 1.0]);
 
         // Should use the last value by default
         let input = (1.2345, b"foo".as_slice(), b"bar".as_slice());
@@ -480,9 +467,7 @@ mod tests {
             ByteSliceSignal,
             ByteSliceSignal,
         )>::default();
-        let parameters = Parameters::new(&OldBlockData::from_vector(&[
-            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
-        ]));
+        let parameters = Parameters::new([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 
         let input = (
             6.0,

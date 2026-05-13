@@ -8,7 +8,7 @@ pub struct SerialConnection {
 }
 
 impl SerialConnection {
-    pub fn new(_port: &str, _baud: f64, _transmit_enabled: bool) -> Result<Self, Infallible> {
+    pub fn new(_port: &[u8], _baud: f64, _transmit_enabled: bool) -> Result<Self, Infallible> {
         Ok(SerialConnection { buffer: Vec::new() })
     }
 }
