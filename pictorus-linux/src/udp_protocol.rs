@@ -17,7 +17,12 @@ fn create_udp_socket(
     if !transmit_enabled {
         return Ok(None);
     }
-    let address_str = std::str::from_utf8(address).expect("address is invalid utf-8");
+    let address_str = std::str::from_utf8(address).map_err(|err| {
+        PictorusError::new(
+            ERR_TYPE.into(),
+            format!("Couldn't bind UDP receiver because address bytes are not valid UTF-8 ({err})"),
+        )
+    })?;
 
     let socket = UdpSocket::bind(address_str).map_err(|err| {
         let message = match err.kind() {

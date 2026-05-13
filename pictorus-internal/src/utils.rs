@@ -145,29 +145,26 @@ cfg_if::cfg_if! {
             }
         }
 
-        impl LoadableParams for BlockData {
-            fn parse(source: &str, default: Option<&Self>) -> Option<Self> {
-                let parsed_val: Vec<f64> = string_to_vec::<f64>(source);
-
-                match (parsed_val.len(), default) {
-                    (1, Some(d)) => Some(BlockData::scalar_sizeof(parsed_val[0], d)),
-                    (len, Some(d)) if len == d.n_elements() => Some(BlockData::from_row_slice(d.nrows(), d.ncols(), &parsed_val)),
-                    _ => Some(BlockData::from_vector(&parsed_val)),
-                }
-            }
-        }
-
         impl<const N: usize> LoadableParams for [u8; N] {
             fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
                 let mut buffer = [0u8; N];
-                for (i, byte) in source.split_terminator(&['[',']']).enumerate() {
+                let mut input_len = 0;
+               let trimmed = source.trim().trim_start_matches('[').trim_end_matches(']');
+                for (i, byte) in trimmed.split(&[',']).enumerate() {
                     if i >= N {
                         break;
                     }
                     if let Ok(parsed_byte) = byte.trim().parse::<u8>() {
                         buffer[i] = parsed_byte;
+                        input_len = i + 1;
                     } else {
                         return None; // Parsing failed
+                    }
+                }
+                if input_len == 1 {
+                    // If only a single value was provided, replicate it across the buffer
+                    for i in 1..N {
+                        buffer[i] = buffer[0];
                     }
                 }
                 Some(buffer)
@@ -177,14 +174,23 @@ cfg_if::cfg_if! {
         impl<const N: usize> LoadableParams for [f64; N] {
             fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
                 let mut buffer = [0.0; N];
-                for (i, num_str) in source.split_terminator(&['[',']']).enumerate() {
+                let mut input_len = 0;
+                let trimmed = source.trim().trim_start_matches('[').trim_end_matches(']');
+                for (i, num_str) in trimmed.split(&[',']).enumerate() {
                     if i >= N {
                         break;
                     }
                     if let Ok(parsed_num) = num_str.trim().parse::<f64>() {
                         buffer[i] = parsed_num;
+                        input_len = i + 1;
                     } else {
                         return None; // Parsing failed
+                    }
+                }
+                if input_len == 1 {
+                    // If only a single value was provided, replicate it across the buffer
+                    for i in 1..N {
+                        buffer[i] = buffer[0];
                     }
                 }
                 Some(buffer)
@@ -194,15 +200,41 @@ cfg_if::cfg_if! {
         impl<const NROWS: usize, const NCOLS: usize> LoadableParams for Matrix<NROWS, NCOLS, f64> {
             fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
                 let mut matrix = Matrix::zeroed();
-                for (row_i, row_str) in source.split_terminator(']').enumerate() {
-                    for (col_i, num_str) in row_str.split_terminator(&['[',',']).enumerate() {
-                        if row_i >= NROWS || col_i >= NCOLS {
+                let mut input_len = 0;
+
+                // Strip outer brackets and whitespace
+                let trimmed = source.trim()
+                    .trim_start_matches('[')
+                    .trim_end_matches(']');
+                // Split into rows on "],["
+               for (row_i, row_str) in trimmed.split("],").enumerate() {
+                    if row_i >= NROWS {
+                        break;
+                    }
+
+                    // Trim whitespace, then strip any leading "[" and trailing "]"
+                    let row_clean = row_str.trim()
+                        .trim_start_matches('[')
+                        .trim_end_matches(']')
+                        .trim();
+
+                    for (col_i, num_str) in row_clean.split(',').enumerate() {
+                        if col_i >= NCOLS {
                             break;
                         }
                         if let Ok(parsed_num) = num_str.trim().parse::<f64>() {
-                            matrix.data[col_i][row_i] = parsed_num; // Note the column-major order
+                            matrix.data[col_i][row_i] = parsed_num; // column-major
+                            input_len += 1;
                         } else {
-                            return None; // Parsing failed
+                            return None;
+                        }
+                    }
+                }
+                if input_len == 1 {
+                    // If only a single value was provided, replicate it across the matrix
+                    for row in 0..NROWS {
+                        for col in 0..NCOLS {
+                            matrix.data[col][row] = matrix.data[0][0];
                         }
                     }
                 }
@@ -466,7 +498,7 @@ mod tests {
             params
         });
 
-        let default = BlockData::new(2, 3, &[7., 8., 9., 10., 11., 12.]);
+        let default = [7., 8., 9., 10., 11., 12.];
 
         with_vars(
             vec![(
@@ -474,29 +506,23 @@ mod tests {
                 Some("[-1.0, -2.0, -3.0, -4.0, -5.0, -6.0]"),
             )],
             || {
-                let result_env = load_param::<BlockData>(
+                let result_env = load_param::<[f64; 6]>(
                     "test_block",
                     "test_var",
                     default.clone(),
                     &diagram_params,
                 );
-                assert_eq!(
-                    result_env,
-                    BlockData::new(2, 3, &[-1., -2., -3., -4., -5., -6.])
-                );
+                assert_eq!(result_env, [-1., -2., -3., -4., -5., -6.]);
             },
         );
 
         let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[f64; 6]>("test_block", "test_var", default.clone(), &diagram_params);
 
-        assert_eq!(
-            result_param,
-            BlockData::new(2, 3, &[1., 2., 3., 4., 5., 6.])
-        );
+        assert_eq!(result_param, [1., 2., 3., 4., 5., 6.]);
 
         let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
+            load_param::<[f64; 6]>("test_block", "foo", default.clone(), &diagram_params);
         assert_eq!(result_default, default.clone());
     }
 
@@ -509,22 +535,97 @@ mod tests {
             params
         });
 
-        let default = BlockData::from_vector(&[1.0, 1.0, 1.0]);
+        let default = [1.0, 1.0, 1.0];
 
         with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("[-13.0]"))], || {
             let result_env =
-                load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
-            assert_eq!(result_env, BlockData::from_vector(&[-13., -13., -13.]));
+                load_param::<[f64; 3]>("test_block", "test_var", default.clone(), &diagram_params);
+            assert_eq!(result_env, [-13., -13., -13.]);
         });
 
         let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[f64; 3]>("test_block", "test_var", default.clone(), &diagram_params);
 
         // If override is a scalar of different dimensions from default, use default dimensions
-        assert_eq!(result_param, BlockData::from_vector(&[42.0, 42.0, 42.0]));
+        assert_eq!(result_param, [42.0, 42.0, 42.0]);
 
         let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
+            load_param::<[f64; 3]>("test_block", "foo", default.clone(), &diagram_params);
+        assert_eq!(result_default, default.clone());
+    }
+
+    #[test]
+    fn test_load_param_vec_u8() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert(
+                "test_var".to_string(),
+                "[10, 20, 30, 40, 50, 60]".to_string(),
+            );
+            params
+        });
+
+        let default = [0u8, 0, 0, 0, 0, 0];
+
+        with_vars(
+            vec![(
+                "TEST_BLOCK_TEST_VAR",
+                Some("[1, 2, 3, 4, 5, 6]".to_string()),
+            )],
+            || {
+                let result_env = load_param::<[u8; 6]>(
+                    "test_block",
+                    "test_var",
+                    default.clone(),
+                    &diagram_params,
+                );
+                assert_eq!(result_env, [1, 2, 3, 4, 5, 6]);
+            },
+        );
+
+        let result_param =
+            load_param::<[u8; 6]>("test_block", "test_var", default.clone(), &diagram_params);
+
+        assert_eq!(result_param, [10, 20, 30, 40, 50, 60]);
+
+        let result_default =
+            load_param::<[u8; 6]>("test_block", "foo", default.clone(), &diagram_params);
+        assert_eq!(result_default, default.clone());
+    }
+
+    #[test]
+    fn test_load_param_vec_u8_scalar_override_vector_default() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("test_var".to_string(), "255".to_string());
+            params
+        });
+
+        let default = [0u8, 0, 0, 0, 0, 0];
+
+        with_vars(
+            vec![("TEST_BLOCK_TEST_VAR", Some("[128]".to_string()))],
+            || {
+                let result_env = load_param::<[u8; 6]>(
+                    "test_block",
+                    "test_var",
+                    default.clone(),
+                    &diagram_params,
+                );
+                assert_eq!(result_env, [128, 128, 128, 128, 128, 128]);
+            },
+        );
+
+        let result_param =
+            load_param::<[u8; 6]>("test_block", "test_var", default.clone(), &diagram_params);
+
+        // If override is a scalar of different dimensions from default, use default dimensions
+        assert_eq!(result_param, [255u8; 6]);
+
+        let result_default =
+            load_param::<[u8; 6]>("test_block", "foo", default.clone(), &diagram_params);
         assert_eq!(result_default, default.clone());
     }
 
@@ -540,28 +641,93 @@ mod tests {
             params
         });
 
-        let default = BlockData::new(2, 2, &[7., 8., 9., 10.]);
+        let default: Matrix<2, 2, f64> = Matrix {
+            data: [[7., 9.], [8., 10.]],
+        };
 
         with_vars(
             vec![("TEST_BLOCK_TEST_VAR", Some("[[3.0, 4.0],[5.0, 6.0]]"))],
             || {
-                let result_env = load_param::<BlockData>(
+                let result_env = load_param::<Matrix<_, _, _>>(
                     "test_block",
                     "test_var",
                     default.clone(),
                     &diagram_params,
                 );
-                assert_eq!(result_env, BlockData::new(2, 2, &[3., 4., 5., 6.]));
+                assert_eq!(
+                    result_env,
+                    Matrix {
+                        data: [[3., 5.], [4., 6.]]
+                    }
+                );
             },
         );
 
-        let result_param =
-            load_param::<BlockData>("test_block", "test_var", default.clone(), &diagram_params);
+        let result_param = load_param::<Matrix<_, _, _>>(
+            "test_block",
+            "test_var",
+            default.clone(),
+            &diagram_params,
+        );
 
-        assert_eq!(result_param, BlockData::new(2, 2, &[1., 2., 3., 4.]));
+        assert_eq!(
+            result_param,
+            Matrix {
+                data: [[1., 3.], [2., 4.]]
+            }
+        );
 
         let result_default =
-            load_param::<BlockData>("test_block", "foo", default.clone(), &diagram_params);
+            load_param::<Matrix<_, _, _>>("test_block", "foo", default.clone(), &diagram_params);
+
+        assert_eq!(result_default, default.clone());
+    }
+
+    #[test]
+    fn test_load_param_matrix_scalar_overide_default() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("test_var".to_string(), "42.0".to_string());
+            params
+        });
+
+        let default: Matrix<2, 2, f64> = Matrix {
+            data: [[1., 1.], [1., 1.]],
+        };
+
+        with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("[[3.0]]"))], || {
+            let result_env = load_param::<Matrix<_, _, _>>(
+                "test_block",
+                "test_var",
+                default.clone(),
+                &diagram_params,
+            );
+            assert_eq!(
+                result_env,
+                Matrix {
+                    data: [[3., 3.], [3., 3.]]
+                }
+            );
+        });
+
+        let result_param = load_param::<Matrix<_, _, _>>(
+            "test_block",
+            "test_var",
+            default.clone(),
+            &diagram_params,
+        );
+
+        // If override is a scalar of different dimensions from default, use default dimensions
+        assert_eq!(
+            result_param,
+            Matrix {
+                data: [[42., 42.], [42., 42.]]
+            }
+        );
+
+        let result_default =
+            load_param::<Matrix<_, _, _>>("test_block", "foo", default.clone(), &diagram_params);
 
         assert_eq!(result_default, default.clone());
     }

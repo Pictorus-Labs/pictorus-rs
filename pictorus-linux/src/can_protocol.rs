@@ -18,7 +18,12 @@ pub struct CanConnection {
 
 impl CanConnection {
     pub fn new(iface: &[u8]) -> Result<Self, PictorusError> {
-        let iface_str = std::str::from_utf8(iface).expect("iface is invalid utf-8");
+        let iface_str = std::str::from_utf8(iface).map_err(|err| {
+            PictorusError::new(
+                ERR_TYPE.into(),
+                format!("Couldn't bind to CAN interface because interface bytes are not valid UTF-8 ({err})")
+            )
+        })?;
         let socket = CanSocket::open(iface_str).map_err(|err| {
             PictorusError::new(
                 ERR_TYPE.into(),

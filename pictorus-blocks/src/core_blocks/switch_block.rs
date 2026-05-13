@@ -101,8 +101,6 @@ pub struct Parameters<C: Scalar, const N: usize> {
     pub cases: [C; N],
 }
 
-// TODO: This is currently only implemented for f64 and is constructed from OldBlockData.
-// In the future this should either accept an array of [C; N] or a &[C]
 impl<const N: usize> Parameters<f64, N> {
     pub fn new(cases: [f64; N]) -> Self {
         Self { cases }
