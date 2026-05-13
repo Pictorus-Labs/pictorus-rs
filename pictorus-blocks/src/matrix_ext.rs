@@ -41,7 +41,7 @@ where
 
 pub trait MatrixExt {
     type Elem;
-    fn from_flat_array(rows: usize, cols: usize, data: &[Self::Elem]) -> Self;
+    fn from_flat_array(data: &[Self::Elem]) -> Self;
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
     fn as_col_slice(&self) -> &[Self::Elem];
@@ -52,12 +52,19 @@ impl<const NROWS: usize, const NCOLS: usize, T: pictorus_traits::Scalar> MatrixE
 {
     type Elem = T;
 
-    fn from_flat_array(rows: usize, cols: usize, data: &[Self::Elem]) -> Self {
+    fn from_flat_array(data: &[Self::Elem]) -> Self {
+        if data.len() != NROWS * NCOLS {
+            panic!(
+                "Data length {} does not match expected size {}",
+                data.len(),
+                NROWS * NCOLS
+            );
+        }
         // This accepts data as row-major, but pictorus_traits::Matrix is column-major, so we need to transpose the data
         let mut m = Self::zeroed();
-        for r in 0..rows {
-            for c in 0..cols {
-                m.data[c][r] = data[r * cols + c];
+        for r in 0..NROWS {
+            for c in 0..NCOLS {
+                m.data[c][r] = data[r * NCOLS + c];
             }
         }
         m
