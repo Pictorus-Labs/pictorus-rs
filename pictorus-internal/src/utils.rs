@@ -122,12 +122,12 @@ mod std_utils {
 
     pub type DiagramParams = HashMap<String, HashMap<String, String>>;
     #[derive(serde::Deserialize)]
-    pub struct BigArrayWrap<const N: usize, T: DeserializeOwned>(
+    struct BigArrayWrap<const N: usize, T: DeserializeOwned>(
         #[serde(with = "serde_big_array::BigArray")] [T; N],
     );
 
     #[derive(serde::Deserialize)]
-    pub struct BigMatrixWrap<const NROWS: usize, const NCOLS: usize, T: DeserializeOwned>(
+    struct BigMatrixWrap<const NROWS: usize, const NCOLS: usize, T: DeserializeOwned>(
         #[serde(with = "serde_big_array::BigArray")] [BigArrayWrap<NCOLS, T>; NROWS],
     );
 
