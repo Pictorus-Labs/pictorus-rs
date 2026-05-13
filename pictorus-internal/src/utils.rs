@@ -483,7 +483,7 @@ mod tests {
 
         let result_default =
             load_param::<Vec<String>>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -506,24 +506,19 @@ mod tests {
                 Some("[-1.0, -2.0, -3.0, -4.0, -5.0, -6.0]"),
             )],
             || {
-                let result_env = load_param::<[f64; 6]>(
-                    "test_block",
-                    "test_var",
-                    default.clone(),
-                    &diagram_params,
-                );
+                let result_env =
+                    load_param::<[f64; 6]>("test_block", "test_var", default, &diagram_params);
                 assert_eq!(result_env, [-1., -2., -3., -4., -5., -6.]);
             },
         );
 
         let result_param =
-            load_param::<[f64; 6]>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[f64; 6]>("test_block", "test_var", default, &diagram_params);
 
         assert_eq!(result_param, [1., 2., 3., 4., 5., 6.]);
 
-        let result_default =
-            load_param::<[f64; 6]>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        let result_default = load_param::<[f64; 6]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -539,19 +534,18 @@ mod tests {
 
         with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("[-13.0]"))], || {
             let result_env =
-                load_param::<[f64; 3]>("test_block", "test_var", default.clone(), &diagram_params);
+                load_param::<[f64; 3]>("test_block", "test_var", default, &diagram_params);
             assert_eq!(result_env, [-13., -13., -13.]);
         });
 
         let result_param =
-            load_param::<[f64; 3]>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[f64; 3]>("test_block", "test_var", default, &diagram_params);
 
         // If override is a scalar of different dimensions from default, use default dimensions
         assert_eq!(result_param, [42.0, 42.0, 42.0]);
 
-        let result_default =
-            load_param::<[f64; 3]>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        let result_default = load_param::<[f64; 3]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -574,24 +568,19 @@ mod tests {
                 Some("[1, 2, 3, 4, 5, 6]".to_string()),
             )],
             || {
-                let result_env = load_param::<[u8; 6]>(
-                    "test_block",
-                    "test_var",
-                    default.clone(),
-                    &diagram_params,
-                );
+                let result_env =
+                    load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
                 assert_eq!(result_env, [1, 2, 3, 4, 5, 6]);
             },
         );
 
         let result_param =
-            load_param::<[u8; 6]>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
 
         assert_eq!(result_param, [10, 20, 30, 40, 50, 60]);
 
-        let result_default =
-            load_param::<[u8; 6]>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        let result_default = load_param::<[u8; 6]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -608,25 +597,20 @@ mod tests {
         with_vars(
             vec![("TEST_BLOCK_TEST_VAR", Some("[128]".to_string()))],
             || {
-                let result_env = load_param::<[u8; 6]>(
-                    "test_block",
-                    "test_var",
-                    default.clone(),
-                    &diagram_params,
-                );
+                let result_env =
+                    load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
                 assert_eq!(result_env, [128, 128, 128, 128, 128, 128]);
             },
         );
 
         let result_param =
-            load_param::<[u8; 6]>("test_block", "test_var", default.clone(), &diagram_params);
+            load_param::<[u8; 6]>("test_block", "test_var", default, &diagram_params);
 
         // If override is a scalar of different dimensions from default, use default dimensions
         assert_eq!(result_param, [255u8; 6]);
 
-        let result_default =
-            load_param::<[u8; 6]>("test_block", "foo", default.clone(), &diagram_params);
-        assert_eq!(result_default, default.clone());
+        let result_default = load_param::<[u8; 6]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -651,7 +635,7 @@ mod tests {
                 let result_env = load_param::<Matrix<_, _, _>>(
                     "test_block",
                     "test_var",
-                    default.clone(),
+                    default,
                     &diagram_params,
                 );
                 assert_eq!(
@@ -663,12 +647,8 @@ mod tests {
             },
         );
 
-        let result_param = load_param::<Matrix<_, _, _>>(
-            "test_block",
-            "test_var",
-            default.clone(),
-            &diagram_params,
-        );
+        let result_param =
+            load_param::<Matrix<_, _, _>>("test_block", "test_var", default, &diagram_params);
 
         assert_eq!(
             result_param,
@@ -678,9 +658,9 @@ mod tests {
         );
 
         let result_default =
-            load_param::<Matrix<_, _, _>>("test_block", "foo", default.clone(), &diagram_params);
+            load_param::<Matrix<_, _, _>>("test_block", "foo", default, &diagram_params);
 
-        assert_eq!(result_default, default.clone());
+        assert_eq!(result_default, default);
     }
 
     #[test]
@@ -697,12 +677,8 @@ mod tests {
         };
 
         with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("[[3.0]]"))], || {
-            let result_env = load_param::<Matrix<_, _, _>>(
-                "test_block",
-                "test_var",
-                default.clone(),
-                &diagram_params,
-            );
+            let result_env =
+                load_param::<Matrix<_, _, _>>("test_block", "test_var", default, &diagram_params);
             assert_eq!(
                 result_env,
                 Matrix {
@@ -711,12 +687,8 @@ mod tests {
             );
         });
 
-        let result_param = load_param::<Matrix<_, _, _>>(
-            "test_block",
-            "test_var",
-            default.clone(),
-            &diagram_params,
-        );
+        let result_param =
+            load_param::<Matrix<_, _, _>>("test_block", "test_var", default, &diagram_params);
 
         // If override is a scalar of different dimensions from default, use default dimensions
         assert_eq!(
@@ -727,9 +699,9 @@ mod tests {
         );
 
         let result_default =
-            load_param::<Matrix<_, _, _>>("test_block", "foo", default.clone(), &diagram_params);
+            load_param::<Matrix<_, _, _>>("test_block", "foo", default, &diagram_params);
 
-        assert_eq!(result_default, default.clone());
+        assert_eq!(result_default, default);
     }
 
     #[test]
