@@ -22,7 +22,6 @@ num-traits = { version = "0.2.19", default-features = false, features = [
   "libm",
 ] }
 log = "0.4.21"
-cfg-if = "1.0.0"
 embedded-can = "0.4.1"
 nb = "1.1.0"
 chrono = { version = "0.4.40", optional = true }

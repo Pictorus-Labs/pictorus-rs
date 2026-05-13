@@ -104,279 +104,275 @@ pub fn transpose<const N: usize, const M: usize, T: Copy>(input: [[T; N]; M]) ->
 }
 
 // All remaining std-only methods here
-cfg_if::cfg_if! {
-    if #[cfg(feature = "std")] {
-        use super::*;
-        use pictorus_traits::Matrix;
-        use std::panic::PanicHookInfo;
-        use std::collections::HashMap;
-        use std::fs;
-        use std::format;
-        use std::io::Write;
-        use std::prelude::rust_2021::*;
+#[cfg(feature = "std")]
+mod std_utils {
+    use super::*;
+    use pictorus_traits::Matrix;
+    use std::collections::HashMap;
+    use std::format;
+    use std::fs;
+    use std::io::Write;
+    use std::panic::PanicHookInfo;
+    use std::prelude::rust_2021::*;
 
-        use log::{info, warn, LevelFilter};
-        use chrono::Local;
-        use env_logger::Builder;
+    use chrono::Local;
+    use env_logger::Builder;
+    use log::{LevelFilter, info, warn};
 
+    pub type DiagramParams = HashMap<String, HashMap<String, String>>;
 
-        pub type DiagramParams = HashMap<String, HashMap<String, String>>;
+    // Trait definition for parameters loadable from DiagramParams or env vars
+    pub trait LoadableParams: Sized {
+        fn parse(source: &str, default: Option<&Self>) -> Option<Self>;
+    }
 
-        // Trait definition for parameters loadable from DiagramParams or env vars
-        pub trait LoadableParams: Sized {
-            fn parse(source: &str, default: Option<&Self>) -> Option<Self>;
-        }
-
-        impl LoadableParams for String {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                Some(source.to_string())
-            }
-        }
-
-        impl LoadableParams for f64 {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                source.parse().ok()
-            }
-        }
-
-        impl LoadableParams for Vec<String> {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                Some(string_to_vec(source))
-            }
-        }
-
-        impl<const N: usize> LoadableParams for [u8; N] {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                let mut buffer = [0u8; N];
-                let mut input_len = 0;
-               let trimmed = source.trim().trim_start_matches('[').trim_end_matches(']');
-                for (i, byte) in trimmed.split(&[',']).enumerate() {
-                    if i >= N {
-                        break;
-                    }
-                    if let Ok(parsed_byte) = byte.trim().parse::<u8>() {
-                        buffer[i] = parsed_byte;
-                        input_len = i + 1;
-                    } else {
-                        return None; // Parsing failed
-                    }
-                }
-                if input_len == 1 {
-                    // If only a single value was provided, replicate it across the buffer
-                    for i in 1..N {
-                        buffer[i] = buffer[0];
-                    }
-                }
-                Some(buffer)
-            }
-        }
-
-        impl<const N: usize> LoadableParams for [f64; N] {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                let mut buffer = [0.0; N];
-                let mut input_len = 0;
-                let trimmed = source.trim().trim_start_matches('[').trim_end_matches(']');
-                for (i, num_str) in trimmed.split(&[',']).enumerate() {
-                    if i >= N {
-                        break;
-                    }
-                    if let Ok(parsed_num) = num_str.trim().parse::<f64>() {
-                        buffer[i] = parsed_num;
-                        input_len = i + 1;
-                    } else {
-                        return None; // Parsing failed
-                    }
-                }
-                if input_len == 1 {
-                    // If only a single value was provided, replicate it across the buffer
-                    for i in 1..N {
-                        buffer[i] = buffer[0];
-                    }
-                }
-                Some(buffer)
-            }
-        }
-
-        impl<const NROWS: usize, const NCOLS: usize> LoadableParams for Matrix<NROWS, NCOLS, f64> {
-            fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-                let mut matrix = Matrix::zeroed();
-                let mut input_len = 0;
-
-                // Strip outer brackets and whitespace
-                let trimmed = source.trim()
-                    .trim_start_matches('[')
-                    .trim_end_matches(']');
-                // Split into rows on "],["
-               for (row_i, row_str) in trimmed.split("],").enumerate() {
-                    if row_i >= NROWS {
-                        break;
-                    }
-
-                    // Trim whitespace, then strip any leading "[" and trailing "]"
-                    let row_clean = row_str.trim()
-                        .trim_start_matches('[')
-                        .trim_end_matches(']')
-                        .trim();
-
-                    for (col_i, num_str) in row_clean.split(',').enumerate() {
-                        if col_i >= NCOLS {
-                            break;
-                        }
-                        if let Ok(parsed_num) = num_str.trim().parse::<f64>() {
-                            matrix.data[col_i][row_i] = parsed_num; // column-major
-                            input_len += 1;
-                        } else {
-                            return None;
-                        }
-                    }
-                }
-                if input_len == 1 {
-                    // If only a single value was provided, replicate it across the matrix
-                    for row in 0..NROWS {
-                        for col in 0..NCOLS {
-                            matrix.data[col][row] = matrix.data[0][0];
-                        }
-                    }
-                }
-                Some(matrix)
-            }
-        }
-
-        // Generic function to load a parameter from env or params
-        pub fn load_param<T: LoadableParams + std::fmt::Debug>(
-            block_name: &str,
-            var_name: &str,
-            default: T,
-            blocks_map: &DiagramParams,
-        ) -> T {
-            let env_var_name = format!("{}_{}", block_name.to_uppercase(), var_name.to_uppercase());
-
-            // Try loading from ENV
-            if let Ok(env_var) = std::env::var(&env_var_name)
-                && let Some(parsed) = T::parse(&env_var, Some(&default)) {
-                    info!("Found env variable {env_var_name} with value '{parsed:?}'");
-                    return parsed;
-            }
-
-            // Try loading from DiagramParams
-            if let Some(params_map) = blocks_map.get(block_name).and_then(|map| map.get(var_name))
-                && let Some(parsed) = T::parse(params_map, Some(&default)) {
-                    info!("Parsing and loading {block_name}_{var_name} from params file with value {parsed:?}");
-                    return parsed;
-            }
-
-            // Otherwise return the default
-            default
-        }
-
-        fn string_to_vec<T: str::FromStr>(vec_str: &str) -> Vec<T> {
-            let cleaned_str = vec_str.replace(['[', ']', '\"'], "").replace(", ", ",");
-            if cleaned_str.is_empty() {
-                return Vec::new();
-            }
-
-            cleaned_str
-                .split(',')
-                .filter_map(|s| s.parse::<T>().ok())
-                .collect::<Vec<_>>()
-        }
-
-        pub fn get_diagram_params(vars: &PictorusVars) -> DiagramParams {
-            // Load diagram variables from diagram_params.json, if present.
-            let diagram_params_path =
-                std::path::PathBuf::from(&vars.run_path).join("diagram_params.json");
-            info!(
-                "Looking for diagram params file: {}",
-                diagram_params_path.display()
-            );
-            let params_file = std::fs::read_to_string(diagram_params_path);
-            let input_params_json = match params_file {
-                Ok(val) => {
-                    info!("Found params file!");
-                    val
-                }
-                Err(_err) => {
-                    info!("No params file found.");
-                    String::from("{}")
-                }
-            };
-            serde_json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
-                warn!("Error parsing params file, using empty params map.");
-                HashMap::<String, HashMap<String, String>>::new()
-            })
-        }
-
-        pub fn get_pictorus_vars() -> PictorusVars {
-            // Load special environment variables that control app execution, or use safe defaults if not present.
-            PictorusVars {
-                data_log_rate_hz: std::env::var("APP_DATA_LOG_RATE_HZ")
-                    .unwrap_or("0".to_string())
-                    .trim()
-                    .parse()
-                    .unwrap(),
-                run_path: std::env::var("APP_RUN_PATH").unwrap_or("".to_string()),
-                transmit_enabled: std::env::var("APP_TRANSMIT_ENABLED")
-                    .unwrap_or("true".to_string())
-                    .parse()
-                    .unwrap(),
-                publish_socket: std::env::var("APP_PUBLISH_SOCKET").unwrap_or("".to_string()),
-            }
-        }
-
-        pub fn dump_error(err: &PictorusError, run_path: &str) {
-            let path = std::path::PathBuf::from(run_path).join("pictorus_errors.json");
-            info!("Error log path: {path:?}");
-            fs::write(path, serde_json::to_string(err)
-                .expect("Serde JSON Could not parse string")).ok();
-        }
-
-        pub fn custom_panic_handler(panic_info: &PanicHookInfo, run_path: &str) {
-            warn!("Unhandled panic, dumping stack trace to error log...");
-            let err = PictorusError {
-                err_type: "unhandled".to_string(),
-                message: panic_info.to_string(),
-            };
-            dump_error(&err, run_path);
-        }
-
-        pub fn get_block_type<T>(_: &T) -> String {
-            // Pass in a block, get back it's name!
-            let name_str = std::any::type_name::<T>().to_string();
-            let name_vec: Vec<&str> = name_str.split("::").collect();
-            String::from(name_vec[name_vec.len() - 1])
-        }
-
-        pub fn initialize_logging() {
-            let mut log_level: LevelFilter = LevelFilter::Info;
-            if std::env::var("LOG_LEVEL").is_ok() {
-                log_level = std::env::var("LOG_LEVEL")
-                    .unwrap()
-                    .parse()
-                    .unwrap_or(LevelFilter::Info);
-            }
-
-            Builder::new()
-                .format(|buf, record| {
-                    writeln!(
-                        buf,
-                        "{} [{}] - {}",
-                        Local::now().format("%+"),
-                        record.level(),
-                        record.args()
-                    )
-                })
-                .filter(None, log_level)
-                .init();
-            log::info!("Log level: {log_level}");
+    impl LoadableParams for String {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            Some(source.to_string())
         }
     }
+
+    impl LoadableParams for f64 {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            source.parse().ok()
+        }
+    }
+
+    impl LoadableParams for Vec<String> {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            let cleaned_str = source.replace(['[', ']', '\"'], "").replace(", ", ",");
+            if cleaned_str.is_empty() {
+                return None;
+            }
+            Some(
+                cleaned_str
+                    .split(',')
+                    .filter_map(|s| s.parse::<String>().ok())
+                    .collect::<Vec<_>>(),
+            )
+        }
+    }
+
+    impl<const N: usize> LoadableParams for [u8; N]
+    where
+        [u8; N]: serde::de::DeserializeOwned,
+    {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            // Try to parse as an array of bytes first
+            if let Ok(parsed) = serde_json::from_str(source) {
+                return Some(parsed);
+            }
+            // handle single element case
+            if let Ok(parsed) = serde_json::from_str::<u8>(source)
+                .or_else(|_| serde_json::from_str::<[u8; 1]>(source).map(|[val]| val))
+            {
+                return Some([parsed; N]);
+            }
+            // Fall back to taking the string as bytes
+            if source.len() != N {
+                warn!(
+                    "Source string \"{source}\" of length {} is not the expected length of {N}, result will be truncated or padded with zeros",
+                    source.len()
+                );
+            }
+            let copy_len = usize::min(source.len(), N);
+            let mut array = [0u8; N];
+            array[..copy_len].copy_from_slice(&source.as_bytes()[..copy_len]);
+            Some(array)
+        }
+    }
+
+    impl<const N: usize> LoadableParams for [f64; N]
+    where
+        [f64; N]: serde::de::DeserializeOwned,
+    {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            // Try and parse as a 1d array
+            if let Ok(parsed) = serde_json::from_str(source) {
+                return Some(parsed);
+            }
+            // If that fails check for scalar special case
+            // We check for a bare scalar, or a 1d array with 1 element,
+            serde_json::from_str::<[f64; 1]>(source)
+                .map(|[scalar]| [scalar; N])
+                .or_else(|_| serde_json::from_str::<f64>(source).map(|scalar| [scalar; N]))
+                .ok()
+        }
+    }
+
+    impl<const NROWS: usize, const NCOLS: usize> LoadableParams for Matrix<NROWS, NCOLS, f64>
+    where
+        [[f64; NCOLS]; NROWS]: serde::de::DeserializeOwned,
+    {
+        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+            // Try and parse as a 2d array
+            if let Ok(parsed) = serde_json::from_str::<[[f64; NCOLS]; NROWS]>(source) {
+                let mut matrix = Matrix::zeroed();
+                // transpose
+                #[allow(clippy::needless_range_loop)]
+                for row_i in 0..NROWS {
+                    for col_i in 0..NCOLS {
+                        matrix.data[col_i][row_i] = parsed[row_i][col_i];
+                    }
+                }
+                return Some(matrix);
+            }
+            // If that fails check for scalar special case
+            // We check for a bare scalar, a 1x1 matrix, or a 1d array with 1 element,
+            // all of which we interpret as scalars that fill the whole matrix
+            serde_json::from_str::<[[f64; 1]; 1]>(source)
+                .map(|[[scalar]]| scalar)
+                .or_else(|_| serde_json::from_str::<[f64; 1]>(source).map(|[scalar]| scalar))
+                .or_else(|_| serde_json::from_str::<f64>(source))
+                .map(|scalar| Matrix {
+                    data: [[scalar; NROWS]; NCOLS],
+                })
+                .ok()
+        }
+    }
+
+    // Generic function to load a parameter from env or params
+    pub fn load_param<T: LoadableParams + std::fmt::Debug>(
+        block_name: &str,
+        var_name: &str,
+        default: T,
+        blocks_map: &DiagramParams,
+    ) -> T {
+        let env_var_name = format!("{}_{}", block_name.to_uppercase(), var_name.to_uppercase());
+
+        // Try loading from ENV
+        if let Ok(env_var) = std::env::var(&env_var_name) {
+            if let Some(parsed) = T::parse(&env_var, Some(&default)) {
+                info!("Parsing and loading env variable {env_var_name} with value '{parsed:?}'");
+                return parsed;
+            } else {
+                warn!(
+                    "Environment variable {env_var_name} was found but could not be parsed, falling back to diagram params or default. Value was: '{env_var}'"
+                );
+            }
+        }
+
+        // Try loading from DiagramParams
+        if let Some(params_map) = blocks_map.get(block_name).and_then(|map| map.get(var_name)) {
+            if let Some(parsed) = T::parse(params_map, Some(&default)) {
+                info!(
+                    "Parsing and loading {block_name}_{var_name} from params file with value {parsed:?}"
+                );
+                return parsed;
+            } else {
+                warn!(
+                    "Found {block_name}_{var_name} in params file but could not parse it, falling back to default. Value was: '{params_map}'"
+                );
+            }
+        }
+
+        // Otherwise return the default
+        default
+    }
+
+    pub fn get_diagram_params(vars: &PictorusVars) -> DiagramParams {
+        // Load diagram variables from diagram_params.json, if present.
+        let diagram_params_path =
+            std::path::PathBuf::from(&vars.run_path).join("diagram_params.json");
+        info!(
+            "Looking for diagram params file: {}",
+            diagram_params_path.display()
+        );
+        let params_file = std::fs::read_to_string(diagram_params_path);
+        let input_params_json = match params_file {
+            Ok(val) => {
+                info!("Found params file!");
+                val
+            }
+            Err(_err) => {
+                info!("No params file found.");
+                String::from("{}")
+            }
+        };
+        serde_json::from_str(input_params_json.as_str()).unwrap_or_else(|_| {
+            warn!("Error parsing params file, using empty params map.");
+            HashMap::<String, HashMap<String, String>>::new()
+        })
+    }
+
+    pub fn get_pictorus_vars() -> PictorusVars {
+        // Load special environment variables that control app execution, or use safe defaults if not present.
+        PictorusVars {
+            data_log_rate_hz: std::env::var("APP_DATA_LOG_RATE_HZ")
+                .unwrap_or("0".to_string())
+                .trim()
+                .parse()
+                .unwrap(),
+            run_path: std::env::var("APP_RUN_PATH").unwrap_or("".to_string()),
+            transmit_enabled: std::env::var("APP_TRANSMIT_ENABLED")
+                .unwrap_or("true".to_string())
+                .parse()
+                .unwrap(),
+            publish_socket: std::env::var("APP_PUBLISH_SOCKET").unwrap_or("".to_string()),
+        }
+    }
+
+    pub fn dump_error(err: &PictorusError, run_path: &str) {
+        let path = std::path::PathBuf::from(run_path).join("pictorus_errors.json");
+        info!("Error log path: {path:?}");
+        fs::write(
+            path,
+            serde_json::to_string(err).expect("Serde JSON Could not parse string"),
+        )
+        .ok();
+    }
+
+    pub fn custom_panic_handler(panic_info: &PanicHookInfo, run_path: &str) {
+        warn!("Unhandled panic, dumping stack trace to error log...");
+        let err = PictorusError {
+            err_type: "unhandled".to_string(),
+            message: panic_info.to_string(),
+        };
+        dump_error(&err, run_path);
+    }
+
+    pub fn get_block_type<T>(_: &T) -> String {
+        // Pass in a block, get back it's name!
+        let name_str = std::any::type_name::<T>().to_string();
+        let name_vec: Vec<&str> = name_str.split("::").collect();
+        String::from(name_vec[name_vec.len() - 1])
+    }
+
+    pub fn initialize_logging() {
+        let mut log_level: LevelFilter = LevelFilter::Info;
+        if std::env::var("LOG_LEVEL").is_ok() {
+            log_level = std::env::var("LOG_LEVEL")
+                .unwrap()
+                .parse()
+                .unwrap_or(LevelFilter::Info);
+        }
+
+        Builder::new()
+            .format(|buf, record| {
+                writeln!(
+                    buf,
+                    "{} [{}] - {}",
+                    Local::now().format("%+"),
+                    record.level(),
+                    record.args()
+                )
+            })
+            .filter(None, log_level)
+            .init();
+        log::info!("Log level: {log_level}");
+    }
 }
+#[cfg(feature = "std")]
+pub use std_utils::*;
 
 #[cfg(all(test, feature = "std"))]
 #[allow(clippy::approx_constant)]
 mod tests {
     use super::*;
+    use alloc::string::ToString;
     use alloc::vec;
+    use pictorus_traits::Matrix;
+    use std::collections::HashMap;
     use temp_env::with_vars;
 
     #[test]
@@ -614,6 +610,35 @@ mod tests {
     }
 
     #[test]
+    fn test_load_param_vec_u8_str_special_case() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("test_var".to_string(), "HELLO".to_string());
+            params
+        });
+
+        let default = *b"hello";
+
+        with_vars(
+            vec![("TEST_BLOCK_TEST_VAR", Some("None".to_string()))],
+            || {
+                let result_env =
+                    load_param::<[u8; 5]>("test_block", "test_var", default, &diagram_params);
+                assert_eq!(result_env, *b"None\x00");
+            },
+        );
+
+        let result_param =
+            load_param::<[u8; 5]>("test_block", "test_var", default, &diagram_params);
+
+        assert_eq!(result_param, *b"HELLO");
+
+        let result_default = load_param::<[u8; 5]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
+    }
+
+    #[test]
     fn test_load_param_matrix_f64() {
         let mut diagram_params = DiagramParams::new();
         diagram_params.insert("test_block".to_string(), {
@@ -702,19 +727,6 @@ mod tests {
             load_param::<Matrix<_, _, _>>("test_block", "foo", default, &diagram_params);
 
         assert_eq!(result_default, default);
-    }
-
-    #[test]
-    fn test_string_to_vec_f64() {
-        assert_eq!(
-            string_to_vec::<f64>(&String::from("[1, 2, 3]")),
-            vec![1., 2., 3.]
-        );
-        // If just a single value without brackets passed in, should still get a vector back
-        assert_eq!(
-            string_to_vec::<f64>(&String::from("3.14159")),
-            vec![3.14159]
-        );
     }
 
     #[test]
