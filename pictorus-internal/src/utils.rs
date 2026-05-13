@@ -108,6 +108,7 @@ pub fn transpose<const N: usize, const M: usize, T: Copy>(input: [[T; N]; M]) ->
 mod std_utils {
     use super::*;
     use pictorus_traits::Matrix;
+    use serde::de::DeserializeOwned;
     use std::collections::HashMap;
     use std::format;
     use std::fs;
@@ -120,6 +121,15 @@ mod std_utils {
     use log::{LevelFilter, info, warn};
 
     pub type DiagramParams = HashMap<String, HashMap<String, String>>;
+    #[derive(serde::Deserialize)]
+    struct BigArrayWrap<const N: usize, T: DeserializeOwned>(
+        #[serde(with = "serde_big_array::BigArray")] [T; N],
+    );
+
+    #[derive(serde::Deserialize)]
+    struct BigMatrixWrap<const NROWS: usize, const NCOLS: usize, T: DeserializeOwned>(
+        #[serde(with = "serde_big_array::BigArray")] [BigArrayWrap<NCOLS, T>; NROWS],
+    );
 
     // Trait definition for parameters loadable from DiagramParams or env vars
     pub trait LoadableParams: Sized {
@@ -155,12 +165,12 @@ mod std_utils {
 
     impl<const N: usize> LoadableParams for [u8; N]
     where
-        [u8; N]: serde::de::DeserializeOwned,
+        BigArrayWrap<N, u8>: serde::de::DeserializeOwned,
     {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             // Try to parse as an array of bytes first
-            if let Ok(parsed) = serde_json::from_str(source) {
-                return Some(parsed);
+            if let Ok(parsed) = serde_json::from_str::<BigArrayWrap<N, u8>>(source) {
+                return Some(parsed.0);
             }
             // handle single element case
             if let Ok(parsed) = serde_json::from_str::<u8>(source)
@@ -188,12 +198,12 @@ mod std_utils {
 
     impl<const N: usize> LoadableParams for [f64; N]
     where
-        [f64; N]: serde::de::DeserializeOwned,
+        BigArrayWrap<N, f64>: serde::de::DeserializeOwned,
     {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             // Try and parse as a 1d array
-            if let Ok(parsed) = serde_json::from_str(source) {
-                return Some(parsed);
+            if let Ok(parsed) = serde_json::from_str::<BigArrayWrap<N, f64>>(source) {
+                return Some(parsed.0);
             }
             // If that fails check for scalar special case
             // We check for a bare scalar, or a 1d array with 1 element,
@@ -206,17 +216,17 @@ mod std_utils {
 
     impl<const NROWS: usize, const NCOLS: usize> LoadableParams for Matrix<NROWS, NCOLS, f64>
     where
-        [[f64; NCOLS]; NROWS]: serde::de::DeserializeOwned,
+        BigMatrixWrap<NROWS, NCOLS, f64>: serde::de::DeserializeOwned,
     {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             // Try and parse as a 2d array
-            if let Ok(parsed) = serde_json::from_str::<[[f64; NCOLS]; NROWS]>(source) {
+            if let Ok(parsed) = serde_json::from_str::<BigMatrixWrap<NROWS, NCOLS, f64>>(source) {
                 let mut matrix = Matrix::zeroed();
                 // transpose
                 #[allow(clippy::needless_range_loop)]
                 for row_i in 0..NROWS {
                     for col_i in 0..NCOLS {
-                        matrix.data[col_i][row_i] = parsed[row_i][col_i];
+                        matrix.data[col_i][row_i] = parsed.0[row_i].0[col_i];
                     }
                 }
                 return Some(matrix);
@@ -545,6 +555,33 @@ mod tests {
         assert_eq!(result_param, [42.0, 42.0, 42.0]);
 
         let result_default = load_param::<[f64; 3]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
+    }
+
+    #[test]
+    fn test_load_param_vec_f64_big_array() {
+        let diagram_params = DiagramParams::new();
+        let default = [0.0; 37];
+        let result_default = load_param::<[f64; 37]>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
+    }
+
+    #[test]
+    fn test_load_param_mat_f64_big_matrix() {
+        let diagram_params = DiagramParams::new();
+        let default = Matrix {
+            data: [[0.0; 37]; 37],
+        };
+        let result_default =
+            load_param::<Matrix<37, 37, f64>>("test_block", "foo", default, &diagram_params);
+        assert_eq!(result_default, default);
+    }
+
+    #[test]
+    fn test_load_param_vec_u8_big_array() {
+        let diagram_params = DiagramParams::new();
+        let default = [0u8; 37];
+        let result_default = load_param::<[u8; 37]>("test_block", "foo", default, &diagram_params);
         assert_eq!(result_default, default);
     }
 
