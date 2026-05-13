@@ -38,6 +38,5 @@ temp-env = "0.3"
 cobs = "0.4.0"
 
 [features]
-default = ["std"]
 std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json"]
 rtt = ["dep:rtt-target"]
