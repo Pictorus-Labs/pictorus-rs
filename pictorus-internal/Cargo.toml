@@ -32,11 +32,12 @@ serde = { version = "1.0.219", default-features = false, features = ["derive", "
 serde_json = { version = "1.0", default-features = false, features = ["alloc", "preserve_order"], optional = true }
 heapless = { version = "0.7.0" }
 smashquote = { version = "0.1.2", optional = true }
+serde-big-array ={version = "0.5.1", optional = true}
 
 [dev-dependencies]
 temp-env = "0.3"
 cobs = "0.4.0"
 
 [features]
-std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json", "dep:smashquote"]
+std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json", "dep:smashquote", "dep:serde-big-array"]
 rtt = ["dep:rtt-target"]
