@@ -169,15 +169,19 @@ mod std_utils {
                 return Some([parsed; N]);
             }
             // Fall back to taking the string as bytes
-            if source.len() != N {
+            // We need to handle `/x**` hex format and turn it into raw bytes
+            let escaped_bytes = smashquote::unescape_bytes(source.as_bytes())
+                .map_err(|e| warn!("Error unescaping string for bytes: {e}"))
+                .ok()?;
+            if escaped_bytes.len() != N {
                 warn!(
                     "Source string \"{source}\" of length {} is not the expected length of {N}, result will be truncated or padded with zeros",
-                    source.len()
+                    escaped_bytes.len()
                 );
             }
-            let copy_len = usize::min(source.len(), N);
+            let copy_len = usize::min(escaped_bytes.len(), N);
             let mut array = [0u8; N];
-            array[..copy_len].copy_from_slice(&source.as_bytes()[..copy_len]);
+            array[..copy_len].copy_from_slice(&escaped_bytes[..copy_len]);
             Some(array)
         }
     }
@@ -621,11 +625,11 @@ mod tests {
         let default = *b"hello";
 
         with_vars(
-            vec![("TEST_BLOCK_TEST_VAR", Some("None".to_string()))],
+            vec![("TEST_BLOCK_TEST_VAR", Some("N\\x00ne".to_string()))],
             || {
                 let result_env =
                     load_param::<[u8; 5]>("test_block", "test_var", default, &diagram_params);
-                assert_eq!(result_env, *b"None\x00");
+                assert_eq!(result_env, *b"N\x00ne\x00");
             },
         );
 
