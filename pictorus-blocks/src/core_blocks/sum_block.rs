@@ -7,7 +7,7 @@ pub struct SumBlock<T: Summable>
 where
     pictorus_block_data::BlockData: FromPass<<T as Summable>::Output>,
 {
-    store: Option<T::Output>,
+    store: T::Output,
     pub data: OldBlockData,
 }
 
@@ -17,7 +17,7 @@ where
 {
     fn default() -> Self {
         Self {
-            store: None,
+            store: T::Output::default(),
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
@@ -38,10 +38,15 @@ where
         _context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
-        self.store = None;
-        let result = T::get_sum(input, *parameters, &mut self.store);
-        self.data = OldBlockData::from_pass(result);
-        result
+        let mut tmp: Option<T::Output> = None;
+        T::get_sum(input, *parameters, &mut tmp);
+        self.store = tmp.expect("get_sum must initialize the buffer");
+        self.data = OldBlockData::from_pass(self.store.as_by());
+        self.store.as_by()
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.store.as_by()
     }
 }
 
@@ -475,6 +480,12 @@ mod tests {
     use approx::assert_relative_eq;
 
     #[test]
+    fn test_sum_default_buffer_no_panic() {
+        let block = SumBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_one_scalar() {
         let mut block = SumBlock::<f64>::default();
         let input = 3.0;
@@ -484,6 +495,7 @@ mod tests {
         };
         let result = block.process(&parameters, &stub_context, input);
         assert_relative_eq!(result, 3.0);
+        assert_eq!(block.buffer(), result);
     }
 
     #[test]

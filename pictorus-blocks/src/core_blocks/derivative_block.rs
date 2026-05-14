@@ -21,6 +21,11 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
+        log::warn!(
+            "DerivativeBlock constructed via Default; IC not seeded. \
+             Prefer DerivativeBlock::new(&parameters) — otherwise buffer() will return \
+             T::default() until the first process() call."
+        );
         Self {
             samples: [T::default(); N],
             sample_index: 0,
@@ -65,6 +70,10 @@ macro_rules! impl_process {
                 self.data = <OldBlockData as FromPass<$type>>::from_pass(self.output);
                 self.output.as_by()
             }
+
+            fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+                self.output.as_by()
+            }
         }
 
         impl<const N: usize> HasIc for DerivativeBlock<$type, N>
@@ -79,7 +88,6 @@ macro_rules! impl_process {
                 }
             }
         }
-
 
         impl<const N: usize, const NCOLS: usize, const NROWS: usize> ProcessBlock for DerivativeBlock< Matrix<NROWS, NCOLS, $type>, N>
         {
@@ -114,6 +122,10 @@ macro_rules! impl_process {
                 self.data = <OldBlockData as FromPass<Matrix<NROWS, NCOLS, $type>>>::from_pass(self.output.as_by());
                 &self.output
             }
+
+            fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+                self.output.as_by()
+            }
         }
 
         impl<const N: usize, const NCOLS: usize, const NROWS: usize> HasIc for DerivativeBlock<Matrix<NROWS, NCOLS, $type>, N>
@@ -128,9 +140,6 @@ macro_rules! impl_process {
                 }
             }
         }
-
-
-
     }
     };
 }

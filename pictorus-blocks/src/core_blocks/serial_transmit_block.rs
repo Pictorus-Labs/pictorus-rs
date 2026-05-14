@@ -73,6 +73,10 @@ where
         self.buffer = write_val;
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.buffer
+    }
 }
 
 #[cfg(test)]
@@ -83,6 +87,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_serial_transmit_default_buffer_no_panic() {
+        let block = SerialTransmitBlock::<f64>::default();
+        assert_eq!(block.buffer(), b"".as_ref());
+    }
+
+    #[test]
     fn test_write_byteslicesignal_no_delimiters() {
         let context = StubContext::default();
         let parameters = Parameters::new("", "");
@@ -91,6 +101,7 @@ mod tests {
         let expected = "42".as_bytes();
         let to_serial_peripheral = block.process(&parameters, &context, expected);
         assert_eq!(to_serial_peripheral, expected);
+        assert_eq!(block.buffer(), expected);
     }
 
     #[test]

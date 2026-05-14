@@ -32,6 +32,11 @@ where
     (T, R): IntegralApply<Output = T>,
 {
     fn default() -> Self {
+        log::warn!(
+            "PidBlock constructed via Default; IC not seeded. \
+             Prefer PidBlock::new(&parameters) — otherwise buffer() will return \
+             T::default() until the first process() call."
+        );
         Self {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
@@ -130,6 +135,10 @@ where
         self.data = OldBlockData::from_pass(self.buffer.as_by());
         self.buffer.as_by()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 // TODO: This is currently only implemented for f64 types. The IntegralBlock
@@ -143,7 +152,7 @@ impl<const ND_SAMPLES: usize, R: Scalar> HasIc for PidBlock<f64, R, ND_SAMPLES> 
         let derivative_params = Self::derivative_params(parameters);
         Self {
             data: OldBlockData::from_scalar(parameters.ic),
-            buffer: 0.0,
+            buffer: parameters.ic,
             integrator: IntegralBlock::new(&integrator_params),
             derivative: DerivativeBlock::new(&derivative_params),
         }
@@ -160,7 +169,7 @@ where
         let derivative_params = Self::derivative_params(parameters);
         Self {
             data: OldBlockData::from_pass(parameters.ic.as_by()),
-            buffer: Matrix::default(),
+            buffer: parameters.ic,
             integrator: IntegralBlock::new(&integrator_params),
             derivative: DerivativeBlock::new(&derivative_params),
         }
@@ -228,6 +237,7 @@ mod tests {
         let res = p_block.process(&params, &runtime.context(), (1.0, false));
         assert_eq!(res, 2.0);
         assert_eq!(p_block.data.scalar(), 2.0);
+        assert_eq!(p_block.buffer(), res);
         runtime.tick();
 
         let res = p_block.process(&params, &runtime.context(), (-2.0, false));

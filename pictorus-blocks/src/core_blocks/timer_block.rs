@@ -117,6 +117,10 @@ impl ProcessBlock for TimerBlock<f64> {
         self.data.set_scalar(self.buffer);
         self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
+    }
 }
 
 #[cfg(test)]
@@ -127,6 +131,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_timer_default_buffer_no_panic() {
+        let block = TimerBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_countdown_timer_non_interruptable() {
         let mut runtime = StubRuntime::default();
         let p = Parameters::new("CountDown", false, 5.0);
@@ -135,6 +145,7 @@ mod tests {
         let output = block.process(&p, &runtime.context(), 0.0);
         assert_eq!(block.data.scalar(), 0.0);
         assert_eq!(output, 0.0);
+        assert_eq!(block.buffer(), output);
 
         runtime.set_time(time::Duration::from_secs_f64(1.0));
         let output = block.process(&p, &runtime.context(), 1.0);

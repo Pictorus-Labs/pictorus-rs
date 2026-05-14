@@ -39,6 +39,10 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 impl<const NX: usize, const NY: usize, S: Float, T: Apply<NX, NY, S>> Default
@@ -103,7 +107,7 @@ pub trait Apply<const NX: usize, const NY: usize, S: Float>: Pass + Default {
 
 impl<const NX: usize, const NY: usize, S: Float> Apply<NX, NY, S> for S {
     fn apply<'s>(
-        _store: &'s mut Self,
+        store: &'s mut Self,
         input: PassBy<(Self, Self)>,
         params: &Parameters<NX, NY, S>,
     ) -> PassBy<'s, Self> {
@@ -128,10 +132,12 @@ impl<const NX: usize, const NY: usize, S: Float> Apply<NX, NY, S> for S {
             y_val
         };
 
-        match interp_method {
+        let result = match interp_method {
             InterpMethod::Linear => bilinear_interpolation(x, y, params),
             InterpMethod::Nearest => nearest_interpolation(x, y, params),
-        }
+        };
+        *store = result;
+        result
     }
 }
 
@@ -276,6 +282,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_lookup_2d_default_buffer_no_panic() {
+        let block = Lookup2DBlock::<3, 3, f64, f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_scalar_linear() {
         let ctxt = StubContext::default();
 
@@ -313,6 +325,7 @@ mod tests {
         // Test exact corner points
         let res = block.process(&params, &ctxt, (0.0, 0.0));
         assert_eq!(res, 0.0);
+        assert_eq!(block.buffer(), res);
 
         let res = block.process(&params, &ctxt, (0.0, 20.0));
         assert_eq!(res, 20.0);

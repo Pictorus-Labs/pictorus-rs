@@ -20,7 +20,7 @@ impl<T> Parameters<T> {
 /// the input is less than the min value, it will be set to the min value.
 pub struct ClampBlock<T> {
     pub data: OldBlockData,
-    buffer: Option<T>,
+    buffer: T,
 }
 
 impl<T> Default for ClampBlock<T>
@@ -31,7 +31,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
+            buffer: T::default(),
         }
     }
 }
@@ -52,10 +52,13 @@ macro_rules! impl_clamp_block {
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
-                let clamp = input.clamp(parameters.min, parameters.max);
-                let output = self.buffer.insert(clamp);
-                self.data = OldBlockData::from_scalar((*output).into());
-                *output
+                self.buffer = input.clamp(parameters.min, parameters.max);
+                self.data = OldBlockData::from_scalar(self.buffer.into());
+                self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
 
@@ -74,14 +77,18 @@ macro_rules! impl_clamp_block {
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
-                let output = self.buffer.insert(Matrix::zeroed());
                 for r in 0..ROWS {
                     for c in 0..COLS {
-                        output.data[c][r] = input.data[c][r].clamp(parameters.min, parameters.max);
+                        self.buffer.data[c][r] =
+                            input.data[c][r].clamp(parameters.min, parameters.max);
                     }
                 }
-                self.data = OldBlockData::from_pass(output);
-                output
+                self.data = OldBlockData::from_pass(&self.buffer);
+                &self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
     };
@@ -106,6 +113,15 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_clamp_default_buffer_no_panic() {
+        let block = ClampBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = ClampBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_clamp_block_original() {
         let c = StubContext::default();
         let lower_limit: f64 = -1.5;
@@ -114,17 +130,18 @@ mod test {
         let mut block = ClampBlock::<Matrix<1, 4, f64>>::default();
         let p = Parameters::new(lower_limit, upper_limit);
 
-        let output = block.process(&p, &c, &input.to_pass());
+        let output = *block.process(&p, &c, &input.to_pass());
         assert_eq!(
             output,
-            &Matrix {
+            Matrix {
                 data: [[-0.5], [-0.5], [-1.2345], [-1.5]]
             }
         );
         assert_eq!(
             block.data,
             OldBlockData::from_matrix(&[&[-0.5, -0.5, -1.2345, -1.5]])
-        )
+        );
+        assert_eq!(block.buffer(), &output);
     }
 
     macro_rules! impl_clamp_block_test_negatives {

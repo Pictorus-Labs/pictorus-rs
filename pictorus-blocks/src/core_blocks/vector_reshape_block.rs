@@ -70,6 +70,10 @@ where
         self.data = <OldBlockData as FromPass<Self::Output>>::from_pass(&self.buffer);
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 impl<T> ProcessBlock for VectorReshapeBlock<T, Matrix<1, 1, T>>
@@ -89,6 +93,10 @@ where
         self.buffer.data[0][0] = input;
         self.data = <OldBlockData as FromPass<Self::Output>>::from_pass(&self.buffer);
         &self.buffer
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -112,6 +120,12 @@ mod tests {
     ///      let _output = block.process(&parameters, &c, &input);
     /// }
     /// ```
+    #[test]
+    fn test_vector_reshape_default_buffer_no_panic() {
+        let block = VectorReshapeBlock::<f64, Matrix<1, 1, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<1, 1, f64>::zeroed());
+    }
+
     macro_rules! impl_vector_reshape_tests {
         ($type:ty) => {
             paste! {

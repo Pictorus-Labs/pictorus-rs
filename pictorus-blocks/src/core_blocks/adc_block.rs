@@ -64,6 +64,10 @@ where
         self.data = OldBlockData::from_scalar(self.buffer.into());
         self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
+    }
 }
 
 #[cfg(test)]
@@ -72,12 +76,19 @@ mod test {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_adc_block_default_buffer_no_panic() {
+        let block = AdcBlock::<u16, f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_adc_block_f64() {
         let c = StubContext::default();
         let mut block = AdcBlock::<u16, f64>::default();
         let input = 42u16;
         let output = block.process(&Parameters::new(), &c, input);
         assert_eq!(output, 42.0);
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

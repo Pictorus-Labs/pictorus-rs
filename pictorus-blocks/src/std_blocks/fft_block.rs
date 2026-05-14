@@ -1,6 +1,6 @@
 use crate::traits::Float;
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
-use pictorus_traits::{Matrix, Pass, ProcessBlock};
+use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
 use std::sync::Arc;
 
@@ -68,6 +68,10 @@ impl<T: Float, const N: usize> ProcessBlock for FftBlock<T, N> {
 
         self.output.as_by()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.output.as_by()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -89,6 +93,12 @@ mod tests {
     use approx::assert_relative_eq;
     use core::time::Duration;
     use pictorus_traits::GeneratorBlock;
+
+    #[test]
+    fn test_fft_default_buffer_no_panic() {
+        let block: FftBlock<f64, 10> = FftBlock::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 10, f64>::zeroed());
+    }
 
     #[test]
     fn test_fft_block() {

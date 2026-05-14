@@ -55,12 +55,22 @@ impl ProcessBlock for I2cOutputBlock {
         self.data.set_bytes(&self.buffer);
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.buffer
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::testing::StubContext;
+
+    #[test]
+    fn test_i2c_output_default_buffer_no_panic() {
+        let block = I2cOutputBlock::default();
+        assert_eq!(block.buffer(), b"".as_ref());
+    }
 
     #[test]
     fn test_i2c_output_block() {
@@ -74,5 +84,6 @@ mod tests {
 
         assert_eq!(output_signal, input_data);
         assert_eq!(block.data.to_bytes(), input_data);
+        assert_eq!(block.buffer(), input_data);
     }
 }

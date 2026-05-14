@@ -1,6 +1,6 @@
 use crate::traits::Float;
 use pictorus_block_data::BlockData;
-use pictorus_traits::GeneratorBlock;
+use pictorus_traits::{GeneratorBlock, PassBy};
 
 #[derive(Debug, Clone)]
 /// Outputs a sinewave signal with specified amplitude, frequency, phase, and bias.
@@ -10,6 +10,7 @@ where
     f64: From<T>,
 {
     phantom: core::marker::PhantomData<T>,
+    buffer: T,
     pub data: BlockData,
 }
 
@@ -21,6 +22,7 @@ where
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
+            buffer: T::zero(),
             data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
@@ -43,8 +45,13 @@ where
         let sin_val = parameters.amplitude
             * num_traits::Float::sin(parameters.frequency * time + parameters.phase)
             + parameters.bias;
+        self.buffer = sin_val;
         self.data = BlockData::from_scalar(sin_val.into());
         sin_val
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
     }
 }
 
@@ -76,6 +83,12 @@ mod tests {
     use num_traits::Float;
 
     #[test]
+    fn test_sinewave_default_buffer_no_panic() {
+        let block = SinewaveBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_sine_wave() {
         let mut block = SinewaveBlock::<f64>::default();
         let parameters = Parameters {
@@ -89,6 +102,7 @@ mod tests {
 
         assert_eq!(block.generate(&parameters, &context), Float::sin(0.5));
         assert_eq!(block.data.scalar(), Float::sin(0.5));
+        assert_eq!(block.buffer(), Float::sin(0.5));
         context.time = Duration::from_secs(1);
 
         assert_eq!(block.generate(&parameters, &context), Float::sin(1.5));

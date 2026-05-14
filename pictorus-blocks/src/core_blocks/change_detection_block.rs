@@ -18,7 +18,7 @@ use strum::EnumString;
 /// so it will always emit `false`
 pub struct ChangeDetectionBlock<T: Apply> {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
     last_input: Option<T>,
 }
 
@@ -28,9 +28,14 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
+        log::warn!(
+            "ChangeDetectionBlock constructed via Default; IC not seeded. \
+             Prefer ChangeDetectionBlock::new(&parameters) — otherwise buffer() will return \
+             T::default() until the first process() call."
+        );
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
             last_input: None,
         }
     }
@@ -43,7 +48,7 @@ where
 {
     fn new(parameters: &Self::Parameters) -> Self {
         ChangeDetectionBlock::<T> {
-            buffer: Some(T::Output::default()),
+            buffer: T::Output::default(),
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             last_input: Some(parameters.ic),
         }
@@ -69,13 +74,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass + Sized + Copy {
     type Output: Pass + Default;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         params: &Parameters<Self>,
         last_input: &mut Option<Self>,
@@ -86,7 +95,7 @@ impl<C: ChangeDetect> Apply for C {
     type Output = f64;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         params: &Parameters<Self>,
         last_input: &mut Option<Self>,
@@ -95,7 +104,7 @@ impl<C: ChangeDetect> Apply for C {
         let old_last_input = last_input.replace(input);
         let old_last_input = old_last_input.unwrap_or(params.ic);
         let res = Self::change_detect(input, old_last_input, params.change_mode);
-        *store = Some(res);
+        *store = res;
         res.as_by()
     }
 }
@@ -104,7 +113,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
     type Output = Matrix<NROWS, NCOLS, f64>;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         params: &Parameters<Self>,
         last_input: &mut Option<Self>,
@@ -113,7 +122,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
         let old_last_input = last_input.replace(*input);
         let old_last_input = old_last_input.unwrap_or(params.ic);
         // Initialize Output to a Zeroed (i.e. all `false`) state.
-        let output = store.insert(Matrix::zeroed());
+        *store = Matrix::zeroed();
         // Make a immutable iterator of each element of `input` and `old_last_input`
 
         let inputs = input
@@ -123,7 +132,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
             .zip(old_last_input.data.as_flattened().iter());
         // Zip that iterator with a mutable iterator over the output matrix
         // and then perform the operation on each set of three values
-        output
+        store
             .data
             .as_flattened_mut()
             .iter_mut()
@@ -131,7 +140,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
             .for_each(|(output, (lh, rh))| {
                 *output = C::change_detect(*lh, *rh, params.change_mode)
             });
-        output
+        store
     }
 }
 
@@ -432,6 +441,7 @@ mod tests {
         // No change
         let output = block.process(&params, &context, false);
         assert!(output.is_truthy());
+        assert_eq!(block.buffer(), output);
 
         // Falling for all values
         let output = block.process(&params, &context, false);

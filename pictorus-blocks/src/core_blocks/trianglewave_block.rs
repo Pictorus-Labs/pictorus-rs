@@ -1,6 +1,6 @@
 use crate::traits::Float;
 use pictorus_block_data::BlockData;
-use pictorus_traits::GeneratorBlock;
+use pictorus_traits::{GeneratorBlock, PassBy};
 
 #[derive(Debug, Clone)]
 /// Outputs a triangle wave signal with specified amplitude, frequency, phase, and bias.
@@ -10,6 +10,7 @@ where
     f64: From<T>,
 {
     phantom: core::marker::PhantomData<T>,
+    buffer: T,
     pub data: BlockData,
 }
 
@@ -21,6 +22,7 @@ where
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
+            buffer: T::zero(),
             data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
@@ -49,8 +51,13 @@ where
         // y is in the range [0, 0.5] over a t value from 0 to 1. Scale it by 4 ( to a range of [0, 2] )
         // then shift it down by 1 to get it in the range [-1, 1], then scale it by the amplitude and add the bias.
         let val = (four * y - T::one()) * parameters.amplitude + parameters.bias;
+        self.buffer = val;
         self.data = BlockData::from_scalar(val.into());
         val
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
     }
 }
 
@@ -82,6 +89,12 @@ mod tests {
     const PI: f64 = core::f64::consts::PI;
 
     #[test]
+    fn test_trianglewave_default_buffer_no_panic() {
+        let block = TrianglewaveBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_trianglewave_block_simple() {
         let context = StubContext::new(
             Duration::from_secs(0),
@@ -98,8 +111,9 @@ mod tests {
 
         let mut block = TrianglewaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        let out = block.generate(&params, &runtime.context()); // T = 0
         assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 1e-6);
+        assert_eq!(block.buffer(), out);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2

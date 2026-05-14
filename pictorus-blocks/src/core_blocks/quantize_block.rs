@@ -30,7 +30,7 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<I, T> Default for QuantizeBlock<I, T>
@@ -42,7 +42,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -67,6 +67,10 @@ where
         self.data = OldBlockData::from_pass(res);
         res
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply<I: Scalar + Float>: Pass + Default {
@@ -75,7 +79,7 @@ pub trait Apply<I: Scalar + Float>: Pass + Default {
     fn apply<'a>(
         input: PassBy<Self>,
         interval: I,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output>;
 }
 
@@ -85,12 +89,12 @@ impl<I: Scalar + Float> Apply<I> for I {
     fn apply<'a>(
         input: PassBy<Self>,
         interval: I,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
         let input_divided_interval = input / interval;
         let rounded = input_divided_interval.round();
         let res = rounded * interval;
-        *dest = Some(res);
+        *dest = res;
         res
     }
 }
@@ -103,15 +107,14 @@ impl<const R: usize, const C: usize, I: Scalar + Float + ClosedDivAssign + MulAs
     fn apply<'a>(
         input: PassBy<Self>,
         interval: I,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
         let interval_matrix = Self::from_element(interval);
         let input_divided_interval = input.as_view().component_div(&interval_matrix.as_view());
         let rounded = input_divided_interval.map(Float::round);
         let res = rounded * interval;
-        let res = Self::from_view(&res.as_view());
-        *dest = Some(res);
-        dest.as_ref().unwrap().as_by()
+        *dest = Self::from_view(&res.as_view());
+        dest
     }
 }
 
@@ -123,6 +126,12 @@ mod tests {
     use paste::paste;
 
     use super::*;
+
+    #[test]
+    fn test_quantize_default_buffer_no_panic() {
+        let block = QuantizeBlock::<f64, f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
 
     macro_rules! test_quantize_block {
         ($type:ty) => {
@@ -137,6 +146,7 @@ mod tests {
 
                     assert_eq!(res, 0.5);
                     assert_eq!(block.data.scalar(), 0.5);
+                    assert_eq!(block.buffer(), res);
                 }
 
                 #[test]

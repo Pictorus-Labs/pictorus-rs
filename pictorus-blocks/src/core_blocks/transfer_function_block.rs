@@ -154,6 +154,10 @@ macro_rules! impl_transfer_function {
                 self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
 
         impl<
@@ -234,6 +238,10 @@ macro_rules! impl_transfer_function {
 
                 self.data = OldBlockData::from_pass(self.buffer.as_by());
                 &self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
     };

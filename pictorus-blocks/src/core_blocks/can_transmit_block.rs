@@ -83,6 +83,10 @@ where
 
         &self.byte_buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.byte_buffer
+    }
 }
 
 // Trait to merge a tuple into a Vec
@@ -213,8 +217,9 @@ mod tests {
             stub_can_parser_callback,
             StubCanParser::new(),
         );
-        let output = block.process(&parameters, &context, 42.0);
+        let output = block.process(&parameters, &context, 42.0).to_vec();
         assert_eq!(output, vec![42, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

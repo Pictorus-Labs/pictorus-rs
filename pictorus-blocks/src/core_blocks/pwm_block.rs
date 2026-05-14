@@ -23,19 +23,19 @@ impl Parameters {
 /// represents the percentage of time the signal is high in a PWM cycle.
 ///
 /// This block automatically clamps the duty cycle to the range [0, 1].
-pub struct PwmBlock<T: Default + Scalar, I: Pass> {
-    pwm_values: Option<I>,
+pub struct PwmBlock<T: Default + Scalar, I: Pass + Default> {
+    pwm_values: I,
     _phantom: core::marker::PhantomData<T>,
 }
 
 impl<T, I> Default for PwmBlock<T, I>
 where
     T: Default + Scalar,
-    I: Pass,
+    I: Pass + Default,
 {
     fn default() -> Self {
         PwmBlock {
-            pwm_values: None,
+            pwm_values: I::default(),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -58,10 +58,12 @@ where
         let (frequency, duty_cycle) = inputs;
         let duty_cycle_clamped = duty_cycle.clamp(T::zero(), T::one());
         let frequency_clamped = frequency.clamp(T::zero(), T::max_value());
-        let output = self
-            .pwm_values
-            .insert((frequency_clamped, duty_cycle_clamped));
-        *output
+        self.pwm_values = (frequency_clamped, duty_cycle_clamped);
+        self.pwm_values
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.pwm_values
     }
 }
 
@@ -86,14 +88,18 @@ where
         let duty_cycle_ch4_clamped = duty_cycle_ch4.clamp(T::zero(), T::one());
 
         let frequency_clamped = frequency.clamp(T::zero(), T::max_value());
-        let output = self.pwm_values.insert((
+        self.pwm_values = (
             frequency_clamped,
             duty_cycle_ch1_clamped,
             duty_cycle_ch2_clamped,
             duty_cycle_ch3_clamped,
             duty_cycle_ch4_clamped,
-        ));
-        *output
+        );
+        self.pwm_values
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.pwm_values
     }
 }
 
@@ -103,6 +109,12 @@ mod tests {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_pwm_default_buffer_no_panic() {
+        let block = PwmBlock::<f32, (f32, f32)>::default();
+        assert_eq!(block.buffer(), (0.0, 0.0));
+    }
+
+    #[test]
     fn test_pwm_block_1ch() {
         let mut block = PwmBlock::<f32, (f32, f32)>::default();
         let context = StubContext::default();
@@ -110,6 +122,7 @@ mod tests {
         let inputs = (1000.0, 0.5);
         let output = block.process(&Parameters::new(), &context, inputs);
         assert_eq!(output, (1000.0, 0.5));
+        assert_eq!(block.buffer(), output);
 
         let inputs = (2000.0, 1.5);
         let output = block.process(&Parameters::new(), &context, inputs);

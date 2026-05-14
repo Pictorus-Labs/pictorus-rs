@@ -39,6 +39,10 @@ impl<const CHARS: usize> GeneratorBlock for BytesLiteralBlock<CHARS> {
         self.buffer = parameters.value;
         &self.buffer
     }
+
+    fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+        &self.buffer
+    }
 }
 
 #[cfg(test)]
@@ -46,6 +50,12 @@ mod tests {
     use super::*;
 
     use crate::testing::StubContext;
+
+    #[test]
+    fn test_bytes_literal_default_buffer_no_panic() {
+        let block = BytesLiteralBlock::<11>::default();
+        assert_eq!(block.buffer(), &[0u8; 11]);
+    }
 
     #[test]
     fn test_constant_block() {
@@ -56,8 +66,9 @@ mod tests {
         let parameters = Parameters::new(bytes_literal_ic);
         let context = StubContext::default();
 
-        let output = block.generate(&parameters, &context);
+        let output = block.generate(&parameters, &context).to_vec();
         assert_eq!(output, "Hello World".as_bytes());
         assert_eq!(block.data, BlockData::from_bytes("Hello World".as_bytes()));
+        assert_eq!(block.buffer(), output.as_slice());
     }
 }

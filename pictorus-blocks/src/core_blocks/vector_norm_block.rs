@@ -25,7 +25,7 @@ where
     T: Apply,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T> Default for VectorNormBlock<T>
@@ -36,7 +36,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -60,15 +60,16 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass {
     type Output: Pass + Default;
 
-    fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
-        input: PassBy<Self>,
-    ) -> PassBy<'s, Self::Output>;
+    fn apply<'s>(store: &'s mut Self::Output, input: PassBy<Self>) -> PassBy<'s, Self::Output>;
 }
 
 // Promote i8, u8, i16, u16, i32, and u32
@@ -78,7 +79,7 @@ macro_rules! impl_vector_norm_apply {
             type Output = $otype;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 input: PassBy<Self>,
             ) -> PassBy<'s, Self::Output> {
                 let mut output = Matrix::<ROWS, COLS, $otype>::zeroed();
@@ -88,7 +89,7 @@ macro_rules! impl_vector_norm_apply {
                     }
                 }
                 let n = output.as_view().norm();
-                *store = Some(n);
+                *store = n;
                 n
             }
         }
@@ -109,11 +110,11 @@ macro_rules! impl_vector_norm {
             type Output = $type;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 input: PassBy<Self>,
             ) -> PassBy<'s, Self::Output> {
                 let n = input.as_view().norm();
-                *store = Some(n);
+                *store = n;
                 n
             }
         }
@@ -128,6 +129,12 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use paste::paste;
+
+    #[test]
+    fn test_vector_norm_default_buffer_no_panic() {
+        let block = VectorNormBlock::<Matrix<1, 2, f64>>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
 
     macro_rules! test_vector_norm {
         ($type:ty) => {
@@ -145,6 +152,7 @@ mod tests {
                     let output = block.process(&p, &c, &input);
                     assert_eq!(output, [<5 $type>].into());
                     assert_eq!(block.data, OldBlockData::from_scalar([<5 $type>].into()));
+                    assert_eq!(block.buffer(), output);
                 }
 
                 #[test]

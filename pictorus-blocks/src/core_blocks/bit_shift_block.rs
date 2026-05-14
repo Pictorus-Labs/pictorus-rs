@@ -10,7 +10,7 @@ where
     T: Apply,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T> Default for BitShiftBlock<T>
@@ -21,7 +21,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -67,13 +67,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass {
     type Output: Pass + Default;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         params: &Parameters,
     ) -> PassBy<'s, Self::Output>;
@@ -85,7 +89,7 @@ macro_rules! impl_bit_shift_apply {
             type Output = $type;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 input: PassBy<Self>,
                 params: &Parameters,
             ) -> PassBy<'s, Self::Output> {
@@ -94,7 +98,7 @@ macro_rules! impl_bit_shift_apply {
                     ShiftDirection::Left => input << params.bits,
                     ShiftDirection::Right => input >> params.bits,
                 } as $type;
-                *store = Some(output);
+                *store = output;
                 output
             }
         }
@@ -103,11 +107,10 @@ macro_rules! impl_bit_shift_apply {
             type Output = Matrix<NROWS, NCOLS, $type>;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 input: PassBy<Self>,
                 params: &Parameters,
             ) -> PassBy<'s, Self::Output> {
-                let output = store.insert(Matrix::zeroed());
                 for i in 0..NROWS {
                     for j in 0..NCOLS {
                         let input_val = input.data[j][i] as $cast_type;
@@ -115,10 +118,10 @@ macro_rules! impl_bit_shift_apply {
                             ShiftDirection::Left => input_val << params.bits,
                             ShiftDirection::Right => input_val >> params.bits,
                         } as $type;
-                        output.data[j][i] = res;
+                        store.data[j][i] = res;
                     }
                 }
-                output
+                store
             }
         }
     };
@@ -140,6 +143,14 @@ mod tests {
         ($type:ty) => {
             paste! {
                 #[test]
+                fn [<test_default_buffer_no_panic_ $type>]() {
+                    let block = BitShiftBlock::<$type>::default();
+                    assert_eq!(block.buffer(), <$type>::default());
+                    let block = BitShiftBlock::<Matrix<2, 2, $type>>::default();
+                    assert_eq!(block.buffer(), &Matrix::<2, 2, $type>::zeroed());
+                }
+
+                #[test]
                 fn [<test_left_shift_scalar_ $type>]() {
                     let mut block = BitShiftBlock::<$type>::default();
                     let context = StubContext::default();
@@ -147,6 +158,7 @@ mod tests {
                     let output = block.process(&params, &context, [<1 $type>]);
                     assert_eq!(output, [<4 $type>]);
                     assert_eq!(block.data.scalar(), 4.0);
+                    assert_eq!(block.buffer(), output);
                 }
 
                 #[test]

@@ -5,12 +5,16 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Block for applying an Infinite Impulse Response (IIR) filter to an input signal.
+///
+/// Construct via `HasIc::new(¶ms)` to seed the buffer with the IC, or
+/// `Default::default()` to start at `T::default()`. Codegen uses `::new` for HasIc
+/// blocks so the buffer is always sensibly seeded before the first `process()`.
 pub struct IirFilterBlock<T: Pass + Default>
 where
     OldBlockData: FromPass<T>,
 {
     pub data: OldBlockData,
-    buffer: Option<T>,
+    buffer: T,
 }
 
 impl<T: Pass + Default> Default for IirFilterBlock<T>
@@ -18,9 +22,14 @@ where
     OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
+        log::warn!(
+            "IirFilterBlock constructed via Default; IC not seeded. \
+             Prefer IirFilterBlock::new(&parameters) — otherwise buffer() will return \
+             T::default() until the first process() call."
+        );
         IirFilterBlock {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
+            buffer: T::default(),
         }
     }
 }
@@ -31,7 +40,7 @@ where
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IirFilterBlock::<T> {
-            buffer: Some(parameters.ic),
+            buffer: parameters.ic,
             data: <OldBlockData as FromPass<T>>::from_pass(parameters.ic),
         }
     }
@@ -44,7 +53,7 @@ where
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IirFilterBlock::<pictorus_traits::Matrix<NROWS, NCOLS, T>> {
-            buffer: Some(parameters.ic),
+            buffer: parameters.ic,
             data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, T>>>::from_pass(&parameters.ic),
         }
     }
@@ -66,10 +75,14 @@ where
     ) -> PassBy<'b, Self::Output> {
         let timestep_s = T::from_duration(context.timestep().unwrap_or(Duration::from_secs(0)));
         let alpha = timestep_s / (timestep_s + parameters.time_constant_s);
-        let last_val = self.buffer.unwrap_or(parameters.ic);
-        let res = alpha * inputs + ((T::one() - alpha) * last_val);
+        let res = alpha * inputs + ((T::one() - alpha) * self.buffer);
+        self.buffer = res;
         self.data = <OldBlockData as FromPass<T>>::from_pass(res);
-        self.buffer.insert(res).as_by()
+        res
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -92,11 +105,14 @@ where
         let timestep_s = T::from_duration(context.timestep().unwrap_or(Duration::from_secs(0)));
         let alpha = timestep_s / (timestep_s + parameters.time_constant_s);
         let input = inputs.as_view();
-        let last_val = self.buffer.as_ref().unwrap_or(&parameters.ic).as_view();
-        let res = input * alpha + (last_val * (T::one() - alpha));
-        let res = Self::Output::from_view(&res.as_view());
-        self.data = OldBlockData::from_pass(&res);
-        self.buffer.insert(res)
+        let res = input * alpha + (self.buffer.as_view() * (T::one() - alpha));
+        self.buffer = Self::Output::from_view(&res.as_view());
+        self.data = OldBlockData::from_pass(&self.buffer);
+        &self.buffer
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -223,11 +239,14 @@ mod tests {
         let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
-        let mut block = IirFilterBlock::<Matrix<1, 2, f64>>::default();
         let ic = Matrix {
             data: [[0.5], [1.0]],
         };
         let parameters = Parameters::new(ic, time_constants_s);
+        // HasIc::new seeds the buffer with the IC; Default::default() would
+        // start at T::default() and the first output would be averaged against
+        // zero instead of the IC.
+        let mut block = IirFilterBlock::<Matrix<1, 2, f64>>::new(&parameters);
 
         let input = Matrix {
             data: [[1.0], [2.0]],

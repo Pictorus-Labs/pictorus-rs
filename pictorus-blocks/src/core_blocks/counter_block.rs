@@ -52,6 +52,10 @@ where
     ) -> PassBy<'b, Self::Output> {
         T::apply(&mut self.counter, inputs)
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.counter.as_by()
+    }
 }
 
 impl<T: Apply> Default for CounterBlock<T>
@@ -127,6 +131,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_counter_default_buffer_no_panic() {
+        let block = CounterBlock::<(Matrix<1, 1, bool>, Matrix<1, 1, bool>)>::default();
+        assert_eq!(block.buffer(), &Matrix::<1, 1, f64>::zeroed());
+    }
+
+    #[test]
     fn test_counter_block_simple_f64() {
         let p = Parameters::new();
         let mut block = CounterBlock::<(Matrix<1, 1, bool>, Matrix<1, 1, bool>)>::default();
@@ -138,8 +148,9 @@ mod tests {
         let mut reset = Matrix::<1, 1, bool>::zeroed();
         reset.data[0][0] = false;
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = *block.process(&p, &c, (&increment, &reset));
         assert!(output.data[0][0] == 1.0);
+        assert_eq!(block.buffer(), &output);
 
         let output = block.process(&p, &c, (&increment, &reset));
         assert!(output.data[0][0] == 2.0);

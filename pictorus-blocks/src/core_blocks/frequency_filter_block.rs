@@ -30,6 +30,11 @@ where
     OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
+        log::warn!(
+            "FrequencyFilterBlock constructed via Default; IC not seeded. \
+             Prefer FrequencyFilterBlock::new(&parameters) — otherwise buffer() will return \
+             T::default() until the first process() call."
+        );
         Self {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             prev_data: None,
@@ -112,6 +117,10 @@ where
         self.data = OldBlockData::from_pass(self.output.as_by());
         self.output.as_by()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.output.as_by()
+    }
 }
 
 impl<T, const NROWS: usize, const NCOLS: usize> ProcessBlock
@@ -152,6 +161,10 @@ where
             prev_time: context.time(),
         });
         self.data = OldBlockData::from_pass(self.output.as_by());
+        self.output.as_by()
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
         self.output.as_by()
     }
 }

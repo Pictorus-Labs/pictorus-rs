@@ -91,6 +91,10 @@ where
         self.data = <OldBlockData as FromPass<T::Output>>::from_pass(res);
         res
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        <T::Output as DefaultStorage>::from_storage(&self.buffer)
+    }
 }
 
 /// Parameters for the SwitchBlock
@@ -313,6 +317,12 @@ mod tests {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_switch_default_buffer_no_panic() {
+        let block = SwitchBlock::<(f64, f64, f64)>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_switch_block_2_scalars() {
         let ctxt = StubContext::default();
 
@@ -323,6 +333,7 @@ mod tests {
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, 1.0);
         assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

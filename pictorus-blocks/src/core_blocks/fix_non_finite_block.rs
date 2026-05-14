@@ -59,6 +59,10 @@ where
         self.data = OldBlockData::from_pass(res);
         res
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 #[cfg(test)]
@@ -66,6 +70,12 @@ mod tests {
     use crate::testing::StubContext;
 
     use super::*;
+
+    #[test]
+    fn test_fix_non_finite_default_buffer_no_panic() {
+        let block = FixNonFiniteBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
 
     #[test]
     fn test_passthrough_block_scalar() {
@@ -77,6 +87,7 @@ mod tests {
         let output = block.process(&params, &ctxt, input.as_by());
         assert_eq!(output, input);
         assert_eq!(block.data.scalar(), input);
+        assert_eq!(block.buffer(), output);
 
         let input = f64::NAN;
         let output = block.process(&params, &ctxt, input.as_by());

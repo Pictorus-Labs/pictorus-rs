@@ -91,6 +91,10 @@ macro_rules! impl_vector_sort {
                 self.data = <OldBlockData as FromPass<Self::Output>>::from_pass(&self.buffer);
                 &self.buffer
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
 
         impl ProcessBlock for VectorSortBlock<$type, $type> {
@@ -107,6 +111,10 @@ macro_rules! impl_vector_sort {
                 self.buffer = input;
                 self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
     };
@@ -140,6 +148,12 @@ mod tests {
     ///     let output = block.process(&parameters, &c, &input);
     /// }
     /// ```
+    #[test]
+    fn test_vector_sort_default_buffer_no_panic() {
+        let block = VectorSortBlock::<f64, f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
     macro_rules! impl_vector_sort_tests {
         ($type:ty) => {
             paste! {

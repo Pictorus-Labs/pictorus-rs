@@ -35,7 +35,7 @@ where
     OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T: Apply<Parameters>> Default for MinMaxBlock<T>
@@ -45,7 +45,7 @@ where
     fn default() -> Self {
         MinMaxBlock {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -64,9 +64,15 @@ where
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
-        let res = T::apply(inputs, parameters, &mut self.buffer);
-        self.data = OldBlockData::from_pass(res);
-        res
+        let mut tmp: Option<T::Output> = None;
+        T::apply(inputs, parameters, &mut tmp);
+        self.buffer = tmp.expect("apply must initialize the buffer");
+        self.data = OldBlockData::from_pass(self.buffer.as_by());
+        self.buffer.as_by()
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -164,6 +170,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_min_max_default_buffer_no_panic() {
+        let block = MinMaxBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = MinMaxBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_single_scalar() {
         let ctxt = StubContext::default();
         let mut block = MinMaxBlock::<f64>::default();
@@ -172,6 +187,7 @@ mod tests {
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
         assert_eq!(block.data.scalar(), 99.0);
+        assert_eq!(block.buffer(), res);
 
         parameters.method = MinMaxMethod::Max;
         let res = block.process(&parameters, &ctxt, input.as_by());

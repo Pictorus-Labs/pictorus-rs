@@ -5,7 +5,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 /// Block for performing an aggregation operation (i.e. sum, min, max) on input data.
 pub struct AggregateBlock<T: Apply> {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T: Apply> Default for AggregateBlock<T>
@@ -16,7 +16,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            buffer: None,
+            buffer: <T::Output>::default(),
         }
     }
 }
@@ -40,13 +40,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass {
     type Output: Scalar;
 
     fn apply<'s>(
-        store: &mut Option<Self::Output>,
+        store: &mut Self::Output,
         input: PassBy<Self>,
         method: AggregateMethod,
     ) -> PassBy<'s, Self::Output>;
@@ -63,11 +67,11 @@ macro_rules! scalar_impls {
             type Output = $type;
 
             fn apply<'s>(
-                store: &mut Option<Self::Output>,
+                store: &mut Self::Output,
                 input: PassBy<Self>,
                 _method: AggregateMethod,
             ) -> PassBy<'s, Self::Output> {
-                *store = Some(input);
+                *store = input;
                 input
             }
         }
@@ -81,7 +85,7 @@ macro_rules! float_matrix_impl {
             type Output = $type;
 
             fn apply<'s>(
-                store: &mut Option<Self::Output>,
+                store: &mut Self::Output,
                 input: PassBy<Self>,
                 method: AggregateMethod,
             ) -> PassBy<'s, Self::Output> {
@@ -105,7 +109,7 @@ macro_rules! float_matrix_impl {
                     AggregateMethod::Min => view.min(),
                     AggregateMethod::Max => view.max(),
                 };
-                *store = Some(output);
+                *store = output;
                 output
             }
         }
@@ -149,6 +153,12 @@ mod tests {
     use approx::assert_relative_eq;
 
     #[test]
+    fn test_aggregate_default_buffer_no_panic() {
+        let block = AggregateBlock::<Matrix<4, 7, f64>>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_aggregate_sum_f32() {
         let mut block = AggregateBlock::<Matrix<4, 7, f32>>::default();
         let context = StubContext::default();
@@ -161,6 +171,7 @@ mod tests {
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 28.0);
         assert_relative_eq!(block.data.scalar(), 28.0);
+        assert_relative_eq!(block.buffer(), output);
     }
 
     #[test]

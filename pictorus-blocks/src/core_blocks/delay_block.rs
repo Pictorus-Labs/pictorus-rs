@@ -1,5 +1,5 @@
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
-use pictorus_traits::{HasIc, Pass, ProcessBlock};
+use pictorus_traits::{HasIc, Pass, PassBy, ProcessBlock};
 
 use crate::traits::CopyInto;
 
@@ -34,6 +34,11 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
+        log::warn!(
+            "DelayBlock constructed via Default; IC not seeded. \
+             Prefer DelayBlock::new(&parameters) — otherwise buffer() will return \
+             T::default() until the first process() call."
+        );
         Self {
             samples: [T::default(); N],
             initial_accumulation: true,
@@ -94,6 +99,10 @@ where
         self.data = OldBlockData::from_pass(self.output.as_by());
         self.output.as_by()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.output.as_by()
+    }
 }
 
 pub struct Parameters<T: Pass + Default + Copy> {
@@ -124,6 +133,7 @@ mod tests {
 
         // Initial condition should be output until N samples are received
         assert_eq!(block.process(&parameters, &context, 1.0), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(block.process(&parameters, &context, 2.0), 0.0);
         assert_eq!(block.process(&parameters, &context, 3.0), 0.0);
         assert_eq!(block.process(&parameters, &context, 4.0), 1.0);

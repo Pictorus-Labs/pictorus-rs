@@ -17,7 +17,7 @@ where
     T: Apply,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T> Default for ConstantBlock<T>
@@ -27,7 +27,7 @@ where
 {
     fn default() -> Self {
         Self {
-            buffer: None,
+            buffer: <T::Output>::default(),
             data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
         }
     }
@@ -50,13 +50,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass + Sized {
     type Output: Pass + Default;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         parameters: &Parameters<Self>,
     ) -> PassBy<'s, Self::Output>;
 }
@@ -65,10 +69,10 @@ impl Apply for f64 {
     type Output = f64;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         parameters: &Parameters<Self>,
     ) -> PassBy<'s, Self::Output> {
-        *store = Some(parameters.constant);
+        *store = parameters.constant;
         parameters.constant
     }
 }
@@ -80,12 +84,11 @@ where
     type Output = Matrix<NROWS, NCOLS, T>;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         parameters: &Parameters<Self>,
     ) -> PassBy<'s, Self::Output> {
-        let output = store.insert(Matrix::zeroed());
-        *output = parameters.constant;
-        output
+        *store = parameters.constant;
+        store
     }
 }
 
@@ -96,6 +99,15 @@ mod tests {
     use pictorus_block_data::{BlockData, ToPass};
 
     #[test]
+    fn test_constant_default_buffer_no_panic() {
+        let block = ConstantBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = ConstantBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_constant_scalar() {
         let mut block = ConstantBlock::<f64>::default();
         let parameters = Parameters::new(3.0);
@@ -104,6 +116,7 @@ mod tests {
         let output = block.generate(&parameters, &context);
         assert_eq!(output, 3.0);
         assert_eq!(block.data, BlockData::from_scalar(3.0));
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

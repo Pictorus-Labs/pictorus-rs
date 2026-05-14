@@ -24,7 +24,7 @@ impl<T> Parameters<T> {
 /// If the input is within the deadband, the output is zero. Otherwise, the input value is passed through.
 pub struct DeadbandBlock<T> {
     pub data: OldBlockData,
-    buffer: Option<T>,
+    buffer: T,
 }
 
 impl<T> Default for DeadbandBlock<T>
@@ -35,7 +35,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
+            buffer: T::default(),
         }
     }
 }
@@ -58,9 +58,13 @@ macro_rules! impl_deadband_block {
             ) -> PassBy<'_, Self::Output> {
                 let in_deadband = input < parameters.upper_limit && input > parameters.lower_limit;
                 let res = if in_deadband { 0.0 } else { input };
-                let output = self.buffer.insert(res);
+                self.buffer = res;
                 self.data = OldBlockData::from_scalar(res.into());
-                *output
+                self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
 
@@ -79,13 +83,17 @@ macro_rules! impl_deadband_block {
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
-                let output = self.buffer.insert(Matrix::zeroed());
+                self.buffer = Matrix::zeroed();
                 input.for_each(|v, c, r| {
                     let in_deadband = v < parameters.upper_limit && v > parameters.lower_limit;
-                    output.data[c][r] = if in_deadband { 0.0 } else { v };
+                    self.buffer.data[c][r] = if in_deadband { 0.0 } else { v };
                 });
-                self.data = OldBlockData::from_pass(output);
-                output
+                self.data = OldBlockData::from_pass(&self.buffer);
+                &self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
     };
@@ -100,6 +108,15 @@ mod tests {
     use crate::testing::StubContext;
     use paste::paste;
 
+    #[test]
+    fn test_deadband_default_buffer_no_panic() {
+        let block = DeadbandBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = DeadbandBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
     macro_rules! test_deadband_block {
         ($type:ty) => {
             paste! {
@@ -113,6 +130,7 @@ mod tests {
                     let input = -1.0;
                     let output = block.process(&parameters, &ctxt, input);
                     assert_eq!(output, -1.0);
+                    assert_eq!(block.buffer(), output);
 
                     let input = 1.0;
                     let output = block.process(&parameters, &ctxt, input);

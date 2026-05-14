@@ -8,7 +8,7 @@ where
     T: Apply<B>,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<B, T> Default for BiasBlock<B, T>
@@ -20,7 +20,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            buffer: None,
+            buffer: <T::Output>::default(),
         }
     }
 }
@@ -45,13 +45,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply<B: Scalar>: Pass {
     type Output: Pass + Default;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         offset: B,
     ) -> PassBy<'s, Self::Output>;
@@ -64,13 +68,13 @@ where
     type Output = Promotion<B, f64>;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         offset: B,
     ) -> PassBy<'s, Self::Output> {
         let output =
             <B as Promote<f64>>::promote_left(offset) + <B as Promote<f64>>::promote_right(input);
-        *store = Some(output);
+        *store = output;
         output
     }
 }
@@ -82,13 +86,13 @@ where
     type Output = Promotion<B, f32>;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         offset: B,
     ) -> PassBy<'s, Self::Output> {
         let output =
             <B as Promote<f32>>::promote_left(offset) + <B as Promote<f32>>::promote_right(input);
-        *store = Some(output);
+        *store = output;
         output
     }
 }
@@ -101,18 +105,17 @@ where
     type Output = Matrix<NROWS, NCOLS, Promotion<B, T>>;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         offset: B,
     ) -> PassBy<'s, Self::Output> {
-        let output = store.insert(Matrix::zeroed());
         for i in 0..NROWS {
             for j in 0..NCOLS {
-                output.data[j][i] = <B as Promote<T>>::promote_left(offset)
+                store.data[j][i] = <B as Promote<T>>::promote_left(offset)
                     + <B as Promote<T>>::promote_right(input.data[j][i]);
             }
         }
-        output
+        store
     }
 }
 
@@ -140,6 +143,15 @@ mod tests {
     use pictorus_block_data::ToPass;
 
     #[test]
+    fn test_bias_default_buffer_no_panic() {
+        let block = BiasBlock::<f64, f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = BiasBlock::<f64, Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_bias_scalar() {
         let mut block = BiasBlock::<f64, f64>::default();
         let parameters = Parameters::new(3.0);
@@ -148,6 +160,7 @@ mod tests {
         let output = block.process(&parameters, &context, 2.0);
         assert_eq!(output, 5.0);
         assert_eq!(block.data.scalar(), 5.0);
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

@@ -15,7 +15,11 @@ pub struct IntegralBlock<T: Apply>
 where
     OldBlockData: FromPass<T::Output>,
 {
+    ic: T::Output,
     previous_sample: Option<T::Output>,
+    // This is still Option<T> because we use this to determine if a reset has occurred or
+    // data has not been processed. .buffer needs to return something, so we need the .ic
+    // field or re-think how this block handles the first run and resets.
     output: Option<T::Output>,
     pub data: OldBlockData,
 }
@@ -25,7 +29,13 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
+        log::warn!(
+            "IntegralBlock constructed via Default; IC not seeded. \
+             Prefer IntegralBlock::new(&parameters) — otherwise buffer() will return \
+             T::Output::default() until the first process() call."
+        );
         Self {
+            ic: T::Output::default(),
             previous_sample: None,
             output: None,
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
@@ -82,6 +92,11 @@ where
         self.data = OldBlockData::from_pass(output.as_by());
         output.as_by()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        // Falls back to the cached IC set in ::new
+        self.output.unwrap_or(self.ic).as_by()
+    }
 }
 
 impl<F: Float, R: Scalar> HasIc for IntegralBlock<(F, R)>
@@ -90,6 +105,7 @@ where
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IntegralBlock::<(F, R)> {
+            ic: parameters.ic,
             previous_sample: None,
             output: Some(parameters.ic),
             data: <OldBlockData as FromPass<F>>::from_pass(parameters.ic.as_by()),
@@ -142,6 +158,10 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.output.as_ref().unwrap_or(&self.ic).as_by()
+    }
 }
 
 impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
@@ -151,6 +171,7 @@ where
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IntegralBlock::<(Matrix<NROWS, NCOLS, F>, R)> {
+            ic: parameters.ic,
             previous_sample: None,
             output: Some(parameters.ic),
             data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, F>>>::from_pass(&parameters.ic),
@@ -247,6 +268,7 @@ mod tests {
         let reset_output =
             block.process(&parameters, &runtime.context(), (1000000.0, true).as_by());
         assert_relative_eq!(reset_output, 0.0, epsilon = 0.01);
+        assert_relative_eq!(block.buffer(), reset_output);
     }
 
     #[test]

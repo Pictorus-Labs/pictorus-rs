@@ -18,7 +18,7 @@ where
     T::Output: Finalize,
     OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
-    store: Option<T::Output>,
+    store: T::Output,
     pub data: OldBlockData,
 }
 
@@ -30,7 +30,7 @@ where
 {
     fn default() -> Self {
         Self {
-            store: None,
+            store: T::Output::default(),
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
@@ -51,11 +51,16 @@ where
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        self.store = None;
-        T::apply(inputs, parameters, &mut self.store);
-        let result = T::Output::finalize(parameters.method, &mut self.store);
-        self.data = OldBlockData::from_pass(result);
-        result
+        let mut tmp: Option<T::Output> = None;
+        T::apply(inputs, parameters, &mut tmp);
+        T::Output::finalize(parameters.method, &mut tmp);
+        self.store = tmp.expect("apply must initialize the buffer");
+        self.data = OldBlockData::from_pass(self.store.as_by());
+        self.store.as_by()
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.store.as_by()
     }
 }
 
@@ -216,6 +221,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_logical_default_buffer_no_panic() {
+        let block = LogicalBlock::<(f64, f64, f64)>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_logical_and_scalar() {
         let ctxt = StubContext::default();
         let params = Parameters::new("And");
@@ -225,6 +236,7 @@ mod tests {
         let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), res);
 
         // Some zero inputs = false output
         let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));

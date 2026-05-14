@@ -32,7 +32,7 @@ where
     I: Pass + Mergeable<O>,
 {
     pub data: OldBlockData,
-    buffer: Option<<I as Mergeable<O>>::Output>,
+    buffer: <I as Mergeable<O>>::Output,
     _phantom: core::marker::PhantomData<I>,
 }
 
@@ -47,7 +47,7 @@ where
             data: <OldBlockData as FromPass<<I as Mergeable<O>>::Output>>::from_pass(
                 <I as Mergeable<O>>::Output::default().as_by(),
             ),
-            buffer: None,
+            buffer: <I as Mergeable<O>>::Output::default(),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -70,11 +70,17 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let mut offset = 0;
-        let output = I::get_merge(input, &mut offset, &mut self.buffer);
-        self.data = OldBlockData::from_pass(output);
+        let mut tmp: Option<<I as Mergeable<O>>::Output> = None;
+        I::get_merge(input, &mut offset, &mut tmp);
+        self.buffer = tmp.expect("get_merge must initialize the buffer");
+        self.data = OldBlockData::from_pass(self.buffer.as_by());
         self.data
             .set_type(pictorus_block_data::BlockDataType::Vector);
-        output
+        self.buffer.as_by()
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -344,6 +350,12 @@ mod tests {
     use pictorus_block_data::{BlockData as OldBlockData, BlockDataType, ToPass};
 
     #[test]
+    fn test_vector_merge_default_buffer_no_panic() {
+        let block = VectorMergeBlock::<Matrix<1, 1, f64>, f64>::default();
+        assert_eq!(block.buffer(), &Matrix::<1, 1, f64>::zeroed());
+    }
+
+    #[test]
     fn test_vector_merge_block_scalar_original_test() {
         // Should be able to pass in scalars, vectors, or matrices,
         // and get back a flattened vector
@@ -405,8 +417,9 @@ mod tests {
         let mut block = VectorMergeBlock::<Matrix<1, 1, f64>, f64>::default();
         let stub_context = StubContext::default();
         let parameters = Parameters {};
-        let result = block.process(&parameters, &stub_context, 1.);
-        assert_eq!(result, &Matrix { data: [[1.]] });
+        let result = *block.process(&parameters, &stub_context, 1.);
+        assert_eq!(result, Matrix { data: [[1.]] });
+        assert_eq!(block.buffer(), &result);
     }
 
     #[test]

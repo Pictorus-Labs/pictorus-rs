@@ -45,6 +45,11 @@ where
     OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
+        log::warn!(
+            "SlidingWindowBlock constructed via Default; IC not seeded. \
+             Prefer SlidingWindowBlock::new(&parameters) — otherwise buffer() will return \
+             T::default() until the first process() call."
+        );
         SlidingWindowBlock {
             data: <OldBlockData as FromPass<O>>::from_pass(O::default().as_by()),
             memory: Deque::new(),
@@ -110,6 +115,10 @@ where
         }
 
         &self.buffer
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -183,6 +192,10 @@ where
 
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 #[cfg(test)]
@@ -201,9 +214,10 @@ mod tests {
             data: [[-1.0], [-1.0], [-1.0]],
         };
 
-        let output = block.process(&Parameters::new(initial_condition), &c, 1.0);
+        let output = *block.process(&Parameters::new(initial_condition), &c, 1.0);
         assert_eq!(output.data.as_flattened(), [-1.0, -1.0, 1.0]);
         assert_eq!(block.data, OldBlockData::from_matrix(&[&[-1.0, -1.0, 1.0]]));
+        assert_eq!(block.buffer(), &output);
 
         let ic2 = Matrix {
             data: [[0.0], [0.0], [0.0]],

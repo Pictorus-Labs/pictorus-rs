@@ -124,6 +124,10 @@ where
         self.data = OldBlockData::from_pass(&self.buffer);
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 impl<S: Scalar, const IROWS: usize, const ICOLS: usize> ProcessBlock
@@ -155,10 +159,25 @@ where
         self.data = OldBlockData::from_scalar(self.buffer.into());
         self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_vector_slice_default_buffer_no_panic() {
+        use super::*;
+
+        let block = VectorSliceBlock::<Matrix<4, 4, f64>, f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
     #[test]
     fn test_vector_slice_block_1x1_scalar() {
         use super::*;

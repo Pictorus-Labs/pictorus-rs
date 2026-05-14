@@ -1,6 +1,6 @@
 use num_traits::Float;
 use pictorus_block_data::BlockData;
-use pictorus_traits::{GeneratorBlock, Scalar};
+use pictorus_traits::{GeneratorBlock, PassBy, Scalar};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use rand_distr::{Distribution, Normal, StandardNormal};
 
@@ -14,6 +14,7 @@ where
 {
     phantom: core::marker::PhantomData<T>,
     rng: SmallRng,
+    buffer: T,
     pub data: BlockData,
 }
 
@@ -27,6 +28,7 @@ where
         Self {
             phantom: core::marker::PhantomData,
             rng: SmallRng::seed_from_u64(0u64),
+            buffer: T::default(),
             data: BlockData::from_scalar(f64::from(T::default())),
         }
     }
@@ -50,8 +52,13 @@ where
             .rng
             //Will Fail if std2 is infinite: https://docs.rs/rand_distr/latest/src/rand_distr/normal.rs.html#156-161
             .sample(Normal::new(parameters.mean, parameters.std2).unwrap());
+        self.buffer = val;
         self.data = BlockData::from_scalar(f64::from(val));
         val
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
     }
 }
 
@@ -72,13 +79,20 @@ mod tests {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_random_number_default_buffer_no_panic() {
+        let block = RandomNumberBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_random_number_block() {
         let stub_context = StubContext::default();
         // Just verify constructor and run method don't panic
 
         //f32
         let mut block = RandomNumberBlock::<f32>::default();
-        block.generate(&Parameters::new(1.0, 2.0), &stub_context);
+        let out = block.generate(&Parameters::new(1.0, 2.0), &stub_context);
+        assert_eq!(block.buffer(), out);
 
         //f64
         let mut block = RandomNumberBlock::<f64>::default();

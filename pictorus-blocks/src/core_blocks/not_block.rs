@@ -14,7 +14,7 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T> Default for NotBlock<T>
@@ -25,7 +25,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -49,13 +49,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass {
     type Output: Pass + Default;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         method: NotMethod,
     ) -> PassBy<'s, Self::Output>;
@@ -65,7 +69,7 @@ impl Apply for bool {
     type Output = bool;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         method: NotMethod,
     ) -> PassBy<'s, Self::Output> {
@@ -73,7 +77,7 @@ impl Apply for bool {
             NotMethod::Logical => !input,
             NotMethod::Bitwise => !input,
         };
-        *store = Some(output);
+        *store = output;
         output
     }
 }
@@ -82,12 +86,12 @@ impl<const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, bool
     type Output = Matrix<NROWS, NCOLS, bool>;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         method: NotMethod,
     ) -> PassBy<'s, Self::Output> {
-        let output = store.insert(Matrix::zeroed());
-        output
+        *store = Matrix::zeroed();
+        store
             .data
             .as_flattened_mut()
             .iter_mut()
@@ -99,7 +103,7 @@ impl<const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, bool
                     NotMethod::Bitwise => !input_val,
                 };
             });
-        output
+        store
     }
 }
 
@@ -109,7 +113,7 @@ macro_rules! impl_not_apply {
             type Output = $type;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 input: PassBy<Self>,
                 method: NotMethod,
             ) -> PassBy<'s, Self::Output> {
@@ -123,7 +127,7 @@ macro_rules! impl_not_apply {
                     }
                     NotMethod::Bitwise => !(input as $cast_type) as $type,
                 };
-                *store = Some(output);
+                *store = output;
                 output
             }
         }
@@ -132,12 +136,12 @@ macro_rules! impl_not_apply {
             type Output = Matrix<NROWS, NCOLS, $type>;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 input: PassBy<Self>,
                 method: NotMethod,
             ) -> PassBy<'s, Self::Output> {
-                let output = store.insert(Matrix::zeroed());
-                output
+                *store = Matrix::zeroed();
+                store
                     .data
                     .as_flattened_mut()
                     .iter_mut()
@@ -155,7 +159,7 @@ macro_rules! impl_not_apply {
                             NotMethod::Bitwise => !(input_val as $cast_type) as $type,
                         };
                     });
-                output
+                store
             }
         }
     };
@@ -185,6 +189,15 @@ mod tests {
     use crate::testing::StubContext;
     use paste::paste;
 
+    #[test]
+    fn test_not_default_buffer_no_panic() {
+        let block = NotBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = NotBlock::<bool>::default();
+        assert!(!block.buffer());
+    }
+
     macro_rules! test_not_block {
         ($type:ty) => {
             paste! {
@@ -197,6 +210,7 @@ mod tests {
                     let res = block.process(&parameters, &context, 1.0);
                     assert_eq!(res, 0.0);
                     assert_eq!(block.data.scalar(), 0.0);
+                    assert_eq!(block.buffer(), res);
 
                     let res = block.process(&parameters, &context, 0.0);
                     assert_eq!(res, 1.0);

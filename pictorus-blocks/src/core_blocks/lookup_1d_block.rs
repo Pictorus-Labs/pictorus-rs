@@ -38,6 +38,10 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 impl<const N: usize, S: Float, T: Apply<N, S>> Default for Lookup1DBlock<N, S, T>
@@ -93,22 +97,24 @@ pub trait Apply<const N: usize, S: Float>: Pass + Default {
 
 impl<const N: usize, S: Float> Apply<N, S> for S {
     fn apply<'s>(
-        _store: &'s mut Self,
+        store: &'s mut Self,
         input: PassBy<Self>,
         params: &Parameters<N, S>,
     ) -> PassBy<'s, Self> {
         let interp_method = &params.interp_method;
 
-        if input < params.break_points_u1[0] {
-            return params.data_points[0];
+        let result = if input < params.break_points_u1[0] {
+            params.data_points[0]
         } else if input >= params.break_points_u1[N - 1] {
-            return params.data_points[N - 1];
-        }
-
-        match interp_method {
-            InterpMethod::Linear => linear_interpolation(input, params),
-            InterpMethod::Nearest => nearest_interpolation(input, params),
-        }
+            params.data_points[N - 1]
+        } else {
+            match interp_method {
+                InterpMethod::Linear => linear_interpolation(input, params),
+                InterpMethod::Nearest => nearest_interpolation(input, params),
+            }
+        };
+        *store = result;
+        result
     }
 }
 
@@ -173,6 +179,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_lookup_1d_default_buffer_no_panic() {
+        let block = Lookup1DBlock::<3, f64, f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_scalar_linear() {
         let ctxt = StubContext::default();
         let params = Parameters::new("Linear", [0.0, 1.0, 2.0], [-1.0, 1.0, 10.0]);
@@ -181,6 +193,7 @@ mod tests {
         let res = block.process(&params, &ctxt, 0.0);
         assert_eq!(res, -1.0);
         assert_eq!(block.data.scalar(), -1.0);
+        assert_eq!(block.buffer(), res);
 
         let res = block.process(&params, &ctxt, 1.0);
         assert_eq!(res, 1.0);

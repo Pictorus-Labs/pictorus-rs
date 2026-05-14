@@ -163,6 +163,10 @@ impl<const N_IN: usize, const N_OUT: usize> ProcessBlock for FmuBlock<N_IN, N_OU
             .collect();
         &self.buffer
     }
+
+    fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+        &self.buffer
+    }
 }
 
 /// Parameters for the FMU block.
@@ -202,6 +206,13 @@ impl Parameters {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_fmu_default_buffer_no_panic() {
+        use pictorus_traits::ProcessBlock;
+        let block: FmuBlock<2, 3> = FmuBlock::default();
+        assert_eq!(block.buffer(), &[0.0, 0.0, 0.0]);
+    }
 
     #[test]
     fn test_impls_associated_types() {

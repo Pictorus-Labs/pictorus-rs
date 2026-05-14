@@ -93,6 +93,10 @@ where
             .collect();
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.buffer
+    }
 }
 
 impl<const N: usize> IsValid for BytesUnpackBlock<N> {

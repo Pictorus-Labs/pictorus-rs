@@ -61,4 +61,19 @@ impl ProcessBlock for UdpTransmitBlock {
         self.data.set_bytes(&self.buffer);
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.buffer
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_udp_transmit_default_buffer_no_panic() {
+        let block = UdpTransmitBlock::default();
+        assert_eq!(block.buffer(), b"".as_ref());
+    }
 }
