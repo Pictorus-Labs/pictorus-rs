@@ -330,7 +330,7 @@ pub trait ProcessBlock: Default {
 
 pub trait HasIc: ProcessBlock {
     /// Constructs a new instance of the block with the given initial conditions. This should be
-    /// used in place of `Default::default()` when the block has initial conditions that need to be seeded 
+    /// used in place of `Default::default()` when the block has initial conditions that need to be seeded
     /// to ensure the .buffer() method returns the correct T-0 value.
     fn new(parameters: &Self::Parameters) -> Self;
 }

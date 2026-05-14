@@ -243,9 +243,7 @@ mod tests {
             data: [[0.5], [1.0]],
         };
         let parameters = Parameters::new(ic, time_constants_s);
-        // HasIc::new seeds the buffer with the IC; Default::default() would
-        // start at T::default() and the first output would be averaged against
-        // zero instead of the IC.
+
         let mut block = IirFilterBlock::<Matrix<1, 2, f64>>::new(&parameters);
 
         let input = Matrix {
