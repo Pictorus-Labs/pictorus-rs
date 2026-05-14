@@ -21,11 +21,13 @@ where
 {
     /// Constructs a new DelayBlock with the initial conditions from the parameters so that its output will be in a valid state before its first call to process.
     fn new(parameters: &Self::Parameters) -> Self {
-        let mut output = Self::default();
-        // Only setting the output and data fields here. After process has been called once the fields will be set with the IC on subsequent calls until N samples have been received.
-        T::copy_into(parameters.ic.as_by(), &mut output.output);
-        output.data = OldBlockData::from_pass(parameters.ic.as_by());
-        output
+        Self {
+            samples: [T::default(); N],
+            sample_index: 0,
+            initial_accumulation: true,
+            output: parameters.ic,
+            data: OldBlockData::from_pass(parameters.ic.as_by()),
+        }
     }
 }
 
