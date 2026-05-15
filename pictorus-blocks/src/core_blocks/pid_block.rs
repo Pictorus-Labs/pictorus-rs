@@ -32,10 +32,12 @@ where
     (T, R): IntegralApply<Output = T>,
 {
     fn default() -> Self {
-        panic!(
-            "PidBlock has initial conditions and must be constructed with \
-             PidBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "PidBlock has initial conditions and must be constructed with \
+                 PidBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 

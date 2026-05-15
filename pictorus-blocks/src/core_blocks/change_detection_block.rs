@@ -28,10 +28,12 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        panic!(
-            "ChangeDetectionBlock has initial conditions and must be constructed with \
-             ChangeDetectionBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "ChangeDetectionBlock has initial conditions and must be constructed with \
+                 ChangeDetectionBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 
