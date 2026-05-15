@@ -19,7 +19,7 @@ use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 /// the block will output false for the "is_valid" output.
 pub struct BytesSplitBlock<T: Apply> {
     pub data: Vec<OldBlockData>,
-    buffer: Option<T::Storage>,
+    buffer: T::Storage,
     last_valid_time: Option<Duration>,
 }
 
@@ -64,7 +64,7 @@ impl<T: Apply> Default for BytesSplitBlock<T> {
     fn default() -> Self {
         Self {
             data: T::default_block_data(),
-            buffer: None,
+            buffer: T::default_storage_value(),
             last_valid_time: None,
         }
     }
@@ -101,8 +101,12 @@ impl<T: Apply> ProcessBlock for BytesSplitBlock<T> {
         if parse_success {
             self.last_valid_time = Some(context.time());
         }
-        self.data = T::build_block_data(self.buffer.as_ref().unwrap());
-        <T as Apply>::storage_as_by(self.buffer.as_ref().unwrap())
+        self.data = T::build_block_data(&self.buffer);
+        <T as Apply>::storage_as_by(&self.buffer)
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        <T as Apply>::storage_as_by(&self.buffer)
     }
 }
 
@@ -158,7 +162,7 @@ pub trait Apply: Pass {
     /// Handles parsing input into the storage type, also manages the is_valid output. Outputs `true` if it was able to parse the input
     /// and `false` if it was not able to parse the input. This is used to update the `last_valid_time` field of the block.
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
@@ -172,7 +176,9 @@ pub trait Apply: Pass {
 
     fn default_block_data() -> Vec<OldBlockData>;
 
-    fn is_valid(storage: &Option<Self::Storage>) -> bool;
+    fn default_storage_value() -> Self::Storage;
+
+    fn is_valid(storage: &Self::Storage) -> bool;
 }
 
 impl<A: FromBytes> Apply for A
@@ -183,14 +189,13 @@ where
     type Output = (A, bool);
 
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
         update_age: Duration,
     ) -> bool {
-        let dest = dest.get_or_insert((A::default_storage(), false));
         let parsed_data = parse_bytes::<A>(
             input_bytes,
             delim_idxs,
@@ -218,12 +223,16 @@ where
         ))]
     }
 
+    fn default_storage_value() -> Self::Storage {
+        (A::default_storage(), false)
+    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (A::from_storage(&storage.0), storage.1)
     }
 
-    fn is_valid(storage: &Option<Self::Storage>) -> bool {
-        storage.as_ref().map(|s| s.1).unwrap_or(false)
+    fn is_valid(storage: &Self::Storage) -> bool {
+        storage.1
     }
 }
 
@@ -236,14 +245,13 @@ where
     type Storage = (A::Storage, B::Storage, bool);
 
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
         update_age: Duration,
     ) -> bool {
-        let dest = dest.get_or_insert((A::default_storage(), B::default_storage(), false));
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
             delim_idxs,
@@ -281,6 +289,10 @@ where
         ]
     }
 
+    fn default_storage_value() -> Self::Storage {
+        (A::default_storage(), B::default_storage(), false)
+    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -288,8 +300,8 @@ where
             storage.2,
         )
     }
-    fn is_valid(storage: &Option<Self::Storage>) -> bool {
-        storage.as_ref().map(|s| s.2).unwrap_or(false)
+    fn is_valid(storage: &Self::Storage) -> bool {
+        storage.2
     }
 }
 
@@ -303,19 +315,13 @@ where
     type Storage = (A::Storage, B::Storage, C::Storage, bool);
 
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
         update_age: Duration,
     ) -> bool {
-        let dest = dest.get_or_insert((
-            A::default_storage(),
-            B::default_storage(),
-            C::default_storage(),
-            false,
-        ));
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
             delim_idxs,
@@ -363,6 +369,15 @@ where
         ]
     }
 
+    fn default_storage_value() -> Self::Storage {
+        (
+            A::default_storage(),
+            B::default_storage(),
+            C::default_storage(),
+            false,
+        )
+    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -371,8 +386,8 @@ where
             storage.3,
         )
     }
-    fn is_valid(storage: &Option<Self::Storage>) -> bool {
-        storage.as_ref().map(|s| s.3).unwrap_or(false)
+    fn is_valid(storage: &Self::Storage) -> bool {
+        storage.3
     }
 }
 
@@ -387,20 +402,13 @@ where
     type Storage = (A::Storage, B::Storage, C::Storage, D::Storage, bool);
 
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
         update_age: Duration,
     ) -> bool {
-        let dest = dest.get_or_insert((
-            A::default_storage(),
-            B::default_storage(),
-            C::default_storage(),
-            D::default_storage(),
-            false,
-        ));
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
             delim_idxs,
@@ -466,6 +474,16 @@ where
         ]
     }
 
+    fn default_storage_value() -> Self::Storage {
+        (
+            A::default_storage(),
+            B::default_storage(),
+            C::default_storage(),
+            D::default_storage(),
+            false,
+        )
+    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -476,8 +494,8 @@ where
         )
     }
 
-    fn is_valid(storage: &Option<Self::Storage>) -> bool {
-        storage.as_ref().map(|s| s.4).unwrap_or(false)
+    fn is_valid(storage: &Self::Storage) -> bool {
+        storage.4
     }
 }
 
@@ -500,21 +518,13 @@ where
     );
 
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
         update_age: Duration,
     ) -> bool {
-        let dest = dest.get_or_insert((
-            A::default_storage(),
-            B::default_storage(),
-            C::default_storage(),
-            D::default_storage(),
-            E::default_storage(),
-            false,
-        ));
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
             delim_idxs,
@@ -595,6 +605,17 @@ where
         ]
     }
 
+    fn default_storage_value() -> Self::Storage {
+        (
+            A::default_storage(),
+            B::default_storage(),
+            C::default_storage(),
+            D::default_storage(),
+            E::default_storage(),
+            false,
+        )
+    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -606,8 +627,8 @@ where
         )
     }
 
-    fn is_valid(storage: &Option<Self::Storage>) -> bool {
-        storage.as_ref().map(|s| s.5).unwrap_or(false)
+    fn is_valid(storage: &Self::Storage) -> bool {
+        storage.5
     }
 }
 
@@ -633,22 +654,13 @@ where
     );
 
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
         update_age: Duration,
     ) -> bool {
-        let dest = dest.get_or_insert((
-            A::default_storage(),
-            B::default_storage(),
-            C::default_storage(),
-            D::default_storage(),
-            E::default_storage(),
-            F::default_storage(),
-            false,
-        ));
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
             delim_idxs,
@@ -740,6 +752,18 @@ where
         ]
     }
 
+    fn default_storage_value() -> Self::Storage {
+        (
+            A::default_storage(),
+            B::default_storage(),
+            C::default_storage(),
+            D::default_storage(),
+            E::default_storage(),
+            F::default_storage(),
+            false,
+        )
+    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -752,8 +776,8 @@ where
         )
     }
 
-    fn is_valid(storage: &Option<Self::Storage>) -> bool {
-        storage.as_ref().map(|s| s.6).unwrap_or(false)
+    fn is_valid(storage: &Self::Storage) -> bool {
+        storage.6
     }
 }
 
@@ -788,23 +812,13 @@ where
     );
 
     fn apply(
-        dest: &mut Option<Self::Storage>,
+        dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
         update_age: Duration,
     ) -> bool {
-        let dest = dest.get_or_insert((
-            A::default_storage(),
-            B::default_storage(),
-            C::default_storage(),
-            D::default_storage(),
-            E::default_storage(),
-            F::default_storage(),
-            G::default_storage(),
-            false,
-        ));
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
             delim_idxs,
@@ -907,6 +921,19 @@ where
         ]
     }
 
+    fn default_storage_value() -> Self::Storage {
+        (
+            A::default_storage(),
+            B::default_storage(),
+            C::default_storage(),
+            D::default_storage(),
+            E::default_storage(),
+            F::default_storage(),
+            G::default_storage(),
+            false,
+        )
+    }
+
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -920,8 +947,8 @@ where
         )
     }
 
-    fn is_valid(storage: &Option<Self::Storage>) -> bool {
-        storage.as_ref().map(|s| s.7).unwrap_or(false)
+    fn is_valid(storage: &Self::Storage) -> bool {
+        storage.7
     }
 }
 

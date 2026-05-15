@@ -114,6 +114,10 @@ where
         .expect("parameters.signal_count is shorter than output tuple type");
         self.output_buffer.as_by()
     }
+
+    fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+        self.output_buffer.as_by()
+    }
 }
 
 impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> IsValid

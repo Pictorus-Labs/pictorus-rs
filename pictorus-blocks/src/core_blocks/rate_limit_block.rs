@@ -81,6 +81,10 @@ macro_rules! impl_rate_limit_block {
                     self.buffer
                 }
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
@@ -121,6 +125,10 @@ macro_rules! impl_rate_limit_block {
                     &self.buffer
                 }
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
     };
 }
@@ -137,6 +145,15 @@ mod tests {
     use core::time::Duration;
     use paste::paste;
     use pictorus_block_data::BlockData as OldBlockData;
+
+    #[test]
+    fn test_rate_limit_default_buffer_no_panic() {
+        let block = RateLimitBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = RateLimitBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
 
     macro_rules! impl_rate_limit_test {
         ($type:ty) => {
@@ -160,6 +177,7 @@ mod tests {
                     let output = block.process(&parameters, &runtime.context(), 3.0);
                     assert_eq!(block.data.scalar(), 2.0);
                     assert_eq!(output, 2.0);
+                    assert_eq!(block.buffer(), output);
 
                     // Test rising rate
                     runtime.tick();

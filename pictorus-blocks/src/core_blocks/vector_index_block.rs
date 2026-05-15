@@ -89,6 +89,10 @@ where
         self.buffer = output.into_tuple();
         self.buffer.as_by()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 #[cfg(test)]
@@ -103,6 +107,12 @@ mod tests {
     use std::vec::Vec;
 
     #[test]
+    fn test_vector_index_default_buffer_no_panic() {
+        let block = VectorIndexBlock::<1, f64, Matrix<3, 1, f64>>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_vector_index_block_scalar() {
         let c = StubContext::default();
         let mut index_block = VectorIndexBlock::<1, f64, Matrix<3, 1, f64>>::default();
@@ -115,6 +125,7 @@ mod tests {
         let parameters = Parameters::<1>::new(&vec_string_indexes);
         let output = index_block.process(&parameters, &c, &input);
         assert_eq!(output, 3.0);
+        assert_eq!(index_block.buffer(), output);
 
         // This also works:
         let vec_string_indexes = vec!["2".to_string()];

@@ -11,6 +11,7 @@ use crate::traits::Scalar;
 /// The hardware interaction happens downstream of this block.
 pub struct GpioOutputBlock<T: ToBool> {
     pub data: OldBlockData,
+    buffer: bool,
     _unused: PhantomData<T>,
 }
 
@@ -32,6 +33,7 @@ impl<T: ToBool> Default for GpioOutputBlock<T> {
     fn default() -> Self {
         GpioOutputBlock {
             _unused: PhantomData,
+            buffer: false,
             data: OldBlockData::scalar_from_bool(false),
         }
     }
@@ -49,8 +51,13 @@ impl<T: ToBool> ProcessBlock for GpioOutputBlock<T> {
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let res = T::to_bool(input);
+        self.buffer = res;
         self.data.set_scalar_bool(res);
         res
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
     }
 }
 
@@ -91,12 +98,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_gpio_output_default_buffer_no_panic() {
+        let block = GpioOutputBlock::<f64>::default();
+        assert!(!block.buffer());
+    }
+
+    #[test]
     fn test_gpio_output_block_scalar() {
         let mut block = GpioOutputBlock::<f64>::default();
         let context = StubContext::default();
 
         let output = block.process(&Parameters::new(), &context, 1.0);
         assert!(output);
+        assert_eq!(block.buffer(), output);
 
         let output = block.process(&Parameters::new(), &context, 0.0);
         assert!(!output);

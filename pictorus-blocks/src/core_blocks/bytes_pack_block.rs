@@ -37,6 +37,10 @@ impl<T: Apply> ProcessBlock for BytesPackBlock<T> {
         self.data = OldBlockData::from_bytes(&self.buffer);
         self.buffer.as_slice()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_slice()
+    }
 }
 
 /// Each input must be assigned a data spec that describes how to pack the input into bytes.
@@ -205,6 +209,12 @@ mod tests {
     use byteorder::WriteBytesExt;
 
     #[test]
+    fn test_bytes_pack_default_buffer_no_panic() {
+        let block = BytesPackBlock::<f64>::default();
+        assert_eq!(block.buffer(), b"");
+    }
+
+    #[test]
     fn test_bytes_pack_block_1_input() {
         let context = StubContext::default();
         let params = Parameters::new(&["I8:BigEndian"]);
@@ -220,6 +230,7 @@ mod tests {
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]

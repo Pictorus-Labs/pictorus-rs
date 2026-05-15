@@ -38,6 +38,7 @@ pub struct I2cInputBlock {
     pub data: OldBlockData,
     pub stale_check: StaleTracker,
     buffer: Vec<u8>,
+    last_valid: bool,
     previous_stale_check_time_ms: f64,
 }
 
@@ -47,6 +48,7 @@ impl Default for I2cInputBlock {
             data: OldBlockData::from_bytes(b""),
             stale_check: StaleTracker::from_ms(0.0),
             buffer: Vec::new(),
+            last_valid: false,
             previous_stale_check_time_ms: 0.,
         }
     }
@@ -83,10 +85,12 @@ impl ProcessBlock for I2cInputBlock {
             self.data.set_bytes(&self.buffer);
         }
 
-        (
-            &self.buffer,
-            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
-        )
+        self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
+        (&self.buffer, self.last_valid)
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        (&self.buffer, self.last_valid)
     }
 }
 
@@ -98,6 +102,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_i2c_input_default_buffer_no_panic() {
+        let block = I2cInputBlock::default();
+        assert_eq!(block.buffer(), (b"".as_ref(), false));
+    }
+
+    #[test]
     fn test_i2c_input_block() {
         let parameters = Parameters::new(0., 0., 10., 100.0);
         let mut runtime = StubRuntime::default();
@@ -105,9 +115,13 @@ mod tests {
 
         let input_data: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-        let output = block.process(&parameters, &runtime.context(), input_data);
+        let output = {
+            let (data, valid) = block.process(&parameters, &runtime.context(), input_data);
+            (data.to_vec(), valid)
+        };
         assert_eq!(output.0, input_data);
         assert_eq!(block.data.to_bytes(), input_data);
+        assert_eq!(block.buffer(), (output.0.as_slice(), output.1));
         let valid = block
             .is_valid(runtime.context().time().as_secs_f64())
             .clone();

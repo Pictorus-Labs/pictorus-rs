@@ -1,11 +1,12 @@
 use crate::traits::Float;
 use pictorus_block_data::BlockData;
-use pictorus_traits::{GeneratorBlock, Scalar};
+use pictorus_traits::{GeneratorBlock, PassBy, Scalar};
 
 #[derive(Debug, Clone)]
 /// Outputs a signal that ramps up linearly from a specified start time at a specified rate.
 pub struct RampBlock<T: Scalar + Float> {
     phantom: core::marker::PhantomData<T>,
+    buffer: T,
     pub data: BlockData,
 }
 
@@ -16,6 +17,7 @@ where
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
+            buffer: T::default(),
             data: BlockData::from_scalar(f64::from(T::default())),
         }
     }
@@ -37,8 +39,13 @@ where
         let time = T::from_duration(context.time());
         let ramp_val =
             parameters.rate * num_traits::Float::max(time - parameters.start_time, T::zero());
+        self.buffer = ramp_val;
         self.data = BlockData::from_scalar(ramp_val.into());
         ramp_val
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
     }
 }
 
@@ -62,6 +69,12 @@ mod tests {
     use core::time::Duration;
 
     #[test]
+    fn test_ramp_default_buffer_no_panic() {
+        let block = RampBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_ramp_block() {
         let mut block = RampBlock::<f64>::default();
         let mut runtime = StubRuntime::new(StubContext::new(
@@ -74,6 +87,7 @@ mod tests {
         let parameters = Parameters::new(0.0, 1.0);
         let output = block.generate(&parameters, &runtime.context());
         assert_eq!(output, 0.0);
+        assert_eq!(block.buffer(), output);
 
         runtime.tick();
         let output = block.generate(&parameters, &runtime.context());

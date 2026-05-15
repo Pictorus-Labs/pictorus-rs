@@ -41,7 +41,7 @@ impl Parameters {
 /// bool indicates whether the inversion was successful.
 pub struct MatrixInverseBlock<T: Apply<M>, M: Method> {
     pub data: OldBlockData,
-    store: Option<T::Output>,
+    store: T::Output,
     is_data_valid: bool,
 }
 
@@ -54,7 +54,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            store: None,
+            store: <T::Output>::default(),
             is_data_valid: false,
         }
     }
@@ -77,19 +77,22 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(input);
-        let output = match output {
+        match output {
             Some(output) => {
                 self.is_data_valid = true;
-                self.store.insert(output)
+                self.store = output;
             }
             None => {
                 self.is_data_valid = false;
-                self.store.get_or_insert(T::Output::default())
             }
         }
-        .as_by();
+        let output = self.store.as_by();
         self.data = OldBlockData::from_pass(output);
         (output, self.is_data_valid)
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        (self.store.as_by(), self.is_data_valid)
     }
 }
 
@@ -167,6 +170,15 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     #[test]
+    fn test_matrix_inverse_default_buffer_no_panic() {
+        let block = MatrixInverseBlock::<f64, Inverse>::default();
+        assert_eq!(block.buffer(), (0.0, false));
+
+        let block = MatrixInverseBlock::<Matrix<2, 2, f64>, Inverse>::default();
+        assert_eq!(block.buffer(), (&Matrix::<2, 2, f64>::zeroed(), false));
+    }
+
+    #[test]
     fn test_matrix_inverse_scalar() {
         let params = Parameters::new();
         let ctxt = StubContext::default();
@@ -175,6 +187,7 @@ mod tests {
         assert_eq!(res, (99.0, true));
         assert_eq!(block.data.scalar(), 99.0);
         assert!(block.is_valid(0.0).any());
+        assert_eq!(block.buffer(), res);
     }
 
     #[test]

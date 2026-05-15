@@ -1,5 +1,5 @@
 use pictorus_block_data::{BlockData as OldBlockData, FromPass};
-use pictorus_traits::{HasIc, Pass, ProcessBlock};
+use pictorus_traits::{HasIc, Pass, PassBy, ProcessBlock};
 
 use crate::traits::CopyInto;
 
@@ -21,11 +21,13 @@ where
 {
     /// Constructs a new DelayBlock with the initial conditions from the parameters so that its output will be in a valid state before its first call to process.
     fn new(parameters: &Self::Parameters) -> Self {
-        let mut output = Self::default();
-        // Only setting the output and data fields here. After process has been called once the fields will be set with the IC on subsequent calls until N samples have been received.
-        T::copy_into(parameters.ic.as_by(), &mut output.output);
-        output.data = OldBlockData::from_pass(parameters.ic.as_by());
-        output
+        Self {
+            samples: [T::default(); N],
+            sample_index: 0,
+            initial_accumulation: true,
+            output: parameters.ic,
+            data: OldBlockData::from_pass(parameters.ic.as_by()),
+        }
     }
 }
 
@@ -34,13 +36,10 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
-        Self {
-            samples: [T::default(); N],
-            initial_accumulation: true,
-            output: T::default(),
-            sample_index: 0,
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-        }
+        panic!(
+            "DelayBlock has initial conditions and must be constructed with \
+             DelayBlock::new(&parameters) (HasIc trait), not Default::default()."
+        );
     }
 }
 
@@ -94,6 +93,10 @@ where
         self.data = OldBlockData::from_pass(self.output.as_by());
         self.output.as_by()
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.output.as_by()
+    }
 }
 
 pub struct Parameters<T: Pass + Default + Copy> {
@@ -115,15 +118,16 @@ mod tests {
 
     #[test]
     fn test_delay_block_scalar() {
-        let mut block = DelayBlock::<f64, 3>::default();
         let parameters = Parameters {
             ic: 0.0,
             is_delayed: false,
         };
+        let mut block = DelayBlock::<f64, 3>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received
         assert_eq!(block.process(&parameters, &context, 1.0), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(block.process(&parameters, &context, 2.0), 0.0);
         assert_eq!(block.process(&parameters, &context, 3.0), 0.0);
         assert_eq!(block.process(&parameters, &context, 4.0), 1.0);
@@ -147,11 +151,11 @@ mod tests {
 
     #[test]
     fn test_delay_block_with_delayed_input() {
-        let mut block = DelayBlock::<f64, 3>::default();
         let parameters = Parameters {
             ic: 0.0,
             is_delayed: true,
         };
+        let mut block = DelayBlock::<f64, 3>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received
@@ -165,13 +169,13 @@ mod tests {
 
     #[test]
     fn test_delay_block_matrix() {
-        let mut block = DelayBlock::<Matrix<2, 2, f64>, 3>::default();
         let parameters = Parameters {
             ic: Matrix {
                 data: [[0.0, 0.0], [0.0, 0.0]],
             },
             is_delayed: false,
         };
+        let mut block = DelayBlock::<Matrix<2, 2, f64>, 3>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received
@@ -251,11 +255,11 @@ mod tests {
 
     #[test]
     fn test_delay_block_scalar_ics() {
-        let mut block = DelayBlock::<f64, 6>::default();
         let parameters = Parameters {
             ic: 42.0,
             is_delayed: false,
         };
+        let mut block = DelayBlock::<f64, 6>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received

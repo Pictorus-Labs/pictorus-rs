@@ -13,7 +13,7 @@ where
     T: Apply,
     OldBlockData: FromPass<<T as Apply>::Output>,
 {
-    store: Option<T::Output>,
+    store: T::Output,
     pub data: OldBlockData,
 }
 
@@ -24,7 +24,7 @@ where
 {
     fn default() -> Self {
         Self {
-            store: None,
+            store: T::Output::default(),
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
@@ -48,6 +48,10 @@ where
         let result = T::apply(inputs, *parameters, &mut self.store);
         self.data = OldBlockData::from_pass(result);
         result
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.store.as_by()
     }
 }
 
@@ -144,7 +148,7 @@ pub trait Apply: Pass {
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output>;
 }
 
@@ -159,13 +163,13 @@ where
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
-        let mut output = A::Output::default();
-        A::copy_into(input.0, &mut output);
-        A::Output::operate_assign(&mut output, input.1, operation);
+        *dest = A::Output::default();
+        A::copy_into(input.0, dest);
+        A::Output::operate_assign(dest, input.1, operation);
 
-        dest.insert(output).as_by()
+        dest.as_by()
     }
 }
 
@@ -181,13 +185,13 @@ where
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
-        let mut output = A::Output::default();
-        A::copy_into(input.0, &mut output);
-        <A::Output as BitOperations<B>>::operate_assign(&mut output, input.1, operation);
-        <A::Output as BitOperations<C>>::operate_assign(&mut output, input.2, operation);
-        dest.insert(output).as_by()
+        *dest = A::Output::default();
+        A::copy_into(input.0, dest);
+        <A::Output as BitOperations<B>>::operate_assign(dest, input.1, operation);
+        <A::Output as BitOperations<C>>::operate_assign(dest, input.2, operation);
+        dest.as_by()
     }
 }
 
@@ -204,14 +208,14 @@ where
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
-        let mut output = A::Output::default();
-        A::copy_into(input.0, &mut output);
-        <A::Output as BitOperations<B>>::operate_assign(&mut output, input.1, operation);
-        <A::Output as BitOperations<C>>::operate_assign(&mut output, input.2, operation);
-        <A::Output as BitOperations<D>>::operate_assign(&mut output, input.3, operation);
-        dest.insert(output).as_by()
+        *dest = A::Output::default();
+        A::copy_into(input.0, dest);
+        <A::Output as BitOperations<B>>::operate_assign(dest, input.1, operation);
+        <A::Output as BitOperations<C>>::operate_assign(dest, input.2, operation);
+        <A::Output as BitOperations<D>>::operate_assign(dest, input.3, operation);
+        dest.as_by()
     }
 }
 
@@ -229,15 +233,15 @@ where
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
-        let mut output = A::Output::default();
-        A::copy_into(input.0, &mut output);
-        <A::Output as BitOperations<B>>::operate_assign(&mut output, input.1, operation);
-        <A::Output as BitOperations<C>>::operate_assign(&mut output, input.2, operation);
-        <A::Output as BitOperations<D>>::operate_assign(&mut output, input.3, operation);
-        <A::Output as BitOperations<E>>::operate_assign(&mut output, input.4, operation);
-        dest.insert(output).as_by()
+        *dest = A::Output::default();
+        A::copy_into(input.0, dest);
+        <A::Output as BitOperations<B>>::operate_assign(dest, input.1, operation);
+        <A::Output as BitOperations<C>>::operate_assign(dest, input.2, operation);
+        <A::Output as BitOperations<D>>::operate_assign(dest, input.3, operation);
+        <A::Output as BitOperations<E>>::operate_assign(dest, input.4, operation);
+        dest.as_by()
     }
 }
 
@@ -260,16 +264,16 @@ where
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
-        let mut output = A::Output::default();
-        A::copy_into(input.0, &mut output);
-        <A::Output as BitOperations<B>>::operate_assign(&mut output, input.1, operation);
-        <A::Output as BitOperations<C>>::operate_assign(&mut output, input.2, operation);
-        <A::Output as BitOperations<D>>::operate_assign(&mut output, input.3, operation);
-        <A::Output as BitOperations<E>>::operate_assign(&mut output, input.4, operation);
-        <A::Output as BitOperations<F>>::operate_assign(&mut output, input.5, operation);
-        dest.insert(output).as_by()
+        *dest = A::Output::default();
+        A::copy_into(input.0, dest);
+        <A::Output as BitOperations<B>>::operate_assign(dest, input.1, operation);
+        <A::Output as BitOperations<C>>::operate_assign(dest, input.2, operation);
+        <A::Output as BitOperations<D>>::operate_assign(dest, input.3, operation);
+        <A::Output as BitOperations<E>>::operate_assign(dest, input.4, operation);
+        <A::Output as BitOperations<F>>::operate_assign(dest, input.5, operation);
+        dest.as_by()
     }
 }
 
@@ -294,17 +298,17 @@ where
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
-        let mut output = A::Output::default();
-        A::copy_into(input.0, &mut output);
-        <A::Output as BitOperations<B>>::operate_assign(&mut output, input.1, operation);
-        <A::Output as BitOperations<C>>::operate_assign(&mut output, input.2, operation);
-        <A::Output as BitOperations<D>>::operate_assign(&mut output, input.3, operation);
-        <A::Output as BitOperations<E>>::operate_assign(&mut output, input.4, operation);
-        <A::Output as BitOperations<F>>::operate_assign(&mut output, input.5, operation);
-        <A::Output as BitOperations<G>>::operate_assign(&mut output, input.6, operation);
-        dest.insert(output).as_by()
+        *dest = A::Output::default();
+        A::copy_into(input.0, dest);
+        <A::Output as BitOperations<B>>::operate_assign(dest, input.1, operation);
+        <A::Output as BitOperations<C>>::operate_assign(dest, input.2, operation);
+        <A::Output as BitOperations<D>>::operate_assign(dest, input.3, operation);
+        <A::Output as BitOperations<E>>::operate_assign(dest, input.4, operation);
+        <A::Output as BitOperations<F>>::operate_assign(dest, input.5, operation);
+        <A::Output as BitOperations<G>>::operate_assign(dest, input.6, operation);
+        dest.as_by()
     }
 }
 
@@ -331,18 +335,18 @@ where
     fn apply<'a>(
         input: PassBy<Self>,
         operation: Operation,
-        dest: &'a mut Option<Self::Output>,
+        dest: &'a mut Self::Output,
     ) -> PassBy<'a, Self::Output> {
-        let mut output = A::Output::default();
-        A::copy_into(input.0, &mut output);
-        <A::Output as BitOperations<B>>::operate_assign(&mut output, input.1, operation);
-        <A::Output as BitOperations<C>>::operate_assign(&mut output, input.2, operation);
-        <A::Output as BitOperations<D>>::operate_assign(&mut output, input.3, operation);
-        <A::Output as BitOperations<E>>::operate_assign(&mut output, input.4, operation);
-        <A::Output as BitOperations<F>>::operate_assign(&mut output, input.5, operation);
-        <A::Output as BitOperations<G>>::operate_assign(&mut output, input.6, operation);
-        <A::Output as BitOperations<H>>::operate_assign(&mut output, input.7, operation);
-        dest.insert(output).as_by()
+        *dest = A::Output::default();
+        A::copy_into(input.0, dest);
+        <A::Output as BitOperations<B>>::operate_assign(dest, input.1, operation);
+        <A::Output as BitOperations<C>>::operate_assign(dest, input.2, operation);
+        <A::Output as BitOperations<D>>::operate_assign(dest, input.3, operation);
+        <A::Output as BitOperations<E>>::operate_assign(dest, input.4, operation);
+        <A::Output as BitOperations<F>>::operate_assign(dest, input.5, operation);
+        <A::Output as BitOperations<G>>::operate_assign(dest, input.6, operation);
+        <A::Output as BitOperations<H>>::operate_assign(dest, input.7, operation);
+        dest.as_by()
     }
 }
 
@@ -356,12 +360,19 @@ mod test {
         ($type:ty) => {
             paste! {
                 #[test]
+                fn [<test_default_buffer_no_panic_ $type>]() {
+                    let block = BitwiseOperatorBlock::<($type, $type)>::default();
+                    assert_eq!(block.buffer(), <$type>::default());
+                }
+
+                #[test]
                 fn [<test_and_scalar_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<($type, $type, $type, $type, $type, $type, $type, $type)>::default();
                     let context = StubContext::default();
                     let params = Operation::And;
                     let output = block.process(&params, &context, ([<255 $type>], [<27 $type>], [<8 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>]));
                     assert_eq!(output, [<8 $type>]);
+                    assert_eq!(block.buffer(), output);
                 }
 
                 #[test]

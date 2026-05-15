@@ -12,7 +12,7 @@ use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 ///  - Throttle: Immediately emit true on first true input, but then wait delay_time before passing through a true input again.
 pub struct DelayControlBlock<T: Apply> {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
     /// This is the state of the block used for the debounce and throttle functionality
     state: T::State,
 }
@@ -24,7 +24,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
             state: T::init_state(),
         }
     }
@@ -44,10 +44,19 @@ where
         context: &dyn Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let buffer = self.buffer.get_or_insert(T::Output::default());
-        let output = T::apply(buffer, inputs, &mut self.state, parameters, context);
+        let output = T::apply(
+            &mut self.buffer,
+            inputs,
+            &mut self.state,
+            parameters,
+            context,
+        );
         self.data = <OldBlockData as FromPass<T::Output>>::from_pass(output);
         output
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -220,6 +229,15 @@ mod tests {
     use crate::testing::StubRuntime;
 
     #[test]
+    fn test_delay_control_default_buffer_no_panic() {
+        let block = DelayControlBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = DelayControlBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_scalar_throttle() {
         let mut runtime = StubRuntime::default(); // Time is 0 timestep is 100ms
         let mut block = DelayControlBlock::<f64>::default();
@@ -228,6 +246,7 @@ mod tests {
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), output);
 
         runtime.tick(); // Time is 100ms
         let output = block.process(&parameters, &runtime.context(), 0.5);

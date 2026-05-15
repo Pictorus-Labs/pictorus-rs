@@ -18,7 +18,7 @@ use strum::EnumString;
 /// so it will always emit `false`
 pub struct ChangeDetectionBlock<T: Apply> {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
     last_input: Option<T>,
 }
 
@@ -28,11 +28,10 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
-            last_input: None,
-        }
+        panic!(
+            "ChangeDetectionBlock has initial conditions and must be constructed with \
+             ChangeDetectionBlock::new(&parameters) (HasIc trait), not Default::default()."
+        );
     }
 }
 
@@ -43,7 +42,7 @@ where
 {
     fn new(parameters: &Self::Parameters) -> Self {
         ChangeDetectionBlock::<T> {
-            buffer: Some(T::Output::default()),
+            buffer: T::Output::default(),
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             last_input: Some(parameters.ic),
         }
@@ -69,13 +68,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass + Sized + Copy {
     type Output: Pass + Default;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         params: &Parameters<Self>,
         last_input: &mut Option<Self>,
@@ -86,7 +89,7 @@ impl<C: ChangeDetect> Apply for C {
     type Output = f64;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         params: &Parameters<Self>,
         last_input: &mut Option<Self>,
@@ -95,7 +98,7 @@ impl<C: ChangeDetect> Apply for C {
         let old_last_input = last_input.replace(input);
         let old_last_input = old_last_input.unwrap_or(params.ic);
         let res = Self::change_detect(input, old_last_input, params.change_mode);
-        *store = Some(res);
+        *store = res;
         res.as_by()
     }
 }
@@ -104,7 +107,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
     type Output = Matrix<NROWS, NCOLS, f64>;
 
     fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
+        store: &'s mut Self::Output,
         input: PassBy<Self>,
         params: &Parameters<Self>,
         last_input: &mut Option<Self>,
@@ -113,7 +116,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
         let old_last_input = last_input.replace(*input);
         let old_last_input = old_last_input.unwrap_or(params.ic);
         // Initialize Output to a Zeroed (i.e. all `false`) state.
-        let output = store.insert(Matrix::zeroed());
+        *store = Matrix::zeroed();
         // Make a immutable iterator of each element of `input` and `old_last_input`
 
         let inputs = input
@@ -123,7 +126,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
             .zip(old_last_input.data.as_flattened().iter());
         // Zip that iterator with a mutable iterator over the output matrix
         // and then perform the operation on each set of three values
-        output
+        store
             .data
             .as_flattened_mut()
             .iter_mut()
@@ -131,7 +134,7 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
             .for_each(|(output, (lh, rh))| {
                 *output = C::change_detect(*lh, *rh, params.change_mode)
             });
-        output
+        store
     }
 }
 
@@ -197,7 +200,7 @@ mod tests {
                 fn [<test_scalar_rising_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new([<1 $type>], "Rising");
-                    let mut block = ChangeDetectionBlock::<$type>::default();
+                    let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
@@ -216,7 +219,7 @@ mod tests {
                 fn [<test_scalar_falling_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new([<1 $type>], "Falling");
-                    let mut block = ChangeDetectionBlock::<$type>::default();
+                    let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
@@ -236,7 +239,7 @@ mod tests {
                 fn [<test_scalar_any_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new([<1 $type>], "Any");
-                    let mut block = ChangeDetectionBlock::<$type>::default();
+                    let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
@@ -270,7 +273,7 @@ mod tests {
                 fn [<test_matrix_falling_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Falling");
-                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::default();
+                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
                     let input = Matrix {
                         data: [[[<42 $type>]; 8]; 11],
@@ -316,7 +319,7 @@ mod tests {
                 fn [<test_matrix_rising_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Rising");
-                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::default();
+                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
                     let input = Matrix {
                         data: [[[<42 $type>]; 8]; 11],
@@ -362,7 +365,7 @@ mod tests {
                 fn [<test_matrix_any_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Any");
-                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::default();
+                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
                     let input = Matrix {
                         data: [[[<42 $type>]; 8]; 11],
@@ -427,11 +430,12 @@ mod tests {
     fn test_scalar_bool_any() {
         let context = StubContext::default();
         let params = Parameters::new(true, "Any");
-        let mut block = ChangeDetectionBlock::<bool>::default();
+        let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
         let output = block.process(&params, &context, false);
         assert!(output.is_truthy());
+        assert_eq!(block.buffer(), output);
 
         // Falling for all values
         let output = block.process(&params, &context, false);
@@ -446,7 +450,7 @@ mod tests {
     fn test_scalar_bool_rising() {
         let context = StubContext::default();
         let params = Parameters::new(true, "Rising");
-        let mut block = ChangeDetectionBlock::<bool>::default();
+        let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
         let output = block.process(&params, &context, true);
@@ -465,7 +469,7 @@ mod tests {
     fn test_scalar_bool_falling() {
         let context = StubContext::default();
         let params = Parameters::new(true, "Falling");
-        let mut block = ChangeDetectionBlock::<bool>::default();
+        let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
         let output = block.process(&params, &context, true);

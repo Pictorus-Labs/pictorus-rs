@@ -29,7 +29,7 @@ where
 /// The output is the same size as the input and each element is the result of the comparison.
 pub struct CompareToValueBlock<T: Pass> {
     pub data: OldBlockData,
-    buffer: Option<T>,
+    buffer: T,
 }
 
 impl<T> Default for CompareToValueBlock<T>
@@ -40,7 +40,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
+            buffer: T::default(),
         }
     }
 }
@@ -69,9 +69,13 @@ macro_rules! impl_compare_to_value_block {
                     ComparisonType::GreaterThan => input > parameters.value,
                     ComparisonType::GreaterOrEqual => input >= parameters.value,
                 };
-                let output = self.buffer.insert(val.into());
-                self.data = OldBlockData::from_scalar((*output).into());
-                *output
+                self.buffer = val.into();
+                self.data = OldBlockData::from_scalar(self.buffer.into());
+                self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
 
@@ -90,7 +94,6 @@ macro_rules! impl_compare_to_value_block {
                 _context: &dyn pictorus_traits::Context,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
-                let mut b = Matrix::<ROWS, COLS, $type>::zeroed();
                 for r in 0..ROWS {
                     for c in 0..COLS {
                         let val = match parameters.comparison_type {
@@ -101,12 +104,15 @@ macro_rules! impl_compare_to_value_block {
                             ComparisonType::GreaterThan => input.data[c][r] > parameters.value,
                             ComparisonType::GreaterOrEqual => input.data[c][r] >= parameters.value,
                         };
-                        b.data[c][r] = val.into();
+                        self.buffer.data[c][r] = val.into();
                     }
                 }
-                let output = self.buffer.insert(b);
-                self.data = OldBlockData::from_pass(output);
-                output
+                self.data = OldBlockData::from_pass(&self.buffer);
+                &self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
     };
@@ -128,6 +134,15 @@ mod tests {
     use num_traits::{One, Zero};
     use paste::paste;
 
+    #[test]
+    fn test_compare_to_value_default_buffer_no_panic() {
+        let block = CompareToValueBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = CompareToValueBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
     macro_rules! test_compare_to_value {
         ($name:ident, $type:ty) => {
             paste! {
@@ -144,6 +159,7 @@ mod tests {
                     let output = block.process(&parameters, &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.data.scalar(), <$type>::one().into());
+                    assert_eq!(block.buffer(), output);
 
                     parameters.comparison_type = ComparisonType::NotEqual;
                     let output = block.process(&parameters, &context, <$type>::zero());

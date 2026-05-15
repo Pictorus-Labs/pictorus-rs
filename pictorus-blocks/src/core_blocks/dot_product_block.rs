@@ -7,7 +7,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Calculate the dot product of two same-sized vectors.
 pub struct DotProductBlock<T: Apply> {
-    buffer: Option<T::Output>,
+    buffer: T::Output,
     pub data: OldBlockData,
 }
 
@@ -19,7 +19,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -43,15 +43,16 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass {
     type Output: Pass + Default;
 
-    fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
-        input: PassBy<Self>,
-    ) -> PassBy<'s, Self::Output>;
+    fn apply<'s>(store: &'s mut Self::Output, input: PassBy<Self>) -> PassBy<'s, Self::Output>;
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -70,13 +71,10 @@ where
 {
     type Output = T;
 
-    fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
-        input: PassBy<Self>,
-    ) -> PassBy<'s, Self::Output> {
+    fn apply<'s>(store: &'s mut Self::Output, input: PassBy<Self>) -> PassBy<'s, Self::Output> {
         let (lhs, rhs) = input;
         let output = lhs.as_view().dot(&rhs.as_view());
-        *store = Some(output);
+        *store = output;
         output
     }
 }
@@ -88,6 +86,12 @@ mod tests {
     use crate::traits::MatrixOps;
 
     #[test]
+    fn test_dot_product_default_buffer_no_panic() {
+        let block = DotProductBlock::<(Matrix<2, 1, f64>, Matrix<2, 1, f64>)>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_dot_product_block() {
         let mut block = DotProductBlock::<(Matrix<2, 1, f64>, Matrix<2, 1, f64>)>::default();
         let context = StubContext::default();
@@ -95,6 +99,7 @@ mod tests {
         let input = (&Matrix::from_element(2.0), &Matrix::from_element(6.0));
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, 24.0);
+        assert_eq!(block.buffer(), output);
 
         let mut block = DotProductBlock::<(Matrix<1, 2, u16>, Matrix<1, 2, u16>)>::default();
         let context = StubContext::default();

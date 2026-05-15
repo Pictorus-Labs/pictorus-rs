@@ -50,6 +50,10 @@ where
         self.data = formatted_string.as_bytes().to_vec();
         &self.data
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.data
+    }
 }
 
 pub trait ToString: Pass {
@@ -282,6 +286,12 @@ mod tests {
     use alloc::format;
 
     #[test]
+    fn test_string_format_default_buffer_no_panic() {
+        let block = StringFormatBlock::<f64>::default();
+        assert_eq!(block.buffer(), b"".as_ref());
+    }
+
+    #[test]
     fn test_string_format_block() {
         let formatter = |inputs: &[&str; 3]| format!("{} {} {}", inputs[0], inputs[1], inputs[2]);
         let parameters = Parameters::new(formatter);
@@ -289,12 +299,13 @@ mod tests {
 
         let input = (42.0, "Foo".as_bytes(), &Matrix::zeroed());
         let context = StubContext::default();
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &context, input).to_vec();
 
         assert_eq!(
-            std::str::from_utf8(output).unwrap(),
+            std::str::from_utf8(&output).unwrap(),
             "42.0 Foo [[0.0,0.0],[0.0,0.0]]"
         );
+        assert_eq!(block.buffer(), output.as_slice());
     }
 
     #[test]

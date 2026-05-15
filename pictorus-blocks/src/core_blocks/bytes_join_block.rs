@@ -52,6 +52,10 @@ impl<T: Apply> ProcessBlock for BytesJoinBlock<T> {
         self.data.set_bytes(&self.buffer);
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.buffer
+    }
 }
 
 pub trait Apply: Pass {
@@ -185,6 +189,12 @@ mod tests {
     use pictorus_traits::Matrix;
 
     #[test]
+    fn test_bytes_join_default_buffer_no_panic() {
+        let block = BytesJoinBlock::<(f64, f64)>::default();
+        assert_eq!(block.buffer(), b"");
+    }
+
+    #[test]
     fn test_bytes_join_block() {
         let ctxt = StubContext::default();
         let params = Parameters::new("/ ");
@@ -213,6 +223,7 @@ mod tests {
         let expected_string = "1.0/ [[1.0,2.0,3.0],[4.0,5.0,6.0]]/ hello there".to_string();
         assert_eq!(res, expected_string.as_bytes());
         assert_eq!(block.data.raw_string(), expected_string);
+        assert_eq!(block.buffer(), expected_string.as_bytes());
     }
 
     #[test]

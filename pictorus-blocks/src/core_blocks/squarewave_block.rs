@@ -1,6 +1,6 @@
 use crate::traits::Float;
 use pictorus_block_data::BlockData;
-use pictorus_traits::GeneratorBlock;
+use pictorus_traits::{GeneratorBlock, PassBy};
 
 pub struct Parameters<T: Float> {
     pub amplitude: T,
@@ -25,6 +25,7 @@ impl<T: Float> Parameters<T> {
 /// Outputs a square wave signal with specified amplitude, on duration, off duration, phase, and bias.
 pub struct SquarewaveBlock<T: Float> {
     phantom_output_type: core::marker::PhantomData<T>,
+    buffer: T,
     pub data: BlockData,
 }
 
@@ -35,6 +36,7 @@ where
     fn default() -> Self {
         Self {
             phantom_output_type: core::marker::PhantomData,
+            buffer: T::zero(),
             data: BlockData::from_scalar(T::zero().into()),
         }
     }
@@ -67,8 +69,13 @@ where
         } else {
             parameters.bias + parameters.amplitude
         };
+        self.buffer = output;
         self.data = BlockData::from_scalar(f64::from(output));
         output
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer
     }
 }
 
@@ -78,6 +85,12 @@ mod tests {
 
     use super::*;
     use core::time::Duration;
+
+    #[test]
+    fn test_squarewave_default_buffer_no_panic() {
+        let block = SquarewaveBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
 
     #[test]
     fn test_squarewave_block_f64() {
@@ -96,6 +109,7 @@ mod tests {
         block.generate(&p, &runtime.context());
         assert_eq!(block.generate(&p, &runtime.context()), bias);
         assert_eq!(block.data.scalar(), bias);
+        assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_millis(500));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);

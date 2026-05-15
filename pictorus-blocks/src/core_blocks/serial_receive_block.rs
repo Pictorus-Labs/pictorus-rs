@@ -71,6 +71,7 @@ pub struct SerialReceiveBlock {
     pub stale_check: StaleTracker,
     previous_stale_check_time_ms: f64,
     output: Vec<u8>,
+    last_valid: bool,
 }
 
 impl Default for SerialReceiveBlock {
@@ -81,6 +82,7 @@ impl Default for SerialReceiveBlock {
             stale_check: StaleTracker::from_ms(0.0),
             previous_stale_check_time_ms: 0.0,
             output: Vec::new(),
+            last_valid: false,
         }
     }
 }
@@ -258,10 +260,12 @@ impl ProcessBlock for SerialReceiveBlock {
             debug!("Read too many bytes without a valid message. Clearing buffer",);
         }
 
-        (
-            &self.output,
-            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
-        )
+        self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
+        (&self.output, self.last_valid)
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        (&self.output, self.last_valid)
     }
 }
 
@@ -273,6 +277,12 @@ mod tests {
     use crate::testing::{StubContext, StubRuntime};
 
     #[test]
+    fn test_serial_receive_default_buffer_no_panic() {
+        let block = SerialReceiveBlock::default();
+        assert_eq!(block.buffer(), (b"".as_ref(), false));
+    }
+
+    #[test]
     fn test_serial_receive_block() {
         let context = StubContext::default();
         let mut block = SerialReceiveBlock::default();
@@ -280,8 +290,12 @@ mod tests {
 
         // Test with a valid message
         let input_data = b"$Hello World\r\n";
-        let result = block.process(&parameters, &context, input_data);
+        let result = {
+            let (data, valid) = block.process(&parameters, &context, input_data);
+            (data.to_vec(), valid)
+        };
         assert_eq!(result.0, b"Hello World");
+        assert_eq!(block.buffer(), (result.0.as_slice(), result.1));
     }
 
     #[test]

@@ -25,12 +25,23 @@ impl<I> Parameters<I> {
 ///
 /// OCOLS must equal ICOLS * N
 /// ```
-/// use pictorus_traits::Matrix;
-/// use pictorus_blocks::SlidingWindowBlock;
-/// // Example usage for a sliding window of 3 samples:
-/// let swb_single = SlidingWindowBlock::<3, f64, Matrix<1, 3, f64>>::default();
-/// let swb_vector = SlidingWindowBlock::<3, Matrix<1, 3, f64>, Matrix<1, 9, f64>>::default();
-/// let swb_matrix = SlidingWindowBlock::<3, Matrix<2, 2, f64>, Matrix<2, 6, f64>>::default();
+/// use pictorus_traits::{Matrix, HasIc};
+/// use pictorus_blocks::{SlidingWindowBlock, SlidingWindowBlockParams};
+///
+/// // Scalar input, 3-sample window -> Matrix<1, 3>
+/// let swb_single = SlidingWindowBlock::<3, f64, Matrix<1, 3, f64>>::new(
+///     &SlidingWindowBlockParams::new(Matrix { data: [[0.0], [0.0], [0.0]] }),
+/// );
+///
+/// // Vector input (Matrix<1, 3>), 3-sample window -> Matrix<1, 9>
+/// let swb_vector = SlidingWindowBlock::<3, Matrix<1, 3, f64>, Matrix<1, 9, f64>>::new(
+///     &SlidingWindowBlockParams::new(Matrix { data: [[0.0]; 9] }),
+/// );
+///
+/// // Matrix input (Matrix<2, 2>), 3-sample window -> Matrix<2, 6>
+/// let swb_matrix = SlidingWindowBlock::<3, Matrix<2, 2, f64>, Matrix<2, 6, f64>>::new(
+///     &SlidingWindowBlockParams::new(Matrix { data: [[0.0; 2]; 6] }),
+/// );
 /// ```
 pub struct SlidingWindowBlock<const N: usize, I, O> {
     pub data: OldBlockData,
@@ -45,12 +56,10 @@ where
     OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
-        SlidingWindowBlock {
-            data: <OldBlockData as FromPass<O>>::from_pass(O::default().as_by()),
-            memory: Deque::new(),
-            buffer: O::default(),
-            _phantom: core::marker::PhantomData,
-        }
+        panic!(
+            "SlidingWindowBlock has initial conditions and must be constructed with \
+             SlidingWindowBlock::new(&parameters) (HasIc trait), not Default::default()."
+        );
     }
 }
 
@@ -110,6 +119,10 @@ where
         }
 
         &self.buffer
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -183,6 +196,10 @@ where
 
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 #[cfg(test)]
@@ -195,15 +212,18 @@ mod tests {
     #[test]
     fn test_sliding_window_block() {
         let c = StubContext::default();
-        let mut block = SlidingWindowBlock::<3, f64, Matrix<1, 3, f64>>::default();
 
         let initial_condition = Matrix {
             data: [[-1.0], [-1.0], [-1.0]],
         };
 
-        let output = block.process(&Parameters::new(initial_condition), &c, 1.0);
+        let mut block =
+            SlidingWindowBlock::<3, f64, Matrix<1, 3, f64>>::new(&Parameters::new(initial_condition));
+
+        let output = *block.process(&Parameters::new(initial_condition), &c, 1.0);
         assert_eq!(output.data.as_flattened(), [-1.0, -1.0, 1.0]);
         assert_eq!(block.data, OldBlockData::from_matrix(&[&[-1.0, -1.0, 1.0]]));
+        assert_eq!(block.buffer(), &output);
 
         let ic2 = Matrix {
             data: [[0.0], [0.0], [0.0]],
@@ -226,7 +246,6 @@ mod tests {
     #[test]
     fn test_sliding_window_block_vectors() {
         let c = StubContext::default();
-        let mut block = SlidingWindowBlock::<3, Matrix<1, 3, f64>, Matrix<1, 9, f64>>::default();
 
         let ic = Matrix {
             data: [
@@ -243,6 +262,8 @@ mod tests {
         };
 
         let p = Parameters::new(ic);
+        let mut block =
+            SlidingWindowBlock::<3, Matrix<1, 3, f64>, Matrix<1, 9, f64>>::new(&p);
 
         let output = block.process(
             &p,
@@ -360,7 +381,6 @@ mod tests {
     #[test]
     fn test_sliding_window_block_matrix() {
         let c = StubContext::default();
-        let mut block = SlidingWindowBlock::<3, Matrix<2, 2, f64>, Matrix<2, 6, f64>>::default();
 
         let ic = Matrix {
             data: [
@@ -374,6 +394,8 @@ mod tests {
         };
 
         let p = Parameters::new(ic);
+        let mut block =
+            SlidingWindowBlock::<3, Matrix<2, 2, f64>, Matrix<2, 6, f64>>::new(&p);
 
         let output = block.process(
             &p,

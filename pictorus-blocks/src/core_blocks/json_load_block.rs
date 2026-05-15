@@ -55,6 +55,10 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
         }
         T::storage_as_by(&self.buffer)
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        T::storage_as_by(&self.buffer)
+    }
 }
 
 impl<T: Apply> IsValid for JsonLoadBlock<T> {
@@ -686,6 +690,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_json_load_default_buffer_no_panic() {
+        let block = JsonLoadBlock::<f64>::default();
+        assert_eq!(block.buffer(), (0.0, false));
+    }
+
+    #[test]
     fn test_reads_scalar_data_if_no_selectors() {
         let ctxt = StubContext::default();
         let input = br#"1.2"#;
@@ -695,6 +705,7 @@ mod tests {
         assert_eq!(res, (1.2, true));
         assert_eq!(block.data, vec![OldBlockData::from_scalar(1.2)]);
         assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), res);
     }
 
     #[test]

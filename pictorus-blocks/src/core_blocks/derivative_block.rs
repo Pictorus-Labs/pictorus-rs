@@ -21,13 +21,10 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
-        Self {
-            samples: [T::default(); N],
-            sample_index: 0,
-            initial_accumulation: true,
-            output: T::default(),
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-        }
+        panic!(
+            "DerivativeBlock has initial conditions and must be constructed with \
+             DerivativeBlock::new(&parameters) (HasIc trait), not Default::default()."
+        );
     }
 }
 
@@ -65,6 +62,10 @@ macro_rules! impl_process {
                 self.data = <OldBlockData as FromPass<$type>>::from_pass(self.output);
                 self.output.as_by()
             }
+
+            fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+                self.output.as_by()
+            }
         }
 
         impl<const N: usize> HasIc for DerivativeBlock<$type, N>
@@ -79,7 +80,6 @@ macro_rules! impl_process {
                 }
             }
         }
-
 
         impl<const N: usize, const NCOLS: usize, const NROWS: usize> ProcessBlock for DerivativeBlock< Matrix<NROWS, NCOLS, $type>, N>
         {
@@ -114,6 +114,10 @@ macro_rules! impl_process {
                 self.data = <OldBlockData as FromPass<Matrix<NROWS, NCOLS, $type>>>::from_pass(self.output.as_by());
                 &self.output
             }
+
+            fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+                self.output.as_by()
+            }
         }
 
         impl<const N: usize, const NCOLS: usize, const NROWS: usize> HasIc for DerivativeBlock<Matrix<NROWS, NCOLS, $type>, N>
@@ -128,9 +132,6 @@ macro_rules! impl_process {
                 }
             }
         }
-
-
-
     }
     };
 }
@@ -158,10 +159,10 @@ mod tests {
 
     #[test]
     fn test_scalar() {
-        let mut block = DerivativeBlock::<f64, 2>::default();
         let mut runtime = StubRuntime::default();
         runtime.context.fundamental_timestep = Duration::from_secs(1);
         let parameters = Parameters::new(0.0);
+        let mut block = DerivativeBlock::<f64, 2>::new(&parameters);
 
         let input = 1.0;
         let output = block.process(&parameters, &runtime.context(), input);
@@ -185,10 +186,10 @@ mod tests {
 
     #[test]
     fn test_matrix() {
-        let mut block = DerivativeBlock::<Matrix<2, 2, f32>, 2>::default();
         let mut runtime = StubRuntime::default();
         runtime.context.fundamental_timestep = Duration::from_secs(1);
         let parameters = Parameters::new(Matrix::zeroed());
+        let mut block = DerivativeBlock::<Matrix<2, 2, f32>, 2>::new(&parameters);
 
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],

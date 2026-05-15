@@ -22,7 +22,7 @@ impl Default for Parameters {
 /// For scalar inputs this is just a pass-through
 pub struct TransposeBlock<T: Apply> {
     pub data: OldBlockData,
-    store: Option<T::Output>,
+    store: T::Output,
 }
 
 impl<T: Apply> Default for TransposeBlock<T>
@@ -32,7 +32,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            store: None,
+            store: T::Output::default(),
         }
     }
 }
@@ -55,40 +55,35 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.store.as_by()
+    }
 }
 
 pub trait Apply: Pass {
     type Output: Pass + Default;
 
-    fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
-        input: PassBy<Self>,
-    ) -> PassBy<'s, Self::Output>;
+    fn apply<'s>(store: &'s mut Self::Output, input: PassBy<Self>) -> PassBy<'s, Self::Output>;
 }
 
 impl<S: Scalar> Apply for S {
     type Output = S;
 
-    fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
-        input: PassBy<Self>,
-    ) -> PassBy<'s, Self::Output> {
-        let output = store.insert(input);
-        output.as_by()
+    fn apply<'s>(store: &'s mut Self::Output, input: PassBy<Self>) -> PassBy<'s, Self::Output> {
+        *store = input;
+        store.as_by()
     }
 }
 
 impl<const NROWS: usize, const NCOLS: usize, S: Scalar> Apply for Matrix<NROWS, NCOLS, S> {
     type Output = Matrix<NCOLS, NROWS, S>;
 
-    fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
-        input: PassBy<Self>,
-    ) -> PassBy<'s, Self::Output> {
+    fn apply<'s>(store: &'s mut Self::Output, input: PassBy<Self>) -> PassBy<'s, Self::Output> {
         let input = input.as_view();
         let transposed = input.transpose();
-        let output = store.insert(Matrix::from_view(&transposed.as_view()));
-        output
+        *store = Matrix::from_view(&transposed.as_view());
+        store
     }
 }
 
@@ -99,6 +94,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_transpose_default_buffer_no_panic() {
+        let block = TransposeBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = TransposeBlock::<Matrix<3, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 3, f64>::zeroed());
+    }
+
+    #[test]
     fn test_tranpose_scalar_input() {
         let ctxt = StubContext::default();
         let params = Parameters::default();
@@ -107,6 +111,7 @@ mod tests {
         let output = transpose_block.process(&params, &ctxt, 1.0);
         assert_eq!(output, 1.0);
         assert_eq!(transpose_block.data.scalar(), 1.0);
+        assert_eq!(transpose_block.buffer(), output);
 
         let output = transpose_block.process(&params, &ctxt, 42.0);
         assert_eq!(output, 42.0);

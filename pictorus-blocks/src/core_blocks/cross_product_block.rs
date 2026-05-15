@@ -24,7 +24,7 @@ where
     T: Apply + Pass + Default,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T> Default for CrossProductBlock<T>
@@ -35,7 +35,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -59,15 +59,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass + Sized {
     type Output: Pass + Default;
 
-    fn apply<'s>(
-        store: &'s mut Option<Self::Output>,
-        inputs: PassBy<'_, Self>,
-    ) -> PassBy<'s, Self::Output>;
+    fn apply<'s>(store: &'s mut Self::Output, inputs: PassBy<'_, Self>)
+        -> PassBy<'s, Self::Output>;
 }
 
 macro_rules! float_matrix_impl {
@@ -76,12 +78,12 @@ macro_rules! float_matrix_impl {
             type Output = Matrix<1, 3, $type>;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 inputs: PassBy<'_, Self>,
             ) -> PassBy<'s, Self::Output> {
                 let cross = inputs.0.as_view().cross(&inputs.1.as_view());
-                let output = store.insert(Matrix::<1, 3, $type>::from_view(&cross.as_view()));
-                output
+                *store = Matrix::<1, 3, $type>::from_view(&cross.as_view());
+                store
             }
         }
 
@@ -89,12 +91,12 @@ macro_rules! float_matrix_impl {
             type Output = Matrix<3, 1, $type>;
 
             fn apply<'s>(
-                store: &'s mut Option<Self::Output>,
+                store: &'s mut Self::Output,
                 inputs: PassBy<'_, Self>,
             ) -> PassBy<'s, Self::Output> {
                 let cross = inputs.0.as_view().cross(&inputs.1.as_view());
-                let output = store.insert(Matrix::<3, 1, $type>::from_view(&cross.as_view()));
-                output
+                *store = Matrix::<3, 1, $type>::from_view(&cross.as_view());
+                store
             }
         }
     };
@@ -111,6 +113,12 @@ mod tests {
     use pictorus_traits::ProcessBlock;
 
     use super::*;
+
+    #[test]
+    fn test_cross_product_default_buffer_no_panic() {
+        let block = CrossProductBlock::<(Matrix<1, 3, f64>, Matrix<1, 3, f64>)>::default();
+        assert_eq!(block.buffer(), &Matrix::<1, 3, f64>::zeroed());
+    }
 
     #[test]
     fn test_vector_cross_f64_blockdata_1x3() {
@@ -156,8 +164,9 @@ mod tests {
         let input2: Matrix<1, 3, f64> = Matrix {
             data: [[0.0], [1.0], [0.0]],
         };
-        let output = cross_block.process(&p, &context, (&input1, &input2));
+        let output = *cross_block.process(&p, &context, (&input1, &input2));
         assert_eq!(output.data, [[0.0], [0.0], [1.0]]);
+        assert_eq!(cross_block.buffer(), &output);
     }
 
     #[test]

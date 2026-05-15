@@ -63,6 +63,10 @@ where
         self.data = <OldBlockData as FromPass<T>>::from_pass(res);
         res
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        <T as DefaultStorage>::from_storage(&self.buffer)
+    }
 }
 
 #[cfg(test)]
@@ -71,6 +75,12 @@ mod tests {
     use pictorus_traits::{ByteSliceSignal, Matrix, Pass};
 
     use super::*;
+
+    #[test]
+    fn test_passthrough_default_buffer_no_panic() {
+        let block = PassthroughBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
 
     #[test]
     fn test_passthrough_block_scalar() {
@@ -82,6 +92,7 @@ mod tests {
         let output = block.process(&params, &ctxt, input.as_by());
         assert_eq!(output, input);
         assert_eq!(block.data.scalar(), input);
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

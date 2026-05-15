@@ -82,6 +82,10 @@ macro_rules! impl_trig_block {
                 self.data = OldBlockData::from_scalar(output.into());
                 output
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
@@ -119,6 +123,10 @@ macro_rules! impl_trig_block {
                 self.data = OldBlockData::from_pass(&self.buffer);
                 &self.buffer
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
     };
 }
@@ -134,6 +142,12 @@ mod tests {
     use approx::assert_relative_eq;
     use core::f64::consts::PI;
     use rstest::rstest;
+
+    #[test]
+    fn test_trigonometry_default_buffer_no_panic() {
+        let block = TrigonometryBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
 
     #[rstest]
     #[case::sin_0("Sine", 0.0, 0.0)]
@@ -172,6 +186,7 @@ mod tests {
         let output = block.process(&p, &c, input);
         assert_relative_eq!(output, expected, max_relative = 0.00001);
         assert_relative_eq!(block.data.scalar(), expected, max_relative = 0.00001);
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

@@ -49,7 +49,7 @@ where
     OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T> Default for ComparisonBlock<T>
@@ -60,7 +60,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: None,
+            buffer: T::Output::default(),
         }
     }
 }
@@ -80,10 +80,15 @@ where
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        self.buffer = None;
-        T::apply(inputs, parameters, &mut self.buffer);
-        self.data = OldBlockData::from_pass(self.buffer.as_ref().unwrap().as_by());
-        self.buffer.as_ref().unwrap().as_by()
+        let mut tmp: Option<T::Output> = None;
+        T::apply(inputs, parameters, &mut tmp);
+        self.buffer = tmp.expect("apply must initialize the buffer");
+        self.data = OldBlockData::from_pass(self.buffer.as_by());
+        self.buffer.as_by()
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -191,6 +196,15 @@ mod tests {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_comparison_default_buffer_no_panic() {
+        let block = ComparisonBlock::<(f64, f64)>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = ComparisonBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, f64>)>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_comparison_type() {
         assert_eq!(
             ComparisonType::from_str("Equal").unwrap(),
@@ -224,6 +238,7 @@ mod tests {
         let mut block = ComparisonBlock::<(f64, f64)>::default();
         let output = block.process(&Parameters::new("Equal"), &c, (1., 1.));
         assert_eq!(output, 1.0);
+        assert_eq!(block.buffer(), output);
 
         let output = block.process(&Parameters::new("Equal"), &c, (0., 1.));
         assert_eq!(output, 0.0);

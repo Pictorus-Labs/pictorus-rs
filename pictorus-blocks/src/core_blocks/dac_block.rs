@@ -22,7 +22,7 @@ impl Parameters {
 /// Buffer data to be sent to a DAC (Digital-to-Analog Converter).
 pub struct DacBlock<O: Pass> {
     pub data: OldBlockData,
-    buffer: Option<O>,
+    buffer: O,
 }
 
 impl<O> Default for DacBlock<O>
@@ -33,7 +33,7 @@ where
     fn default() -> Self {
         DacBlock {
             data: <OldBlockData as FromPass<O>>::from_pass(<O>::default().as_by()),
-            buffer: None,
+            buffer: O::default(),
         }
     }
 }
@@ -53,9 +53,13 @@ where
         _context: &dyn Context,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let output = self.buffer.insert(*input);
-        self.data = OldBlockData::from_pass(output);
-        output
+        self.buffer = *input;
+        self.data = OldBlockData::from_pass(&self.buffer);
+        &self.buffer
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
     }
 }
 
@@ -65,11 +69,18 @@ mod tests {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_dac_default_buffer_no_panic() {
+        let block = DacBlock::<Matrix<1, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<1, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_dac_block() {
         let mut dac_block = DacBlock::<Matrix<1, 2, f64>>::default();
         let context = StubContext::default();
         let output =
-            dac_block.process(&Parameters::new(), &context, &Matrix { data: [[1.], [2.]] });
+            *dac_block.process(&Parameters::new(), &context, &Matrix { data: [[1.], [2.]] });
         assert_eq!(output.data, [[1.], [2.]]);
+        assert_eq!(dac_block.buffer(), &output);
     }
 }

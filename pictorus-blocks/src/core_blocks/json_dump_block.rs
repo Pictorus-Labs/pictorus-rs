@@ -39,6 +39,10 @@ impl<T: Apply> ProcessBlock for JsonDumpBlock<T> {
         self.data = OldBlockData::from_bytes(&self.buffer);
         &self.buffer
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        &self.buffer
+    }
 }
 
 /// Option for how a specific signal should be encoded
@@ -472,6 +476,12 @@ mod tests {
     use pictorus_traits::Matrix;
 
     #[test]
+    fn test_json_dump_default_buffer_no_panic() {
+        let block = JsonDumpBlock::<f64>::default();
+        assert_eq!(block.buffer(), b"".as_ref());
+    }
+
+    #[test]
     fn test_writes_object_data_if_has_labels() {
         let ctxt = StubContext::default();
 
@@ -486,6 +496,7 @@ mod tests {
             json::to_string(&data)
         };
         assert_eq!(String::from_utf8(output.to_owned()).unwrap(), expected);
+        assert_eq!(block.buffer(), expected.as_bytes());
 
         // Two floats with mixed encoding
         let parameters = Parameters::new(&["Utf8:foo".to_owned(), "Default:bar".to_owned()]);

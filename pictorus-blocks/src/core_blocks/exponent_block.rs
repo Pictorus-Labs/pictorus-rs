@@ -17,7 +17,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 #[derive(Debug)]
 pub struct ExponentBlock<T: Pass + Default> {
     pub data: OldBlockData,
-    output: Option<T>,
+    output: T,
 }
 
 impl<T: Pass + Default> Default for ExponentBlock<T>
@@ -27,7 +27,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            output: None,
+            output: T::default(),
         }
     }
 }
@@ -54,17 +54,19 @@ where
                 inputs_local = inputs_local.abs();
             }
         }
-        let output = self
-            .output
-            .insert(inputs_local.powf(parameters.coefficient));
+        self.output = inputs_local.powf(parameters.coefficient);
         if parameters.preserve_sign {
-            let should_flip_sign = (*output < S::zero()) != (inputs < S::zero());
+            let should_flip_sign = (self.output < S::zero()) != (inputs < S::zero());
             if should_flip_sign {
-                *output = output.neg();
+                self.output = self.output.neg();
             };
         }
-        self.data = OldBlockData::from_pass(*output);
-        *output
+        self.data = OldBlockData::from_pass(self.output);
+        self.output
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.output.as_by()
     }
 }
 
@@ -83,27 +85,35 @@ where
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let output = self.output.insert(*inputs);
-        output.data.as_flattened_mut().iter_mut().for_each(|x| {
-            let mut x_local = *x;
-            if (x_local < S::zero()) && (parameters.coefficient < S::one()) {
-                if !parameters.preserve_sign {
-                    panic!("Negative input to Exponent with coefficient < 1.0!");
-                } else {
-                    x_local = x_local.abs();
+        self.output = *inputs;
+        self.output
+            .data
+            .as_flattened_mut()
+            .iter_mut()
+            .for_each(|x| {
+                let mut x_local = *x;
+                if (x_local < S::zero()) && (parameters.coefficient < S::one()) {
+                    if !parameters.preserve_sign {
+                        panic!("Negative input to Exponent with coefficient < 1.0!");
+                    } else {
+                        x_local = x_local.abs();
+                    }
                 }
-            }
-            x_local = x_local.powf(parameters.coefficient);
-            if parameters.preserve_sign {
-                let should_flip_sign = (x_local < S::zero()) != (*x < S::zero());
-                if should_flip_sign {
-                    x_local = x_local.neg();
-                };
-            }
-            *x = x_local;
-        });
-        self.data = OldBlockData::from_pass(output);
-        output
+                x_local = x_local.powf(parameters.coefficient);
+                if parameters.preserve_sign {
+                    let should_flip_sign = (x_local < S::zero()) != (*x < S::zero());
+                    if should_flip_sign {
+                        x_local = x_local.neg();
+                    };
+                }
+                *x = x_local;
+            });
+        self.data = OldBlockData::from_pass(&self.output);
+        &self.output
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.output.as_by()
     }
 }
 
@@ -135,6 +145,15 @@ mod tests {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_exponent_default_buffer_no_panic() {
+        let block = ExponentBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+
+        let block = ExponentBlock::<Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
+    }
+
+    #[test]
     fn test_exponent_block_scalar() {
         let context = StubContext::default();
         let mut block = ExponentBlock::<f64>::default();
@@ -144,6 +163,7 @@ mod tests {
         let input = 2.0;
         let output = block.process(&parameters, &context, input.as_by());
         assert_eq!(output, 4.0);
+        assert_eq!(block.buffer(), output);
         let input = -2.0;
         let output = block.process(&parameters, &context, input.as_by());
         assert_eq!(output, 4.0);

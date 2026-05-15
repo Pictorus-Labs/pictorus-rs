@@ -30,6 +30,7 @@ pub struct UdpReceiveBlock {
     pub stale_check: StaleTracker,
     buffer: Vec<u8>,
     previous_stale_check_time_ms: f64,
+    last_valid: bool,
 }
 
 impl Default for UdpReceiveBlock {
@@ -39,6 +40,7 @@ impl Default for UdpReceiveBlock {
             stale_check: StaleTracker::from_ms(0.0),
             buffer: Vec::new(),
             previous_stale_check_time_ms: 0.,
+            last_valid: false,
         }
     }
 }
@@ -73,9 +75,22 @@ impl ProcessBlock for UdpReceiveBlock {
             self.data.set_bytes(&self.buffer);
         }
 
-        (
-            &self.buffer,
-            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
-        )
+        self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
+        (&self.buffer, self.last_valid)
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        (&self.buffer, self.last_valid)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_udp_receive_default_buffer_no_panic() {
+        let block = UdpReceiveBlock::default();
+        assert_eq!(block.buffer(), (b"".as_ref(), false));
     }
 }

@@ -20,7 +20,7 @@ impl Parameter {
 /// Computes the absolute value of a scalar, vector, or matrix.
 pub struct AbsBlock<T: Pass + Default> {
     pub data: OldBlockData,
-    buffer: Option<T>,
+    buffer: T,
 }
 
 impl<T> Default for AbsBlock<T>
@@ -31,7 +31,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: None,
+            buffer: T::default(),
         }
     }
 }
@@ -54,8 +54,13 @@ macro_rules! impl_abs_block {
                 inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
             ) -> pictorus_traits::PassBy<'b, Self::Output> {
                 let output = Float::abs(inputs);
+                self.buffer = output;
                 self.data = OldBlockData::from_scalar(output.into());
                 output
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
 
@@ -76,10 +81,13 @@ macro_rules! impl_abs_block {
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 let abs = input.as_view().abs();
-                let o = Matrix::<ROWS, COLS, $type>::from_view(&abs.as_view());
-                let output = self.buffer.insert(o);
-                self.data = OldBlockData::from_pass(output);
-                output
+                self.buffer = Matrix::<ROWS, COLS, $type>::from_view(&abs.as_view());
+                self.data = OldBlockData::from_pass(&self.buffer);
+                &self.buffer
+            }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
             }
         }
     };
@@ -99,6 +107,15 @@ mod tests {
         ($name:ident, $type:ty) => {
             paste! {
                 #[test]
+                fn [<test_abs_block_default_buffer_ $name>]() {
+                    let block = AbsBlock::<$type>::default();
+                    assert_eq!(block.buffer(), <$type>::default());
+
+                    let block = AbsBlock::<Matrix<2, 2, $type>>::default();
+                    assert_eq!(block.buffer(), &Matrix::<2, 2, $type>::zeroed());
+                }
+
+                #[test]
                 fn [<test_abs_block_scalar_ $name>]()
                 {
                     let mut block = AbsBlock::<$type>::default();
@@ -107,6 +124,7 @@ mod tests {
                     let output = block.process(&Parameter::new(), &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.data, OldBlockData::from_scalar(<$type>::one().into()));
+                    assert_eq!(block.buffer(), output);
 
                     let output = block.process(&Parameter::new(), &context, -<$type>::one());
                     assert_eq!(output, <$type>::one());

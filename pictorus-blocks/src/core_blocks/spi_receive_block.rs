@@ -32,6 +32,7 @@ pub struct SpiReceiveBlock {
     buffer: Vec<u8>,
     pub stale_check: StaleTracker,
     previous_stale_check_time_ms: f64,
+    last_valid: bool,
 }
 
 impl Default for SpiReceiveBlock {
@@ -41,6 +42,7 @@ impl Default for SpiReceiveBlock {
             buffer: Vec::new(),
             stale_check: StaleTracker::from_ms(0.),
             previous_stale_check_time_ms: 0.0,
+            last_valid: false,
         }
     }
 }
@@ -70,10 +72,12 @@ impl ProcessBlock for SpiReceiveBlock {
             self.stale_check.mark_updated(context.time().as_secs_f64());
         }
 
-        (
-            &self.buffer,
-            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
-        )
+        self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
+        (&self.buffer, self.last_valid)
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        (&self.buffer, self.last_valid)
     }
 }
 
@@ -92,6 +96,12 @@ mod tests {
     use pictorus_traits::Context;
 
     #[test]
+    fn test_spi_receive_default_buffer_no_panic() {
+        let block = SpiReceiveBlock::default();
+        assert_eq!(block.buffer(), (b"".as_ref(), false));
+    }
+
+    #[test]
     fn test_spi_receive_block() {
         let mut block = SpiReceiveBlock::default();
         let parameters = Parameters::new(4., 100.0);
@@ -99,9 +109,13 @@ mod tests {
         let input_data = &[0x00, 0x01, 0x02, 0x03];
 
         // Buffer the input data
-        let output = block.process(&parameters, &runtime.context(), input_data);
+        let output = {
+            let (data, valid) = block.process(&parameters, &runtime.context(), input_data);
+            (data.to_vec(), valid)
+        };
         assert_eq!(output.0, input_data);
         assert_eq!(block.data.to_bytes(), input_data);
+        assert_eq!(block.buffer(), (output.0.as_slice(), output.1));
         let is_valid = block
             .stale_check
             .is_valid(runtime.context().time().as_secs_f64());

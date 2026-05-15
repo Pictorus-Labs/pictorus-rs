@@ -15,7 +15,7 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 /// ----------------------
 pub struct ArgMinMaxBlock<T: Apply> {
     pub data: OldBlockData,
-    buffer: Option<T::Output>,
+    buffer: T::Output,
 }
 
 impl<T: Apply> Default for ArgMinMaxBlock<T>
@@ -26,7 +26,7 @@ where
     fn default() -> Self {
         Self {
             data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
-            buffer: None,
+            buffer: <T::Output>::default(),
         }
     }
 }
@@ -50,13 +50,17 @@ where
         self.data = OldBlockData::from_pass(output);
         output
     }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
 pub trait Apply: Pass {
     type Output: Scalar;
 
     fn apply<'s>(
-        store: &mut Option<Self::Output>,
+        store: &mut Self::Output,
         input: PassBy<Self>,
         method: ArgMethod,
     ) -> PassBy<'s, Self::Output>;
@@ -76,12 +80,13 @@ impl<T: ArgMinMaxScalar> Apply for T {
     type Output = T;
 
     fn apply<'s>(
-        store: &mut Option<Self::Output>,
+        store: &mut Self::Output,
         _input: PassBy<Self>,
         _method: ArgMethod,
     ) -> PassBy<'s, Self::Output> {
         // If a scalar is passed in then the only possible index is zero
-        *store.insert(T::zero())
+        *store = T::zero();
+        *store
     }
 }
 
@@ -89,7 +94,7 @@ impl<const NROWS: usize, const NCOLS: usize, T: ArgMinMaxScalar> Apply for Matri
     type Output = T;
 
     fn apply<'s>(
-        store: &mut Option<Self::Output>,
+        store: &mut Self::Output,
         input: PassBy<Self>,
         method: ArgMethod,
     ) -> PassBy<'s, Self::Output> {
@@ -115,7 +120,8 @@ impl<const NROWS: usize, const NCOLS: usize, T: ArgMinMaxScalar> Apply for Matri
                     .0
             }
         };
-        *store.insert(T::from_usize(index).expect("Couldn't convert usize to T"))
+        *store = T::from_usize(index).expect("Couldn't convert usize to T");
+        *store
     }
 }
 
@@ -142,6 +148,14 @@ mod tests {
     use crate::testing::StubContext;
 
     #[test]
+    fn test_default_buffer_no_panic() {
+        let block = ArgMinMaxBlock::<f64>::default();
+        assert_eq!(block.buffer(), 0.0);
+        let block = ArgMinMaxBlock::<Matrix<2, 3, f64>>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_scalar_input() {
         let mut block = ArgMinMaxBlock::<f64>::default();
         let context = StubContext::default();
@@ -150,6 +164,7 @@ mod tests {
         let output = block.process(&params, &context, input);
         assert_eq!(output, 0.0);
         assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), output);
     }
 
     #[test]

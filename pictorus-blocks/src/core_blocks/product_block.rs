@@ -16,7 +16,7 @@ use matrix::{ApplyMatMul, ParametersMatrixMult};
 /// - MatrixMultiply: Accepts all matrices, using standard matrix multiplication sizing rules (i.e. (A, B) * (B, C) = (A, C))
 pub struct ProductBlock<T: Apply<M>, M: ProductMethod> {
     _method: PhantomData<M>,
-    store: Option<T::Output>,
+    store: T::Output,
     pub data: OldBlockData,
 }
 
@@ -27,7 +27,7 @@ where
     fn default() -> Self {
         Self {
             _method: PhantomData,
-            store: None,
+            store: T::Output::default(),
             data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
@@ -47,9 +47,15 @@ where
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let output = T::apply(&mut self.store, parameters, inputs);
-        self.data = OldBlockData::from_pass(output);
-        output
+        let mut tmp: Option<T::Output> = None;
+        T::apply(&mut tmp, parameters, inputs);
+        self.store = tmp.expect("apply must initialize the buffer");
+        self.data = OldBlockData::from_pass(self.store.as_by());
+        self.store.as_by()
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.store.as_by()
     }
 }
 
@@ -108,6 +114,12 @@ mod tests {
     use pictorus_traits::Matrix;
 
     #[test]
+    fn test_product_default_buffer_no_panic() {
+        let block = ProductBlock::<(f64, f64), ComponentWise>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
+
+    #[test]
     fn test_component_wise_scalar() {
         let context = StubContext::default();
 
@@ -119,6 +131,7 @@ mod tests {
 
         assert_eq!(output, 22.0);
         assert_eq!(block.data.scalar(), 22.0);
+        assert_eq!(block.buffer(), output);
 
         let mut block = ProductBlock::<(f32, f32, f32, f32, f32), ComponentWise>::default();
         let parameters = ParametersComponentWise::new([1.0, 1.0, 1.0, -1.0, 1.0]);

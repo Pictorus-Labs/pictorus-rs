@@ -226,6 +226,8 @@ pub use sinewave_block::SinewaveBlock;
 
 mod sliding_window_block;
 pub use sliding_window_block::SlidingWindowBlock;
+#[doc(hidden)]
+pub use sliding_window_block::Parameters as SlidingWindowBlockParams;
 
 mod spi_receive_block;
 #[doc(hidden)]

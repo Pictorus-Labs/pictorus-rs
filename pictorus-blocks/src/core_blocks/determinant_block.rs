@@ -60,6 +60,10 @@ macro_rules! impl_determinant_block {
                 self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
 
         impl ProcessBlock for DeterminantBlock<$type, $type>
@@ -80,6 +84,10 @@ macro_rules! impl_determinant_block {
                 self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
+
+            fn buffer(&self) -> PassBy<'_, Self::Output> {
+                self.buffer.as_by()
+            }
         }
     };
 }
@@ -93,6 +101,12 @@ mod tests {
     use crate::testing::StubContext;
     use paste::paste;
     use pictorus_block_data::BlockDataType;
+
+    #[test]
+    fn test_determinant_default_buffer_no_panic() {
+        let block = DeterminantBlock::<f64, Matrix<2, 2, f64>>::default();
+        assert_eq!(block.buffer(), 0.0);
+    }
 
     macro_rules! impl_determinant_tests {
         ($type:ty) => {
@@ -111,6 +125,7 @@ mod tests {
                     assert!(output == -2.0);
                     assert!(det_block.data.scalar() == -2.0);
                     assert!(det_block.data.get_type() == BlockDataType::Scalar);
+                    assert_eq!(det_block.buffer(), output);
 
                     let mut det_block_3x3 = DeterminantBlock::<$type, Matrix<3, 3, $type>>::default();
                     let input_3x3 = Matrix {
