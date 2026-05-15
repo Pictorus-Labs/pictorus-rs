@@ -21,18 +21,10 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
-        log::warn!(
-            "DerivativeBlock constructed via Default; IC not seeded. \
-             Prefer DerivativeBlock::new(&parameters) — otherwise buffer() will return \
-             T::default() until the first process() call."
+        panic!(
+            "DerivativeBlock has initial conditions and must be constructed with \
+             DerivativeBlock::new(&parameters) (HasIc trait), not Default::default()."
         );
-        Self {
-            samples: [T::default(); N],
-            sample_index: 0,
-            initial_accumulation: true,
-            output: T::default(),
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-        }
     }
 }
 
@@ -167,10 +159,10 @@ mod tests {
 
     #[test]
     fn test_scalar() {
-        let mut block = DerivativeBlock::<f64, 2>::default();
         let mut runtime = StubRuntime::default();
         runtime.context.fundamental_timestep = Duration::from_secs(1);
         let parameters = Parameters::new(0.0);
+        let mut block = DerivativeBlock::<f64, 2>::new(&parameters);
 
         let input = 1.0;
         let output = block.process(&parameters, &runtime.context(), input);
@@ -194,10 +186,10 @@ mod tests {
 
     #[test]
     fn test_matrix() {
-        let mut block = DerivativeBlock::<Matrix<2, 2, f32>, 2>::default();
         let mut runtime = StubRuntime::default();
         runtime.context.fundamental_timestep = Duration::from_secs(1);
         let parameters = Parameters::new(Matrix::zeroed());
+        let mut block = DerivativeBlock::<Matrix<2, 2, f32>, 2>::new(&parameters);
 
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],

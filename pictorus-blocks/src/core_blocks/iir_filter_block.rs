@@ -22,15 +22,10 @@ where
     OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
-        log::warn!(
-            "IirFilterBlock constructed via Default; IC not seeded. \
-             Prefer IirFilterBlock::new(&parameters) — otherwise buffer() will return \
-             T::default() until the first process() call."
+        panic!(
+            "IirFilterBlock has initial conditions and must be constructed with \
+             IirFilterBlock::new(&parameters) (HasIc trait), not Default::default()."
         );
-        IirFilterBlock {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: T::default(),
-        }
     }
 }
 
@@ -146,8 +141,8 @@ mod tests {
         let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
-        let mut block = IirFilterBlock::<f64>::default();
         let parameters = Parameters::new(0.0, time_constants_s);
+        let mut block = IirFilterBlock::<f64>::new(&parameters);
 
         // T = 0, timestep = None, therefore `alpha` = 0 and output = IC
         let res = block.process(&parameters, &ctxt, 1.0);
@@ -168,11 +163,11 @@ mod tests {
         let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
-        let mut block = IirFilterBlock::<Matrix<1, 2, f64>>::default();
         let ic = Matrix {
             data: [[0.0], [0.0]],
         };
         let parameters = Parameters::new(ic, time_constants_s);
+        let mut block = IirFilterBlock::<Matrix<1, 2, f64>>::new(&parameters);
         let input = Matrix {
             data: [[1.0], [2.0]],
         };
@@ -210,8 +205,8 @@ mod tests {
         let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
-        let mut block = IirFilterBlock::<f64>::default();
         let parameters = Parameters::new(0.0, time_constants_s);
+        let mut block = IirFilterBlock::<f64>::new(&parameters);
 
         // T = 0, timestep = None, therefore `alpha` = 0 and output = IC
         let res = block.process(&parameters, &ctxt, 1.0);

@@ -30,16 +30,10 @@ where
     OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
-        log::warn!(
-            "FrequencyFilterBlock constructed via Default; IC not seeded. \
-             Prefer FrequencyFilterBlock::new(&parameters) — otherwise buffer() will return \
-             T::default() until the first process() call."
+        panic!(
+            "FrequencyFilterBlock has initial conditions and must be constructed with \
+             FrequencyFilterBlock::new(&parameters) (HasIc trait), not Default::default()."
         );
-        Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            prev_data: None,
-            output: T::default(),
-        }
     }
 }
 
@@ -232,10 +226,10 @@ mod tests {
     fn test_freq_filter_high_pass_scalar() {
         let mut runtime = StubRuntime::default();
         runtime.context.fundamental_timestep = Duration::from_secs_f64(0.001);
-        let mut block_1_hz = FrequencyFilterBlock::<f64>::default();
         let parameters_1_hz = Parameters::new(0.0, 1.0, "HighPass");
-        let mut block_50_hz = FrequencyFilterBlock::<f64>::default();
+        let mut block_1_hz = FrequencyFilterBlock::<f64>::new(&parameters_1_hz);
         let parameters_50_hz = Parameters::new(0.0, 50.0, "HighPass");
+        let mut block_50_hz = FrequencyFilterBlock::<f64>::new(&parameters_50_hz);
 
         let mut sinewave_25_hz = SinewaveBlock::default();
         let sinewave_25_hz_parameters = SinewaveParameters::new(1.0, 25.0 * f64::TAU, 0.0, 0.0);
@@ -266,10 +260,10 @@ mod tests {
     fn test_freq_filter_low_pass_scalar() {
         let mut runtime = StubRuntime::default();
         runtime.context.fundamental_timestep = Duration::from_secs_f64(0.001);
-        let mut block_1_hz = FrequencyFilterBlock::<f32>::default();
         let parameters_1_hz = Parameters::new(0.0, 1.0, "LowPass");
-        let mut block_50_hz = FrequencyFilterBlock::<f32>::default();
+        let mut block_1_hz = FrequencyFilterBlock::<f32>::new(&parameters_1_hz);
         let parameters_50_hz = Parameters::new(0.0, 50.0, "LowPass");
+        let mut block_50_hz = FrequencyFilterBlock::<f32>::new(&parameters_50_hz);
 
         let mut sinewave_25_hz = SinewaveBlock::default();
         let sinewave_25_hz_parameters = SinewaveParameters::new(1.0, 25.0 * f32::TAU, 0.0, 0.0);
@@ -314,12 +308,13 @@ mod tests {
             .collect();
 
         // 4 scalar filters
-        let mut high_pass_50_hz_scalars: Vec<FrequencyFilterBlock<f64>> =
-            (0..4).map(|_| FrequencyFilterBlock::default()).collect();
+        let mut high_pass_50_hz_scalars: Vec<FrequencyFilterBlock<f64>> = (0..4)
+            .map(|_| FrequencyFilterBlock::new(&params_50_hz_high_pass_scalar))
+            .collect();
 
         //Matrix filters
         let mut high_pass_50hz_mat: FrequencyFilterBlock<Matrix<2, 2, f64>> =
-            FrequencyFilterBlock::default();
+            FrequencyFilterBlock::new(&params_50_hz_high_pass_matrix);
 
         for _ in 0..1000 {
             let sine_data = [
@@ -391,12 +386,13 @@ mod tests {
             .collect();
 
         // 4 scalar filters
-        let mut low_pass_50_hz_scalars: Vec<FrequencyFilterBlock<f64>> =
-            (0..4).map(|_| FrequencyFilterBlock::default()).collect();
+        let mut low_pass_50_hz_scalars: Vec<FrequencyFilterBlock<f64>> = (0..4)
+            .map(|_| FrequencyFilterBlock::new(&params_50_hz_low_pass_scalar))
+            .collect();
 
         //Matrix filters
         let mut low_pass_50hz_mat: FrequencyFilterBlock<Matrix<2, 2, f64>> =
-            FrequencyFilterBlock::default();
+            FrequencyFilterBlock::new(&params_50_hz_low_pass_matrix);
 
         for _ in 0..1000 {
             let sine_data = [

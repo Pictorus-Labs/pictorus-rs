@@ -29,17 +29,10 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        log::warn!(
-            "IntegralBlock constructed via Default; IC not seeded. \
-             Prefer IntegralBlock::new(&parameters) — otherwise buffer() will return \
-             T::Output::default() until the first process() call."
+        panic!(
+            "IntegralBlock has initial conditions and must be constructed with \
+             IntegralBlock::new(&parameters) (HasIc trait), not Default::default()."
         );
-        Self {
-            ic: T::Output::default(),
-            previous_sample: None,
-            output: None,
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-        }
     }
 }
 
@@ -237,8 +230,8 @@ mod tests {
     fn test_integral_scalar() {
         let mut runtime = StubRuntime::default();
 
-        let mut block = IntegralBlock::<(f64, bool)>::default();
         let parameters = Parameters::new(0.0, 20.0, "Trapezoidal");
+        let mut block = IntegralBlock::<(f64, bool)>::new(&parameters);
 
         let mut sine_wave_block = SinewaveBlock::<f64>::default();
         let sine_wave_parameters =
@@ -279,8 +272,6 @@ mod tests {
             Duration::from_secs(1),
         ));
 
-        let mut block: IntegralBlock<(Matrix<1, 3, f64>, bool)> =
-            IntegralBlock::<(Matrix<1, 3, f64>, bool)>::default();
         let parameters: Parameters<(Matrix<1, 3, f64>, bool)> = Parameters::new(
             Matrix {
                 data: [[0.0], [0.0], [0.0]],
@@ -288,6 +279,8 @@ mod tests {
             20.0,
             "Rectangle",
         );
+        let mut block: IntegralBlock<(Matrix<1, 3, f64>, bool)> =
+            IntegralBlock::<(Matrix<1, 3, f64>, bool)>::new(&parameters);
 
         let input = Matrix {
             data: [[1.0], [1.0], [15.0]],

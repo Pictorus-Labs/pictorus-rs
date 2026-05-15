@@ -36,18 +36,10 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
-        log::warn!(
-            "DelayBlock constructed via Default; IC not seeded. \
-             Prefer DelayBlock::new(&parameters) — otherwise buffer() will return \
-             T::default() until the first process() call."
+        panic!(
+            "DelayBlock has initial conditions and must be constructed with \
+             DelayBlock::new(&parameters) (HasIc trait), not Default::default()."
         );
-        Self {
-            samples: [T::default(); N],
-            initial_accumulation: true,
-            output: T::default(),
-            sample_index: 0,
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-        }
     }
 }
 
@@ -126,11 +118,11 @@ mod tests {
 
     #[test]
     fn test_delay_block_scalar() {
-        let mut block = DelayBlock::<f64, 3>::default();
         let parameters = Parameters {
             ic: 0.0,
             is_delayed: false,
         };
+        let mut block = DelayBlock::<f64, 3>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received
@@ -159,11 +151,11 @@ mod tests {
 
     #[test]
     fn test_delay_block_with_delayed_input() {
-        let mut block = DelayBlock::<f64, 3>::default();
         let parameters = Parameters {
             ic: 0.0,
             is_delayed: true,
         };
+        let mut block = DelayBlock::<f64, 3>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received
@@ -177,13 +169,13 @@ mod tests {
 
     #[test]
     fn test_delay_block_matrix() {
-        let mut block = DelayBlock::<Matrix<2, 2, f64>, 3>::default();
         let parameters = Parameters {
             ic: Matrix {
                 data: [[0.0, 0.0], [0.0, 0.0]],
             },
             is_delayed: false,
         };
+        let mut block = DelayBlock::<Matrix<2, 2, f64>, 3>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received
@@ -263,11 +255,11 @@ mod tests {
 
     #[test]
     fn test_delay_block_scalar_ics() {
-        let mut block = DelayBlock::<f64, 6>::default();
         let parameters = Parameters {
             ic: 42.0,
             is_delayed: false,
         };
+        let mut block = DelayBlock::<f64, 6>::new(&parameters);
         let context = StubContext::default();
 
         // Initial condition should be output until N samples are received

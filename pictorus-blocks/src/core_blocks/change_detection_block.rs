@@ -28,16 +28,10 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        log::warn!(
-            "ChangeDetectionBlock constructed via Default; IC not seeded. \
-             Prefer ChangeDetectionBlock::new(&parameters) — otherwise buffer() will return \
-             T::default() until the first process() call."
+        panic!(
+            "ChangeDetectionBlock has initial conditions and must be constructed with \
+             ChangeDetectionBlock::new(&parameters) (HasIc trait), not Default::default()."
         );
-        Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
-            buffer: T::Output::default(),
-            last_input: None,
-        }
     }
 }
 
@@ -206,7 +200,7 @@ mod tests {
                 fn [<test_scalar_rising_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new([<1 $type>], "Rising");
-                    let mut block = ChangeDetectionBlock::<$type>::default();
+                    let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
@@ -225,7 +219,7 @@ mod tests {
                 fn [<test_scalar_falling_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new([<1 $type>], "Falling");
-                    let mut block = ChangeDetectionBlock::<$type>::default();
+                    let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
@@ -245,7 +239,7 @@ mod tests {
                 fn [<test_scalar_any_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new([<1 $type>], "Any");
-                    let mut block = ChangeDetectionBlock::<$type>::default();
+                    let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
                     let output = block.process(&params, &context, [<1 $type>]);
@@ -279,7 +273,7 @@ mod tests {
                 fn [<test_matrix_falling_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Falling");
-                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::default();
+                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
                     let input = Matrix {
                         data: [[[<42 $type>]; 8]; 11],
@@ -325,7 +319,7 @@ mod tests {
                 fn [<test_matrix_rising_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Rising");
-                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::default();
+                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
                     let input = Matrix {
                         data: [[[<42 $type>]; 8]; 11],
@@ -371,7 +365,7 @@ mod tests {
                 fn [<test_matrix_any_ $type>]() {
                     let context = StubContext::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Any");
-                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::default();
+                    let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
                     let input = Matrix {
                         data: [[[<42 $type>]; 8]; 11],
@@ -436,7 +430,7 @@ mod tests {
     fn test_scalar_bool_any() {
         let context = StubContext::default();
         let params = Parameters::new(true, "Any");
-        let mut block = ChangeDetectionBlock::<bool>::default();
+        let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
         let output = block.process(&params, &context, false);
@@ -456,7 +450,7 @@ mod tests {
     fn test_scalar_bool_rising() {
         let context = StubContext::default();
         let params = Parameters::new(true, "Rising");
-        let mut block = ChangeDetectionBlock::<bool>::default();
+        let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
         let output = block.process(&params, &context, true);
@@ -475,7 +469,7 @@ mod tests {
     fn test_scalar_bool_falling() {
         let context = StubContext::default();
         let params = Parameters::new(true, "Falling");
-        let mut block = ChangeDetectionBlock::<bool>::default();
+        let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
         let output = block.process(&params, &context, true);

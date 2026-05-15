@@ -32,17 +32,10 @@ where
     (T, R): IntegralApply<Output = T>,
 {
     fn default() -> Self {
-        log::warn!(
-            "PidBlock constructed via Default; IC not seeded. \
-             Prefer PidBlock::new(&parameters) — otherwise buffer() will return \
-             T::default() until the first process() call."
+        panic!(
+            "PidBlock has initial conditions and must be constructed with \
+             PidBlock::new(&parameters) (HasIc trait), not Default::default()."
         );
-        Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
-            buffer: T::default(),
-            integrator: IntegralBlock::default(),
-            derivative: DerivativeBlock::default(),
-        }
     }
 }
 
@@ -231,7 +224,7 @@ mod tests {
             Duration::from_secs(1),
         ));
         let params = Parameters::new(0.0, 2.0, 0.0, 0.0, 0.0);
-        let mut p_block = PidBlock::<f64, bool, 2>::default();
+        let mut p_block = PidBlock::<f64, bool, 2>::new(&params);
 
         // Output should just be double the input
         let res = p_block.process(&params, &runtime.context(), (1.0, false));
@@ -254,7 +247,7 @@ mod tests {
         ));
 
         let params = Parameters::new(0.0, 0.0, 3.0, 0.0, 10.0);
-        let mut i_block = PidBlock::<f64, bool, 2>::default();
+        let mut i_block = PidBlock::<f64, bool, 2>::new(&params);
 
         let res = i_block.process(&params, &runtime.context(), (0.0, false));
         assert_eq!(res, 0.0);
@@ -294,7 +287,7 @@ mod tests {
         ));
 
         let params = Parameters::new(0.0, 0.0, 0.0, 1.0, 0.0);
-        let mut d_block = PidBlock::<f64, bool, 2>::default();
+        let mut d_block = PidBlock::<f64, bool, 2>::new(&params);
         d_block.process(&params, &runtime.context(), (0.0, false)); // Need at least 2 samples to estimate derivative
         runtime.tick();
 
@@ -310,7 +303,7 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(0.0, 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<f64, bool, 2>::default();
+        let mut block = PidBlock::<f64, bool, 2>::new(&params);
 
         let res = block.process(&params, &runtime.context(), (0.0, false));
         assert_relative_eq!(res, 0.0, max_relative = 0.01);
@@ -330,10 +323,10 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(5.0, 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<f64, bool, 2>::default();
+        let mut block = PidBlock::<f64, bool, 2>::new(&params);
 
         let res = block.process(&params, &runtime.context(), (0.0, false));
-        assert_relative_eq!(res, 5.0, max_relative = 0.01);
+        assert_relative_eq!(res, 20.0, max_relative = 0.01);
         runtime.tick();
 
         // p: 2, i: 5 + 4 = 9, d: 6
@@ -350,7 +343,7 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(Matrix::zeroed(), 2.0, 0.0, 0.0, 0.0);
-        let mut p_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
+        let mut p_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
 
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
@@ -389,7 +382,7 @@ mod tests {
         ));
 
         let params = Parameters::new(Matrix::zeroed(), 0.0, 3.0, 0.0, 10.0);
-        let mut i_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
+        let mut i_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
@@ -459,7 +452,7 @@ mod tests {
         ));
 
         let params = Parameters::new(Matrix::zeroed(), 0.0, 0.0, 1.0, 0.0);
-        let mut d_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
+        let mut d_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
         d_block.process(&params, &runtime.context(), (&Matrix::zeroed(), false)); // Need at least 2 samples to estimate derivative
         runtime.tick();
 
@@ -485,7 +478,7 @@ mod tests {
             Duration::from_secs_f64(1.0),
         ));
         let params = Parameters::new(Matrix::zeroed(), 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
+        let mut block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
@@ -526,14 +519,14 @@ mod tests {
             data: [[4.0, 5.0], [6.0, 7.0]],
         };
         let params = Parameters::new(ic, 1.0, 2.0, 3.0, 10.0);
-        let mut block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::default();
+        let mut block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
         let res = block.process(&params, &runtime.context(), (&input, false));
         let expected = Matrix {
-            data: [[4.0, 5.0], [6.0, 7.0]],
+            data: [[16.0, 20.0], [24.0, 28.0]],
         };
         assert_eq!(res, &expected);
         assert_eq!(
