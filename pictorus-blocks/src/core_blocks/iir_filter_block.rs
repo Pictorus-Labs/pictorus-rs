@@ -5,10 +5,6 @@ use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Block for applying an Infinite Impulse Response (IIR) filter to an input signal.
-///
-/// Construct via `HasIc::new(¶ms)` to seed the buffer with the IC, or
-/// `Default::default()` to start at `T::default()`. Codegen uses `::new` for HasIc
-/// blocks so the buffer is always sensibly seeded before the first `process()`.
 pub struct IirFilterBlock<T: Pass + Default>
 where
     OldBlockData: FromPass<T>,
