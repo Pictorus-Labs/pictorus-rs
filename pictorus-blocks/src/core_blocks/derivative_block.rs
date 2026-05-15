@@ -21,10 +21,12 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
-        panic!(
-            "DerivativeBlock has initial conditions and must be constructed with \
-             DerivativeBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "DerivativeBlock has initial conditions and must be constructed with \
+                 DerivativeBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 

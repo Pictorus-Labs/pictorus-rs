@@ -36,10 +36,12 @@ where
     pictorus_block_data::BlockData: FromPass<T>,
 {
     fn default() -> Self {
-        panic!(
-            "DelayBlock has initial conditions and must be constructed with \
-             DelayBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "DelayBlock has initial conditions and must be constructed with \
+                 DelayBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 

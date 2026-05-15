@@ -22,10 +22,12 @@ where
     OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
-        panic!(
-            "IirFilterBlock has initial conditions and must be constructed with \
-             IirFilterBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "IirFilterBlock has initial conditions and must be constructed with \
+                 IirFilterBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 

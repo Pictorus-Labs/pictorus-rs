@@ -29,10 +29,12 @@ where
     OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
-        panic!(
-            "IntegralBlock has initial conditions and must be constructed with \
-             IntegralBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "IntegralBlock has initial conditions and must be constructed with \
+                 IntegralBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 

@@ -30,10 +30,12 @@ where
     OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
-        panic!(
-            "FrequencyFilterBlock has initial conditions and must be constructed with \
-             FrequencyFilterBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "FrequencyFilterBlock has initial conditions and must be constructed with \
+                 FrequencyFilterBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 

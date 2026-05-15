@@ -56,10 +56,12 @@ where
     OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
-        panic!(
-            "SlidingWindowBlock has initial conditions and must be constructed with \
-             SlidingWindowBlock::new(&parameters) (HasIc trait), not Default::default()."
-        );
+        const {
+            panic!(
+                "SlidingWindowBlock has initial conditions and must be constructed with \
+                 SlidingWindowBlock::new(&parameters) (HasIc trait), not Default::default()."
+            )
+        }
     }
 }
 
@@ -217,8 +219,9 @@ mod tests {
             data: [[-1.0], [-1.0], [-1.0]],
         };
 
-        let mut block =
-            SlidingWindowBlock::<3, f64, Matrix<1, 3, f64>>::new(&Parameters::new(initial_condition));
+        let mut block = SlidingWindowBlock::<3, f64, Matrix<1, 3, f64>>::new(&Parameters::new(
+            initial_condition,
+        ));
 
         let output = *block.process(&Parameters::new(initial_condition), &c, 1.0);
         assert_eq!(output.data.as_flattened(), [-1.0, -1.0, 1.0]);
@@ -262,8 +265,7 @@ mod tests {
         };
 
         let p = Parameters::new(ic);
-        let mut block =
-            SlidingWindowBlock::<3, Matrix<1, 3, f64>, Matrix<1, 9, f64>>::new(&p);
+        let mut block = SlidingWindowBlock::<3, Matrix<1, 3, f64>, Matrix<1, 9, f64>>::new(&p);
 
         let output = block.process(
             &p,
@@ -394,8 +396,7 @@ mod tests {
         };
 
         let p = Parameters::new(ic);
-        let mut block =
-            SlidingWindowBlock::<3, Matrix<2, 2, f64>, Matrix<2, 6, f64>>::new(&p);
+        let mut block = SlidingWindowBlock::<3, Matrix<2, 2, f64>, Matrix<2, 6, f64>>::new(&p);
 
         let output = block.process(
             &p,
