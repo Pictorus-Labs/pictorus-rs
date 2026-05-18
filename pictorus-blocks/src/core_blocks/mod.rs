@@ -172,6 +172,9 @@ pub use passthrough_block::Parameters as GpioInputBlockParams;
 #[doc(hidden)]
 pub use passthrough_block::Parameters as SpiTransmitBlockParams;
 
+/// Used to signify an input port of a component.
+#[doc(inline)]
+pub use passthrough_block::PassthroughBlock as ComponentInputBlock;
 /// Reads data from a data store or variable and outputs it as a signal.
 #[doc(inline)]
 pub use passthrough_block::PassthroughBlock as DataReadBlock;
