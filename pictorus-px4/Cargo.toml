@@ -18,14 +18,6 @@ spin = "0.10.0"
 once_cell = { version = "1.19", default-features = false, features = ["critical-section"] }
 critical-section = "1.2.0"
 
-[[example]]
-name = "uorb"
-crate-type = ["staticlib"]
-
-[[example]]
-name = "quad_controller"
-crate-type = ["staticlib"]
-
 [dev-dependencies]
 panic-halt = "1.0.0"
 embedded-alloc = { version = "0.5.0", default-features = false }
