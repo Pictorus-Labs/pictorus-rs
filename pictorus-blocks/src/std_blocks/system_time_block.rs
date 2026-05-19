@@ -41,8 +41,8 @@ impl GeneratorBlock for SystemTimeBlock {
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // Since simulations can run faster than real-time, we'll use the delta between system start
         // and now, as measured by app_time, for system clock.
-        let elpased_time = context.time();
-        let time_now = self.start_time + elpased_time;
+        let elapsed_time = context.time();
+        let time_now = self.start_time + elapsed_time;
         self.output = get_output_value(time_now, parameters.method);
         self.output
     }

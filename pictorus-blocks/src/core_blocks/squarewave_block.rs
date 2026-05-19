@@ -105,7 +105,6 @@ mod tests {
         block.generate(&p, &runtime.context());
         assert_eq!(block.generate(&p, &runtime.context()), bias);
         assert_eq!(block.buffer(), bias);
-        assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_millis(500));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);

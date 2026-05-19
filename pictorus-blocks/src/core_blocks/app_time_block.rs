@@ -75,7 +75,6 @@ mod tests {
             let context = runtime.context();
             let output = block.generate(&parameters, &context);
             assert_eq!(output, block.buffer());
-            assert_eq!(block.buffer(), output);
             runtime.tick();
         }
     }
