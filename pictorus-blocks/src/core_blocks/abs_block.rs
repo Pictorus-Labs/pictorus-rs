@@ -1,6 +1,5 @@
 use crate::matrix_ext::MatrixNalgebraExt;
 use num_traits::Float;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 pub struct Parameter {}
@@ -19,18 +18,15 @@ impl Parameter {
 
 /// Computes the absolute value of a scalar, vector, or matrix.
 pub struct AbsBlock<T: Pass + Default> {
-    pub data: OldBlockData,
     buffer: T,
 }
 
 impl<T> Default for AbsBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -41,7 +37,6 @@ macro_rules! impl_abs_block {
         impl ProcessBlock for AbsBlock<$type>
         where
             $type: Scalar,
-            OldBlockData: FromPass<$type>,
         {
             type Inputs = $type;
             type Output = $type;
@@ -55,7 +50,6 @@ macro_rules! impl_abs_block {
             ) -> pictorus_traits::PassBy<'b, Self::Output> {
                 let output = Float::abs(inputs);
                 self.buffer = output;
-                self.data = OldBlockData::from_scalar(output.into());
                 output
             }
 
@@ -68,7 +62,6 @@ macro_rules! impl_abs_block {
             for AbsBlock<Matrix<ROWS, COLS, $type>>
         where
             $type: Scalar,
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -82,7 +75,6 @@ macro_rules! impl_abs_block {
             ) -> PassBy<'_, Self::Output> {
                 let abs = input.as_view().abs();
                 self.buffer = Matrix::<ROWS, COLS, $type>::from_view(&abs.as_view());
-                self.data = OldBlockData::from_pass(&self.buffer);
                 &self.buffer
             }
 
@@ -123,12 +115,11 @@ mod tests {
 
                     let output = block.process(&Parameter::new(), &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data, OldBlockData::from_scalar(<$type>::one().into()));
                     assert_eq!(block.buffer(), output);
 
                     let output = block.process(&Parameter::new(), &context, -<$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data, OldBlockData::from_scalar(1.0));
+                    assert_eq!(block.buffer(), <$type>::one());
                 }
 
                 #[test]
@@ -142,7 +133,8 @@ mod tests {
                     let output = block.process(&Parameter::new(), &context, &input);
                     assert_eq!(output.data[0][0], <$type>::one());
                     assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(block.data, OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::one().into()]]));
+                    assert_eq!(block.buffer().data[0][0], <$type>::one());
+                    assert_eq!(block.buffer().data[1][0], <$type>::one());
                 }
 
                 #[test]
@@ -156,7 +148,8 @@ mod tests {
                     let output = block.process(&Parameter::new(), &context, &input);
                     assert_eq!(output.data[0][0], <$type>::one());
                     assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(block.data, OldBlockData::from_matrix(&[&[<$type>::one().into()], &[<$type>::one().into()]]));
+                    assert_eq!(block.buffer().data[0][0], <$type>::one());
+                    assert_eq!(block.buffer().data[0][1], <$type>::one());
                 }
 
                 #[test]
@@ -174,10 +167,13 @@ mod tests {
                     assert_eq!(output.data[0][1], <$type>::one());
                     assert_eq!(output.data[1][0], <$type>::one());
                     assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(block.data, OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::one().into()], &[<$type>::one().into(), <$type>::one().into()]]));
+                    assert_eq!(block.buffer().data[0][0], <$type>::one());
+                    assert_eq!(block.buffer().data[0][1], <$type>::one());
+                    assert_eq!(block.buffer().data[1][0], <$type>::one());
+                    assert_eq!(block.buffer().data[1][1], <$type>::one());
                 }
             }
-        }
+        };
     }
 
     test_abs_block!(f32, f32);

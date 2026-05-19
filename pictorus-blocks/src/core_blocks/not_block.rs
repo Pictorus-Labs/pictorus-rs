@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Clone, Copy)]
@@ -11,20 +10,16 @@ pub enum NotMethod {
 pub struct NotBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
 impl<T> Default for NotBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: T::Output::default(),
         }
     }
@@ -33,7 +28,6 @@ where
 impl<T> ProcessBlock for NotBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -46,7 +40,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.method);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -209,20 +202,19 @@ mod tests {
 
                     let res = block.process(&parameters, &context, 1.0);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
                     assert_eq!(block.buffer(), res);
 
                     let res = block.process(&parameters, &context, 0.0);
                     assert_eq!(res, 1.0);
-                    assert_eq!(block.data.scalar(), 1.0);
+                    assert_eq!(block.buffer(), 1.0);
 
                     let res = block.process(&parameters, &context, -1.2);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
+                    assert_eq!(block.buffer(), 0.0);
 
                     let res = block.process(&parameters, &context, 1.2);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
+                    assert_eq!(block.buffer(), 0.0);
                 }
 
                 #[test]
@@ -236,7 +228,7 @@ mod tests {
                     };
                     let res = block.process(&parameters, &context, &input);
                     assert_eq!(res.data, [[0.0, 1.0, 0.0, 0.0]]);
-                    assert_eq!(block.data.get_data().as_slice(), [[0.0, 1.0, 0.0, 0.0]].as_flattened());
+                    assert_eq!(block.buffer().data, [[0.0, 1.0, 0.0, 0.0]]);
                 }
 
                 #[test]
@@ -247,19 +239,19 @@ mod tests {
 
                     let res = block.process(&parameters, &context, 1.0);
                     assert_eq!(res, -2.0);
-                    assert_eq!(block.data.scalar(), -2.0);
+                    assert_eq!(block.buffer(), -2.0);
 
                     let res = block.process(&parameters, &context, 42.0);
                     assert_eq!(res, -43.0);
-                    assert_eq!(block.data.scalar(), -43.0);
+                    assert_eq!(block.buffer(), -43.0);
 
                     let res = block.process(&parameters, &context, -1.2);
                     assert_eq!(res, 0.0);
-                    assert_eq!(block.data.scalar(), 0.0);
+                    assert_eq!(block.buffer(), 0.0);
 
                     let res = block.process(&parameters, &context, 1.2);
                     assert_eq!(res, -2.0);
-                    assert_eq!(block.data.scalar(), -2.0);
+                    assert_eq!(block.buffer(), -2.0);
                 }
 
                 #[test]
@@ -273,7 +265,7 @@ mod tests {
                     };
                     let res = block.process(&parameters, &context, &input);
                     assert_eq!(res.data, [[-2.0, -43.0], [0.0, -2.0]]);
-                    assert_eq!(block.data.get_data().as_slice(), [[-2.0, -43.0], [0.0, -2.0]].as_flattened());
+                    assert_eq!(block.buffer().data, [[-2.0, -43.0], [0.0, -2.0]]);
                 }
             }
         };
@@ -290,20 +282,20 @@ mod tests {
 
         let res = block.process(&parameters, &context, true);
         assert!(!res);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert!(!block.buffer());
 
         let res = block.process(&parameters, &context, false);
         assert!(res);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert!(block.buffer());
 
         let parameters = Parameters::new("Bitwise");
         let res = block.process(&parameters, &context, true);
         assert!(!res);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert!(!block.buffer());
 
         let res = block.process(&parameters, &context, false);
         assert!(res);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert!(block.buffer());
     }
 
     #[test]
@@ -317,9 +309,6 @@ mod tests {
         };
         let res = block.process(&parameters, &context, &input);
         assert_eq!(res.data, [[false, true], [true, false]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[0.0, 1.0], [1.0, 0.0]].as_flattened()
-        );
+        assert_eq!(block.buffer().data, [[false, true], [true, false]]);
     }
 }

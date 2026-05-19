@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Float, MatrixOps};
@@ -15,15 +14,11 @@ where
     S: Float,
     T: Apply<N, S>,
 {
-    pub data: OldBlockData,
     buffer: T,
     _unused: PhantomData<S>,
 }
 
-impl<const N: usize, S: Float, T: Apply<N, S>> ProcessBlock for Lookup1DBlock<N, S, T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<const N: usize, S: Float, T: Apply<N, S>> ProcessBlock for Lookup1DBlock<N, S, T> {
     type Inputs = T;
     type Output = T;
     type Parameters = Parameters<N, S>;
@@ -35,7 +30,6 @@ where
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -44,13 +38,9 @@ where
     }
 }
 
-impl<const N: usize, S: Float, T: Apply<N, S>> Default for Lookup1DBlock<N, S, T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<const N: usize, S: Float, T: Apply<N, S>> Default for Lookup1DBlock<N, S, T> {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
             _unused: PhantomData,
         }
@@ -192,30 +182,29 @@ mod tests {
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
         let res = block.process(&params, &ctxt, 0.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
         assert_eq!(block.buffer(), res);
 
         let res = block.process(&params, &ctxt, 1.0);
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         let res = block.process(&params, &ctxt, 0.5);
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
 
         let res = block.process(&params, &ctxt, 1.5);
         let expected = 11.0 / 2.0;
         assert_eq!(res, expected);
-        assert_eq!(block.data.scalar(), expected);
+        assert_eq!(block.buffer(), expected);
 
         // Verify clamps output
         let res = block.process(&params, &ctxt, 3.0);
         assert_eq!(res, 10.0);
-        assert_eq!(block.data.scalar(), 10.0);
+        assert_eq!(block.buffer(), 10.0);
 
         let res = block.process(&params, &ctxt, -100.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
+        assert_eq!(block.buffer(), -1.0);
     }
 
     #[test]
@@ -228,32 +217,32 @@ mod tests {
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
         let res = block.process(&params, &ctxt, 0.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
+        assert_eq!(block.buffer(), -1.0);
 
         let res = block.process(&params, &ctxt, 0.25);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
+        assert_eq!(block.buffer(), -1.0);
 
         let res = block.process(&params, &ctxt, 0.5);
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         let res = block.process(&params, &ctxt, 0.75);
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         let res = block.process(&params, &ctxt, 1.75);
         assert_eq!(res, 10.0);
-        assert_eq!(block.data.scalar(), 10.0);
+        assert_eq!(block.buffer(), 10.0);
 
         // Verify clamps output
         let res = block.process(&params, &ctxt, 3.0);
         assert_eq!(res, 10.0);
-        assert_eq!(block.data.scalar(), 10.0);
+        assert_eq!(block.buffer(), 10.0);
 
         let res = block.process(&params, &ctxt, -100.0);
         assert_eq!(res, -1.0);
-        assert_eq!(block.data.scalar(), -1.0);
+        assert_eq!(block.buffer(), -1.0);
     }
 
     #[test]
@@ -272,10 +261,7 @@ mod tests {
             data: [[-1.0, 1.0], [0.0, 11.0 / 2.0]],
         };
         assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer().data, expected.data);
 
         // Verify clamps output
         let input = Matrix {
@@ -286,10 +272,7 @@ mod tests {
             data: [[10.0, 10.0], [-1.0, -1.0]],
         };
         assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer().data, expected.data);
     }
 
     #[test]
@@ -308,10 +291,7 @@ mod tests {
             data: [[-1.0, -1.0], [1.0, 10.0]],
         };
         assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer().data, expected.data);
 
         // Verify clamps output
         let input = Matrix {
@@ -322,9 +302,6 @@ mod tests {
             data: [[10.0, 10.0], [-1.0, -1.0]],
         };
         assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer().data, expected.data);
     }
 }

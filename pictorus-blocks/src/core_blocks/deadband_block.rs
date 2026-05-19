@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::MatrixOps;
@@ -23,18 +22,15 @@ impl<T> Parameters<T> {
 ///
 /// If the input is within the deadband, the output is zero. Otherwise, the input value is passed through.
 pub struct DeadbandBlock<T> {
-    pub data: OldBlockData,
     buffer: T,
 }
 
 impl<T> Default for DeadbandBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -42,10 +38,7 @@ where
 
 macro_rules! impl_deadband_block {
     ($type:ty) => {
-        impl ProcessBlock for DeadbandBlock<$type>
-        where
-            OldBlockData: FromPass<$type>,
-        {
+        impl ProcessBlock for DeadbandBlock<$type> {
             type Inputs = $type;
             type Output = $type;
             type Parameters = Parameters<$type>;
@@ -59,7 +52,6 @@ macro_rules! impl_deadband_block {
                 let in_deadband = input < parameters.upper_limit && input > parameters.lower_limit;
                 let res = if in_deadband { 0.0 } else { input };
                 self.buffer = res;
-                self.data = OldBlockData::from_scalar(res.into());
                 self.buffer
             }
 
@@ -70,8 +62,6 @@ macro_rules! impl_deadband_block {
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for DeadbandBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -88,7 +78,6 @@ macro_rules! impl_deadband_block {
                     let in_deadband = v < parameters.upper_limit && v > parameters.lower_limit;
                     self.buffer.data[c][r] = if in_deadband { 0.0 } else { v };
                 });
-                self.data = OldBlockData::from_pass(&self.buffer);
                 &self.buffer
             }
 

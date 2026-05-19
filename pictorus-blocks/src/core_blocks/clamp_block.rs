@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters<T> {
@@ -19,18 +18,15 @@ impl<T> Parameters<T> {
 /// If an input is larger than the max value, it will be set to the max value. If
 /// the input is less than the min value, it will be set to the min value.
 pub struct ClampBlock<T> {
-    pub data: OldBlockData,
     buffer: T,
 }
 
 impl<T> Default for ClampBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -38,10 +34,7 @@ where
 
 macro_rules! impl_clamp_block {
     ($type:ty) => {
-        impl ProcessBlock for ClampBlock<$type>
-        where
-            OldBlockData: FromPass<$type>,
-        {
+        impl ProcessBlock for ClampBlock<$type> {
             type Inputs = $type;
             type Output = $type;
             type Parameters = Parameters<$type>;
@@ -53,7 +46,6 @@ macro_rules! impl_clamp_block {
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 self.buffer = input.clamp(parameters.min, parameters.max);
-                self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
 
@@ -64,8 +56,6 @@ macro_rules! impl_clamp_block {
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for ClampBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -83,7 +73,6 @@ macro_rules! impl_clamp_block {
                             input.data[c][r].clamp(parameters.min, parameters.max);
                     }
                 }
-                self.data = OldBlockData::from_pass(&self.buffer);
                 &self.buffer
             }
 
@@ -108,7 +97,6 @@ mod test {
     use crate::testing::StubContext;
     use num_traits::{One, Zero};
     use paste::paste;
-    use pictorus_block_data::ToPass;
 
     use super::*;
 
@@ -126,20 +114,18 @@ mod test {
         let c = StubContext::default();
         let lower_limit: f64 = -1.5;
         let upper_limit: f64 = -0.5;
-        let input = &OldBlockData::from_vector(&[1.0, -0.5, -1.2345, -1.6]);
+        let input = Matrix {
+            data: [[1.0], [-0.5], [-1.2345], [-1.6]],
+        };
         let mut block = ClampBlock::<Matrix<1, 4, f64>>::default();
         let p = Parameters::new(lower_limit, upper_limit);
 
-        let output = *block.process(&p, &c, &input.to_pass());
+        let output = *block.process(&p, &c, &input);
         assert_eq!(
             output,
             Matrix {
                 data: [[-0.5], [-0.5], [-1.2345], [-1.5]]
             }
-        );
-        assert_eq!(
-            block.data,
-            OldBlockData::from_matrix(&[&[-0.5, -0.5, -1.2345, -1.5]])
         );
         assert_eq!(block.buffer(), &output);
     }
@@ -187,10 +173,10 @@ mod test {
                             data: [[$type::one(), $type::zero()], [$type::one(), -$type::one()]]
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[$type::one().into(), $type::one().into()], &[$type::zero().into(), (-$type::one()).into()]])
-                    );
+                    assert_eq!(block.buffer().data[0][0], $type::one());
+                    assert_eq!(block.buffer().data[0][1], $type::zero());
+                    assert_eq!(block.buffer().data[1][0], $type::one());
+                    assert_eq!(block.buffer().data[1][1], -$type::one());
                 }
             }
         };
@@ -250,10 +236,10 @@ mod test {
                             data: [[pos_2, $type::one()], [$type::one(), pos_2]]
                         }
                     );
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[pos_2.into(), $type::one().into()], &[$type::one().into(), pos_2.into()]])
-                    );
+                    assert_eq!(block.buffer().data[0][0], pos_2);
+                    assert_eq!(block.buffer().data[0][1], $type::one());
+                    assert_eq!(block.buffer().data[1][0], $type::one());
+                    assert_eq!(block.buffer().data[1][1], pos_2);
                 }
             }
         };

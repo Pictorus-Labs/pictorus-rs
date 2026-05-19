@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
 /// Outputs the input data with an added bias (offset).
@@ -7,7 +6,6 @@ where
     B: Scalar,
     T: Apply<B>,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
@@ -15,11 +13,9 @@ impl<B, T> Default for BiasBlock<B, T>
 where
     B: Scalar,
     T: Apply<B> + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
             buffer: <T::Output>::default(),
         }
     }
@@ -29,7 +25,6 @@ impl<B, T> ProcessBlock for BiasBlock<B, T>
 where
     B: Scalar,
     T: Apply<B> + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -42,7 +37,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.offset);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -140,7 +134,6 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
-    use pictorus_block_data::ToPass;
 
     #[test]
     fn test_bias_default_buffer_no_panic() {
@@ -159,7 +152,6 @@ mod tests {
 
         let output = block.process(&parameters, &context, 2.0);
         assert_eq!(output, 5.0);
-        assert_eq!(block.data.scalar(), 5.0);
         assert_eq!(block.buffer(), output);
     }
 
@@ -168,11 +160,10 @@ mod tests {
         let mut block = BiasBlock::<f64, f64>::default();
         let parameters = Parameters::new(3.0);
         let context = StubContext::default();
-        let input = OldBlockData::from_scalar(-3.1);
 
-        let output = block.process(&parameters, &context, input.to_pass());
+        let output = block.process(&parameters, &context, -3.1);
         assert_relative_eq!(output, -0.1);
-        assert_relative_eq!(block.data.scalar(), -0.1);
+        assert_relative_eq!(block.buffer(), -0.1);
     }
 
     #[test]
@@ -185,23 +176,19 @@ mod tests {
         let parameters = Parameters::new(2.0);
         let output = block.process(&parameters, &context, &input);
         assert_eq!(output.data, [[3.0, 4.0], [5.0, 6.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[3.0, 4.0], [5.0, 6.0]].as_flattened()
-        );
+        assert_eq!(block.buffer().data, [[3.0, 4.0], [5.0, 6.0]]);
     }
 
     #[test]
     fn test_bias_matrix_to_pass() {
         let mut block = BiasBlock::<f64, Matrix<2, 2, f64>>::default();
         let context = StubContext::default();
-        let input = OldBlockData::from_matrix(&[&[1.0, 3.0], &[2.0, 4.0]]);
+        let input = Matrix {
+            data: [[1.0, 2.0], [3.0, 4.0]],
+        };
         let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, &input.to_pass());
+        let output = block.process(&parameters, &context, &input);
         assert_eq!(output.data, [[3.0, 4.0], [5.0, 6.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[3.0, 4.0], [5.0, 6.0]].as_flattened()
-        );
+        assert_eq!(block.buffer().data, [[3.0, 4.0], [5.0, 6.0]]);
     }
 }

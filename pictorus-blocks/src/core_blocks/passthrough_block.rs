@@ -1,10 +1,4 @@
-// TODO: Currently we require alloc in this crate to support OldBlockData,
-// but eventually this crate should be no_std and no_alloc. When we remove
-// OldBlockData, we should also update this block to function without alloc
-extern crate alloc;
-
 use crate::traits::DefaultStorage;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{PassBy, ProcessBlock};
 
 // A block that passes through the input data, storing it in a buffer.
@@ -12,23 +6,13 @@ use pictorus_traits::{PassBy, ProcessBlock};
 // Eventually it would be better to remove this block and just use the input value directly,
 // but we need to maintain it for now to keep the old block data system working.
 #[doc(hidden)]
-pub struct PassthroughBlock<T: DefaultStorage>
-where
-    OldBlockData: FromPass<T>,
-{
-    pub data: OldBlockData,
+pub struct PassthroughBlock<T: DefaultStorage> {
     buffer: T::Storage,
 }
 
-impl<T: DefaultStorage> Default for PassthroughBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: DefaultStorage> Default for PassthroughBlock<T> {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(<T as DefaultStorage>::from_storage(
-                &T::default_storage(),
-            )),
             buffer: T::default_storage(),
         }
     }
@@ -44,10 +28,7 @@ impl Parameters {
     }
 }
 
-impl<T: DefaultStorage> ProcessBlock for PassthroughBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: DefaultStorage> ProcessBlock for PassthroughBlock<T> {
     type Parameters = Parameters;
     type Inputs = T;
     type Output = T;
@@ -59,9 +40,7 @@ where
         input: PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         T::copy_into(input, &mut self.buffer);
-        let res = <T as DefaultStorage>::from_storage(&self.buffer);
-        self.data = <OldBlockData as FromPass<T>>::from_pass(res);
-        res
+        <T as DefaultStorage>::from_storage(&self.buffer)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
@@ -91,7 +70,6 @@ mod tests {
         let input = 99.999;
         let output = block.process(&params, &ctxt, input.as_by());
         assert_eq!(output, input);
-        assert_eq!(block.data.scalar(), input);
         assert_eq!(block.buffer(), output);
     }
 
@@ -104,12 +82,12 @@ mod tests {
         let input = b"hello world";
         let output = block.process(&params, &ctxt, input.as_slice());
         assert_eq!(output, input);
-        assert_eq!(block.data.to_raw_bytes(), input);
+        assert_eq!(block.buffer(), input);
 
         let input = b"";
         let output = block.process(&params, &ctxt, input.as_slice());
         assert_eq!(output, input);
-        assert_eq!(block.data.to_raw_bytes(), input);
+        assert_eq!(block.buffer(), input);
     }
 
     #[test]
@@ -123,6 +101,6 @@ mod tests {
         };
         let output = block.process(&params, &ctxt, input.as_by());
         assert_eq!(output, &input);
-        assert_eq!(block.data.get_data().as_slice(), input.data.as_flattened());
+        assert_eq!(block.buffer(), &input);
     }
 }

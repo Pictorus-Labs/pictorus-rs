@@ -1,5 +1,4 @@
 use crate::traits::Scalar;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Raises the input to a specified power (coefficient),
@@ -16,26 +15,18 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 /// a panic will occur.
 #[derive(Debug)]
 pub struct ExponentBlock<T: Pass + Default> {
-    pub data: OldBlockData,
     output: T,
 }
 
-impl<T: Pass + Default> Default for ExponentBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Pass + Default> Default for ExponentBlock<T> {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             output: T::default(),
         }
     }
 }
 
-impl<S: Scalar + num_traits::Float + num_traits::Zero> ProcessBlock for ExponentBlock<S>
-where
-    OldBlockData: FromPass<S>,
-{
+impl<S: Scalar + num_traits::Float + num_traits::Zero> ProcessBlock for ExponentBlock<S> {
     type Inputs = S;
     type Output = S;
     type Parameters = Parameters<S>;
@@ -61,7 +52,6 @@ where
                 self.output = self.output.neg();
             };
         }
-        self.data = OldBlockData::from_pass(self.output);
         self.output
     }
 
@@ -72,8 +62,6 @@ where
 
 impl<S: Scalar + num_traits::Float + num_traits::Zero, const NROWS: usize, const NCOLS: usize>
     ProcessBlock for ExponentBlock<Matrix<NROWS, NCOLS, S>>
-where
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, S>>,
 {
     type Inputs = Matrix<NROWS, NCOLS, S>;
     type Output = Matrix<NROWS, NCOLS, S>;
@@ -108,7 +96,6 @@ where
                 }
                 *x = x_local;
             });
-        self.data = OldBlockData::from_pass(&self.output);
         &self.output
     }
 

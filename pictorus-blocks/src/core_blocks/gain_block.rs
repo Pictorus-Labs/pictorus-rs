@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
 
 /// Multiplies the input by a gain factor.
@@ -7,7 +6,6 @@ where
     G: Scalar,
     T: Apply<G>,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
@@ -15,11 +13,9 @@ impl<G, T> Default for GainBlock<G, T>
 where
     G: Scalar,
     T: Apply<G>,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
             buffer: <T::Output>::default(),
         }
     }
@@ -29,7 +25,6 @@ impl<G, T> ProcessBlock for GainBlock<G, T>
 where
     G: Scalar,
     T: Apply<G>,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -42,7 +37,6 @@ where
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.gain);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -136,7 +130,6 @@ impl<G: Scalar> Parameters<G> {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use pictorus_block_data::ToPass;
 
     #[test]
     fn test_gain_default_buffer_no_panic() {
@@ -155,7 +148,6 @@ mod tests {
         let parameters = Parameters::new(2.0);
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, 2.0);
-        assert_eq!(block.data.scalar(), 2.0);
         assert_eq!(block.buffer(), output);
     }
 
@@ -169,42 +161,30 @@ mod tests {
         let parameters = Parameters::new(2.0);
         let output = block.process(&parameters, &context, &input);
         assert_eq!(output.data, [[2.0, 4.0], [6.0, 8.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[2.0, 4.0], [6.0, 8.0]].as_flattened()
-        );
+        assert_eq!(block.buffer().data, [[2.0, 4.0], [6.0, 8.0]]);
     }
 
     #[test]
     fn test_scalar_with_to_pass() {
         let mut block = GainBlock::<f64, f64>::default();
         let context = StubContext::default();
-        let input = OldBlockData::from_scalar(1.0);
+        let input = 1.0;
         let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, input.to_pass());
+        let output = block.process(&parameters, &context, input);
         assert_eq!(output, 2.0);
-        assert_eq!(block.data.scalar(), 2.0);
+        assert_eq!(block.buffer(), 2.0);
     }
 
     #[test]
     fn test_matrix_with_to_pass() {
-        // Just to prove the test below makes sense. Rows and cols get flipped along the way in conversions
-        assert_eq!(
-            OldBlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]])
-                .get_data()
-                .as_slice(),
-            [[1.0, 3.0], [2.0, 4.0]].as_flattened()
-        );
-
         let mut block = GainBlock::<f64, Matrix<2, 2, f64>>::default();
         let context = StubContext::default();
-        let input = OldBlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]]);
+        let input = Matrix {
+            data: [[1.0, 3.0], [2.0, 4.0]],
+        };
         let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, &input.to_pass());
+        let output = block.process(&parameters, &context, &input);
         assert_eq!(output.data, [[2.0, 6.0], [4.0, 8.0]]);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[2.0, 6.0], [4.0, 8.0]].as_flattened()
-        );
+        assert_eq!(block.buffer().data, [[2.0, 6.0], [4.0, 8.0]]);
     }
 }

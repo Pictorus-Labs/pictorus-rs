@@ -4,7 +4,6 @@ use crate::matrix_ext::MatrixNalgebraExt;
 use crate::traits::{MatrixOps, Scalar};
 use nalgebra::ClosedDivAssign;
 use num_traits::Float;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters<I: Scalar + Float> {
@@ -27,9 +26,7 @@ pub struct QuantizeBlock<I, T>
 where
     I: Scalar + Float,
     T: Apply<I>,
-    OldBlockData: FromPass<T::Output>,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
@@ -37,11 +34,9 @@ impl<I, T> Default for QuantizeBlock<I, T>
 where
     I: Scalar + Float,
     T: Apply<I>,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: T::Output::default(),
         }
     }
@@ -51,7 +46,6 @@ impl<I, T> ProcessBlock for QuantizeBlock<I, T>
 where
     I: Scalar + Float,
     T: Apply<I>,
-    OldBlockData: FromPass<T::Output>,
 {
     type Parameters = Parameters<I>;
     type Inputs = T;
@@ -64,7 +58,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let res = T::apply(inputs, parameters.interval, &mut self.buffer);
-        self.data = OldBlockData::from_pass(res);
         res
     }
 
@@ -120,8 +113,6 @@ impl<const R: usize, const C: usize, I: Scalar + Float + ClosedDivAssign + MulAs
 
 #[cfg(test)]
 mod tests {
-    use std::vec::Vec;
-
     use crate::testing::StubContext;
     use paste::paste;
 
@@ -145,7 +136,6 @@ mod tests {
                     let res = block.process(&params, &context, input);
 
                     assert_eq!(res, 0.5);
-                    assert_eq!(block.data.scalar(), 0.5);
                     assert_eq!(block.buffer(), res);
                 }
 
@@ -163,15 +153,7 @@ mod tests {
                     let res = block.process(&params, &context, &input);
 
                     assert_eq!(res.data, expected.data);
-                    assert_eq!(
-                        block.data.get_data().as_slice(),
-                        expected
-                            .data
-                            .as_flattened()
-                            .iter()
-                            .map(|x| *x as f64)
-                            .collect::<Vec<f64>>()
-                    );
+                    assert_eq!(block.buffer().data, expected.data);
                 }
             }
         };
