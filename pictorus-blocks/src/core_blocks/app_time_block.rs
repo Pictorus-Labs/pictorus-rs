@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, PassBy, Scalar};
 
 #[derive(Debug, Clone, Default)]
@@ -16,7 +15,6 @@ impl Parameters {
 pub struct AppTimeBlock<T: Scalar + Float> {
     phantom: core::marker::PhantomData<T>,
     buffer: T,
-    pub data: BlockData,
 }
 
 impl<T: Scalar + Float> Default for AppTimeBlock<T>
@@ -27,7 +25,6 @@ where
         Self {
             phantom: core::marker::PhantomData,
             buffer: T::zero(),
-            data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
 }
@@ -47,7 +44,6 @@ where
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let time = T::from_duration(context.time());
         self.buffer = time;
-        self.data = BlockData::from_scalar(time.into());
         time
     }
 
@@ -78,7 +74,7 @@ mod tests {
         for _ in 0..100 {
             let context = runtime.context();
             let output = block.generate(&parameters, &context);
-            assert_eq!(output, block.data.scalar());
+            assert_eq!(output, block.buffer());
             assert_eq!(block.buffer(), output);
             runtime.tick();
         }

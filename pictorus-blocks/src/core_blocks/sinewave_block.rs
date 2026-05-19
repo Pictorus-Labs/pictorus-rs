@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, PassBy};
 
 #[derive(Debug, Clone)]
@@ -11,7 +10,6 @@ where
 {
     phantom: core::marker::PhantomData<T>,
     buffer: T,
-    pub data: BlockData,
 }
 
 impl<T> Default for SinewaveBlock<T>
@@ -23,7 +21,6 @@ where
         Self {
             phantom: core::marker::PhantomData,
             buffer: T::zero(),
-            data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
 }
@@ -46,7 +43,6 @@ where
             * num_traits::Float::sin(parameters.frequency * time + parameters.phase)
             + parameters.bias;
         self.buffer = sin_val;
-        self.data = BlockData::from_scalar(sin_val.into());
         sin_val
     }
 
@@ -101,11 +97,10 @@ mod tests {
         let mut context = StubContext::default();
 
         assert_eq!(block.generate(&parameters, &context), Float::sin(0.5));
-        assert_eq!(block.data.scalar(), Float::sin(0.5));
         assert_eq!(block.buffer(), Float::sin(0.5));
         context.time = Duration::from_secs(1);
 
         assert_eq!(block.generate(&parameters, &context), Float::sin(1.5));
-        assert_eq!(block.data.scalar(), Float::sin(1.5));
+        assert_eq!(block.buffer(), Float::sin(1.5));
     }
 }

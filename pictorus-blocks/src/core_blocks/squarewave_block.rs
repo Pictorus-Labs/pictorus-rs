@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, PassBy};
 
 pub struct Parameters<T: Float> {
@@ -26,7 +25,6 @@ impl<T: Float> Parameters<T> {
 pub struct SquarewaveBlock<T: Float> {
     phantom_output_type: core::marker::PhantomData<T>,
     buffer: T,
-    pub data: BlockData,
 }
 
 impl<T: Float> Default for SquarewaveBlock<T>
@@ -37,7 +35,6 @@ where
         Self {
             phantom_output_type: core::marker::PhantomData,
             buffer: T::zero(),
-            data: BlockData::from_scalar(T::zero().into()),
         }
     }
 }
@@ -70,7 +67,6 @@ where
             parameters.bias + parameters.amplitude
         };
         self.buffer = output;
-        self.data = BlockData::from_scalar(f64::from(output));
         output
     }
 
@@ -108,38 +104,38 @@ mod tests {
 
         block.generate(&p, &runtime.context());
         assert_eq!(block.generate(&p, &runtime.context()), bias);
-        assert_eq!(block.data.scalar(), bias);
+        assert_eq!(block.buffer(), bias);
         assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_millis(500));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar(), bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f64(1.0));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar(), bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f64(1.499));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar(), bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f64(1.5));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar(), bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         // Off duration
         runtime.set_time(Duration::from_secs_f64(2.5));
         assert_eq!(block.generate(&p, &runtime.context()), bias);
-        assert_eq!(block.data.scalar(), bias);
+        assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_secs_f64(3.499));
         assert_eq!(block.generate(&p, &runtime.context()), bias);
-        assert_eq!(block.data.scalar(), bias);
+        assert_eq!(block.buffer(), bias);
 
         // Back on
         runtime.set_time(Duration::from_secs_f64(3.5));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar(), bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
     }
 
     #[test]
@@ -158,37 +154,37 @@ mod tests {
 
         block.generate(&p, &runtime.context());
         assert_eq!(block.generate(&p, &runtime.context()), bias);
-        assert_eq!(block.data.scalar() as f32, bias);
+        assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_millis(500));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar() as f32, bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f32(1.0));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar() as f32, bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f32(1.499));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar() as f32, bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f32(1.5));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar() as f32, bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
 
         // Off duration
         runtime.set_time(Duration::from_secs_f32(2.5));
         assert_eq!(block.generate(&p, &runtime.context()), bias);
-        assert_eq!(block.data.scalar() as f32, bias);
+        assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_secs_f32(3.499));
         assert_eq!(block.generate(&p, &runtime.context()), bias);
-        assert_eq!(block.data.scalar() as f32, bias);
+        assert_eq!(block.buffer(), bias);
 
         // Back on
         runtime.set_time(Duration::from_secs_f32(3.5));
         assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
-        assert_eq!(block.data.scalar() as f32, bias + amplitude);
+        assert_eq!(block.buffer(), bias + amplitude);
     }
 
     #[test]
