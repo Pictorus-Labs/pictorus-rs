@@ -4,7 +4,7 @@ use pictorus_traits::{PassBy, ProcessBlock};
 // A block that passes through the input data, storing it in a buffer.
 //
 // Eventually it would be better to remove this block and just use the input value directly,
-// but we need to maintain it for now to keep the old block data system working.
+// but we need to maintain it for now to keep the buffered block system working.
 #[doc(hidden)]
 pub struct PassthroughBlock<T: DefaultStorage> {
     buffer: T::Storage,
