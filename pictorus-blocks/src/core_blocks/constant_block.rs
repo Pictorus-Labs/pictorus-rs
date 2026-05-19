@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{GeneratorBlock, Matrix, Pass, PassBy, Scalar};
 
 pub struct Parameters<T> {
@@ -16,19 +15,16 @@ pub struct ConstantBlock<T>
 where
     T: Apply,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
 impl<T> Default for ConstantBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
             buffer: <T::Output>::default(),
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
         }
     }
 }
@@ -36,7 +32,6 @@ where
 impl<T> GeneratorBlock for ConstantBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Output = T::Output;
     type Parameters = Parameters<T>;
@@ -46,9 +41,7 @@ where
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        let output = T::apply(&mut self.buffer, parameters);
-        self.data = OldBlockData::from_pass(output);
-        output
+        T::apply(&mut self.buffer, parameters)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
@@ -96,7 +89,6 @@ where
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use pictorus_block_data::{BlockData, ToPass};
 
     #[test]
     fn test_constant_default_buffer_no_panic() {
@@ -115,31 +107,31 @@ mod tests {
 
         let output = block.generate(&parameters, &context);
         assert_eq!(output, 3.0);
-        assert_eq!(block.data, BlockData::from_scalar(3.0));
         assert_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_constant_vector() {
-        let vector: [f64; 2] = [1.0, 2.0];
-
         let mut block = ConstantBlock::<Matrix<1, 2, f64>>::default();
-        let parameters = Parameters::new(BlockData::from_vector(&vector).to_pass());
+        let parameters = Parameters::new(Matrix {
+            data: [[1.0], [2.0]],
+        });
         let context = StubContext::default();
 
-        let output = block.generate(&parameters, &context); // <-- Converts Vector to Matrix in from_pass
+        let output = block.generate(&parameters, &context);
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 2.0);
 
-        assert_eq!(block.data, BlockData::from_matrix(&[&vector]));
+        assert_eq!(block.buffer().data[0][0], 1.0);
+        assert_eq!(block.buffer().data[1][0], 2.0);
     }
 
     #[test]
     fn test_constant_matrix() {
-        let matrix_as_blockdata = BlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]]);
-
         let mut block = ConstantBlock::<Matrix<2, 2, f64>>::default();
-        let parameters = Parameters::new(matrix_as_blockdata.to_pass());
+        let parameters = Parameters::new(Matrix {
+            data: [[1.0, 3.0], [2.0, 4.0]],
+        });
         let context = StubContext::default();
 
         let output = block.generate(&parameters, &context);
@@ -147,6 +139,9 @@ mod tests {
         assert_eq!(output.data[1][0], 2.0);
         assert_eq!(output.data[0][1], 3.0);
         assert_eq!(output.data[1][1], 4.0);
-        assert_eq!(block.data, matrix_as_blockdata);
+        assert_eq!(block.buffer().data[0][0], 1.0);
+        assert_eq!(block.buffer().data[1][0], 2.0);
+        assert_eq!(block.buffer().data[0][1], 3.0);
+        assert_eq!(block.buffer().data[1][1], 4.0);
     }
 }

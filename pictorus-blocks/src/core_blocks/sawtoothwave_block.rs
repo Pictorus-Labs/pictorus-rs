@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, PassBy};
 
 #[derive(Debug, Clone)]
@@ -11,7 +10,6 @@ where
 {
     phantom: core::marker::PhantomData<T>,
     buffer: T,
-    pub data: BlockData,
 }
 
 impl<T> Default for SawtoothwaveBlock<T>
@@ -23,7 +21,6 @@ where
         Self {
             phantom: core::marker::PhantomData,
             buffer: T::zero(),
-            data: BlockData::from_scalar(f64::from(T::zero())),
         }
     }
 }
@@ -47,7 +44,6 @@ where
         let x = two * (time - num_traits::Float::floor(time)) - T::one();
         let val = parameters.amplitude * x + parameters.bias;
         self.buffer = val;
-        self.data = BlockData::from_scalar(val.into());
         val
     }
 
@@ -110,24 +106,24 @@ mod tests {
         let mut block = SawtoothwaveBlock::default();
 
         let out = block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
         assert_eq!(block.buffer(), out);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), -0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3 * PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2 * PI
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
     }
 
     #[test]
@@ -148,23 +144,23 @@ mod tests {
         let mut block = SawtoothwaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3 * PI / 2
-        assert_relative_eq!(block.data.scalar(), -0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2 * PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
     }
 
     #[test]
@@ -185,23 +181,23 @@ mod tests {
         let mut block = SawtoothwaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 1.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3 * PI / 2
-        assert_relative_eq!(block.data.scalar(), 1.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 1.5, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2 * PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
     }
 
     #[test]
@@ -222,23 +218,23 @@ mod tests {
         let mut block = SawtoothwaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -2.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -2.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3 * PI / 2
-        assert_relative_eq!(block.data.scalar(), 1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 1.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 2 * PI
-        assert_relative_eq!(block.data.scalar(), -2.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -2.0, epsilon = 0.00001);
     }
 
     #[test]
@@ -259,21 +255,21 @@ mod tests {
         let mut block = SawtoothwaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         // This was a little weird it was just shy of hitting the discontinuity at 2PI so it was just barely less than 1.0,
         // this fudge factor pushes it over the line. Testing on the edge of the discontinuity might not be the best approach
         runtime.context.time = Duration::from_secs_f64(2.0 * PI + 0.0000001);
         block.generate(&params, &runtime.context()); // T = 2*PI
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.context.time = Duration::from_secs_f64(400.0 * PI);
         block.generate(&params, &runtime.context()); // T = 400 * PI
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.context.time = Duration::from_secs_f64(400.5 * PI);
         block.generate(&params, &runtime.context()); // T = 400.5 * PI
-        assert_relative_eq!(block.data.scalar(), -0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
     }
 
     #[test]
@@ -294,18 +290,18 @@ mod tests {
         let mut block = SawtoothwaveBlock::default();
 
         block.generate(&params, &runtime.context()); // T = 0
-        assert_relative_eq!(block.data.scalar(), -1.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI / 2
-        assert_relative_eq!(block.data.scalar(), -0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = PI
-        assert_relative_eq!(block.data.scalar(), 0.0, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3 * PI / 2
-        assert_relative_eq!(block.data.scalar(), 0.5, epsilon = 0.00001);
+        assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
     }
 }

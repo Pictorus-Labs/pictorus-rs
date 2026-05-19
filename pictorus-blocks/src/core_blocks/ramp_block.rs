@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::BlockData;
 use pictorus_traits::{GeneratorBlock, PassBy, Scalar};
 
 #[derive(Debug, Clone)]
@@ -7,7 +6,6 @@ use pictorus_traits::{GeneratorBlock, PassBy, Scalar};
 pub struct RampBlock<T: Scalar + Float> {
     phantom: core::marker::PhantomData<T>,
     buffer: T,
-    pub data: BlockData,
 }
 
 impl<T: Scalar + Float> Default for RampBlock<T>
@@ -18,7 +16,6 @@ where
         Self {
             phantom: core::marker::PhantomData,
             buffer: T::default(),
-            data: BlockData::from_scalar(f64::from(T::default())),
         }
     }
 }
@@ -40,7 +37,6 @@ where
         let ramp_val =
             parameters.rate * num_traits::Float::max(time - parameters.start_time, T::zero());
         self.buffer = ramp_val;
-        self.data = BlockData::from_scalar(ramp_val.into());
         ramp_val
     }
 

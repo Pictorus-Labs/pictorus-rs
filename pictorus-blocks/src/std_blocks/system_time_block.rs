@@ -1,11 +1,9 @@
 use chrono::{DateTime, Datelike, Local, Timelike};
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{GeneratorBlock, PassBy};
 
 /// This block can be used in `std` environments to get the current system time.
 /// The time output can be in different formats, such as epoch time, second, minute, hour, day of the month, day of the year, month, or year.
 pub struct SystemTimeBlock {
-    pub data: OldBlockData,
     output: f64,
     start_time: DateTime<Local>,
 }
@@ -13,7 +11,6 @@ pub struct SystemTimeBlock {
 impl Default for SystemTimeBlock {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_scalar(0.0),
             output: 0.0,
             start_time: Local::now(),
         }
@@ -44,10 +41,9 @@ impl GeneratorBlock for SystemTimeBlock {
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // Since simulations can run faster than real-time, we'll use the delta between system start
         // and now, as measured by app_time, for system clock.
-        let elpased_time = context.time();
-        let time_now = self.start_time + elpased_time;
+        let elapsed_time = context.time();
+        let time_now = self.start_time + elapsed_time;
         self.output = get_output_value(time_now, parameters.method);
-        self.data = OldBlockData::from_scalar(self.output);
         self.output
     }
 
@@ -132,7 +128,7 @@ mod tests {
         );
         let output = block.generate(&params, &context);
         assert_eq!(output, start_time.timestamp() as f64 + 42.0);
-        assert_eq!(block.data.scalar(), start_time.timestamp() as f64 + 42.0);
+        assert_eq!(block.buffer(), start_time.timestamp() as f64 + 42.0);
         assert_eq!(block.buffer(), output);
     }
 }

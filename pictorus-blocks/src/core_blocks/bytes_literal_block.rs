@@ -1,4 +1,3 @@
-use pictorus_block_data::BlockData;
 use pictorus_traits::{ByteSliceSignal, GeneratorBlock};
 
 pub struct Parameters<const CHARS: usize> {
@@ -14,15 +13,11 @@ impl<const CHARS: usize> Parameters<CHARS> {
 /// Output a constant byte slice as a signal.
 pub struct BytesLiteralBlock<const CHARS: usize> {
     buffer: [u8; CHARS],
-    pub data: BlockData,
 }
 
 impl<const CHARS: usize> Default for BytesLiteralBlock<CHARS> {
     fn default() -> Self {
-        Self {
-            data: BlockData::from_bytes(&[0; CHARS]),
-            buffer: [0; CHARS],
-        }
+        Self { buffer: [0; CHARS] }
     }
 }
 
@@ -35,7 +30,6 @@ impl<const CHARS: usize> GeneratorBlock for BytesLiteralBlock<CHARS> {
         parameters: &Self::Parameters,
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        self.data = BlockData::from_bytes(&parameters.value);
         self.buffer = parameters.value;
         &self.buffer
     }
@@ -68,7 +62,6 @@ mod tests {
 
         let output = block.generate(&parameters, &context).to_vec();
         assert_eq!(output, "Hello World".as_bytes());
-        assert_eq!(block.data, BlockData::from_bytes("Hello World".as_bytes()));
         assert_eq!(block.buffer(), output.as_slice());
     }
 }
