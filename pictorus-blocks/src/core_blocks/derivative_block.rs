@@ -1,25 +1,17 @@
 use crate::matrix_ext::MatrixNalgebraExt;
 use num_traits::One;
 use paste::paste;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, ProcessBlock};
 
 /// Compute the discrete derivative of a signal using a sliding window of samples.
-pub struct DerivativeBlock<T: Pass + Default + Copy, const N: usize>
-where
-    pictorus_block_data::BlockData: FromPass<T>,
-{
+pub struct DerivativeBlock<T: Pass + Default + Copy, const N: usize> {
     samples: [T; N],
     sample_index: usize,
     initial_accumulation: bool,
     output: T,
-    pub data: OldBlockData,
 }
 
-impl<const N: usize, T: Pass + Default + Copy> Default for DerivativeBlock<T, N>
-where
-    pictorus_block_data::BlockData: FromPass<T>,
-{
+impl<const N: usize, T: Pass + Default + Copy> Default for DerivativeBlock<T, N> {
     fn default() -> Self {
         const {
             panic!(
@@ -61,7 +53,6 @@ macro_rules! impl_process {
                         / ((N as $type - $type::one()) * context.timestep().expect("timestep should never be None outside of Initial Accumulation phase").[<as_secs_ $type>]());
                 }
 
-                self.data = <OldBlockData as FromPass<$type>>::from_pass(self.output);
                 self.output.as_by()
             }
 
@@ -78,7 +69,6 @@ macro_rules! impl_process {
                     sample_index: 0,
                     initial_accumulation: true,
                     output: parameters.ic,
-                    data: <OldBlockData as FromPass<$type>>::from_pass(parameters.ic),
                 }
             }
         }
@@ -113,7 +103,6 @@ macro_rules! impl_process {
                     self.output.as_view_mut().copy_from(&output);
                 }
 
-                self.data = <OldBlockData as FromPass<Matrix<NROWS, NCOLS, $type>>>::from_pass(self.output.as_by());
                 &self.output
             }
 
@@ -130,7 +119,6 @@ macro_rules! impl_process {
                     sample_index: 0,
                     initial_accumulation: true,
                     output: parameters.ic,
-                    data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, $type>>>::from_pass(&parameters.ic),
                 }
             }
         }

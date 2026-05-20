@@ -1,6 +1,5 @@
 use crate::traits::Scalar;
 use core::time::Duration;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Debounce or throttle an input signal.
@@ -11,29 +10,21 @@ use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 ///  - Debounce: Wait until the input signal stops being true for delay_time before emitting true.
 ///  - Throttle: Immediately emit true on first true input, but then wait delay_time before passing through a true input again.
 pub struct DelayControlBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: T::Output,
     /// This is the state of the block used for the debounce and throttle functionality
     state: T::State,
 }
 
-impl<T: Apply> Default for DelayControlBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> Default for DelayControlBlock<T> {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: T::Output::default(),
             state: T::init_state(),
         }
     }
 }
 
-impl<T: Apply> ProcessBlock for DelayControlBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> ProcessBlock for DelayControlBlock<T> {
     type Inputs = T;
     type Output = T::Output;
     type Parameters = Parameters;
@@ -51,7 +42,6 @@ where
             parameters,
             context,
         );
-        self.data = <OldBlockData as FromPass<T::Output>>::from_pass(output);
         output
     }
 
@@ -245,33 +235,32 @@ mod tests {
 
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
         assert_eq!(block.buffer(), output);
 
         runtime.tick(); // Time is 100ms
         let output = block.process(&parameters, &runtime.context(), 0.5);
         assert!(output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(true));
+        assert_eq!(block.buffer(), 1.0);
 
         runtime.tick(); // Time is 200ms
         let output = block.process(&parameters, &runtime.context(), 1.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // Time is 300ms
         let output = block.process(&parameters, &runtime.context(), 1.5);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // Time is 400ms
         let output = block.process(&parameters, &runtime.context(), 2.0);
         assert!(output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(true));
+        assert_eq!(block.buffer(), 1.0);
 
         runtime.tick(); // Time is 500ms
         let output = block.process(&parameters, &runtime.context(), 2.5);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
     }
 
     #[test]
@@ -283,58 +272,58 @@ mod tests {
         // T= 0  we receive false
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.1s we receive true but still expect false
         let output = block.process(&parameters, &runtime.context(), -2.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.2s we receive false but still expect false until the delay cooldown is over
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.3s we receive false but still expect false until the delay cooldown is over
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.4s we receive false but expect true because delay cooldown is over
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(true));
+        assert_eq!(block.buffer(), 1.0);
 
         runtime.tick(); // T = 0.5s we receive false and expect false since we already emitted true
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.6s we receive false and expect false since we already emitted true
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         // Show we can do it again
         runtime.tick(); // T = 0.7s we receive true but still expect false
         let output = block.process(&parameters, &runtime.context(), 1.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.8s we receive false setting the debounce cooldown in motion
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
 
         // Fast forward to 0.3 seconds after the last true input
         runtime.context.time += Duration::from_secs_f64(0.3);
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(true));
+        assert_eq!(block.buffer(), 1.0);
 
         runtime.tick();
         let output = block.process(&parameters, &runtime.context(), 0.0);
         assert!(!output.is_truthy());
-        assert_eq!(block.data, OldBlockData::scalar_from_bool(false));
+        assert_eq!(block.buffer(), 0.0);
     }
 }

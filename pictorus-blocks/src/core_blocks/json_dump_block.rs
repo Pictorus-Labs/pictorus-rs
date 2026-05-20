@@ -2,14 +2,12 @@ extern crate alloc;
 use crate::traits::serialize::{ByteSliceFormat, Serialize};
 use alloc::{string::String, vec::Vec};
 use miniserde::json::{self, Value};
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Serializes a set of input signals into a JSON blob.
 ///
 /// That object is then serialized into a byte slice to be returned
 pub struct JsonDumpBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     _phantom: core::marker::PhantomData<T>,
 }
@@ -17,7 +15,6 @@ pub struct JsonDumpBlock<T: Apply> {
 impl<T: Apply> Default for JsonDumpBlock<T> {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(b""),
             buffer: Vec::new(),
             _phantom: core::marker::PhantomData,
         }
@@ -36,7 +33,6 @@ impl<T: Apply> ProcessBlock for JsonDumpBlock<T> {
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         T::apply(&mut self.buffer, inputs, parameters);
-        self.data = OldBlockData::from_bytes(&self.buffer);
         &self.buffer
     }
 

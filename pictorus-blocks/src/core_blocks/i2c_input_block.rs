@@ -1,6 +1,5 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, IsValid};
@@ -35,7 +34,6 @@ impl Parameters {
 
 /// I2C Input Block buffers data read from an I2C peripheral.
 pub struct I2cInputBlock {
-    pub data: OldBlockData,
     pub stale_check: StaleTracker,
     buffer: Vec<u8>,
     last_valid: bool,
@@ -45,7 +43,6 @@ pub struct I2cInputBlock {
 impl Default for I2cInputBlock {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(b""),
             stale_check: StaleTracker::from_ms(0.0),
             buffer: Vec::new(),
             last_valid: false,
@@ -55,7 +52,7 @@ impl Default for I2cInputBlock {
 }
 
 impl IsValid for I2cInputBlock {
-    fn is_valid(&self, app_time_s: f64) -> OldBlockData {
+    fn is_valid(&self, app_time_s: f64) -> f64 {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -82,7 +79,6 @@ impl ProcessBlock for I2cInputBlock {
             self.buffer.clear();
             self.stale_check.mark_updated(context.time().as_secs_f64());
             self.buffer.extend_from_slice(inputs);
-            self.data.set_bytes(&self.buffer);
         }
 
         self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
@@ -120,12 +116,9 @@ mod tests {
             (data.to_vec(), valid)
         };
         assert_eq!(output.0, input_data);
-        assert_eq!(block.data.to_bytes(), input_data);
         assert_eq!(block.buffer(), (output.0.as_slice(), output.1));
-        let valid = block
-            .is_valid(runtime.context().time().as_secs_f64())
-            .clone();
-        assert_eq!(valid.scalar(), 1.0);
+        let valid = block.is_valid(runtime.context().time().as_secs_f64());
+        assert_eq!(valid, 1.0);
 
         runtime.set_time(Duration::from_secs(1));
 
@@ -134,6 +127,6 @@ mod tests {
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output.0, input_data);
         let valid = block.is_valid(runtime.context().time().as_secs_f64());
-        assert_eq!(valid.scalar(), 0.0);
+        assert_eq!(valid, 0.0);
     }
 }

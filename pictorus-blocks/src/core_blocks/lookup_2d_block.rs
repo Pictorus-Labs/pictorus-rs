@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Float;
@@ -15,15 +14,12 @@ where
     S: Float,
     T: Apply<NX, NY, S>,
 {
-    pub data: OldBlockData,
     buffer: T,
     _unused: PhantomData<S>,
 }
 
 impl<const NX: usize, const NY: usize, S: Float, T: Apply<NX, NY, S>> ProcessBlock
     for Lookup2DBlock<NX, NY, S, T>
-where
-    OldBlockData: FromPass<T>,
 {
     type Inputs = (T, T); // X and Y inputs
     type Output = T; // Output has same type/dimensions as inputs
@@ -36,7 +32,6 @@ where
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -47,12 +42,9 @@ where
 
 impl<const NX: usize, const NY: usize, S: Float, T: Apply<NX, NY, S>> Default
     for Lookup2DBlock<NX, NY, S, T>
-where
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
             _unused: PhantomData,
         }
@@ -277,7 +269,6 @@ fn nearest_interpolation<const NX: usize, const NY: usize, S: Float>(
 #[cfg(test)]
 mod tests {
     use crate::testing::StubContext;
-    use pictorus_block_data::ToPass;
 
     use super::*;
 
@@ -302,23 +293,16 @@ mod tests {
         let break_points_u1 = [0.0, 1.0, 2.0];
         let break_points_u2 = [0.0, 10.0, 20.0];
 
-        // Create data points as a flattened 3x3 array in row-major order
-        let data_points = OldBlockData::new(
-            3,
-            3,
-            &[
-                0.0, 10.0, 20.0, // First row: x=0
-                10.0, 20.0, 30.0, // Second row: x=1
-                20.0, 30.0, 40.0, // Third row: x=2
-            ],
-        );
+        // Create data points as a 3x3 matrix (column-major storage).
+        // This table is symmetric, so column-major == row-major:
+        //   row x=0: [0, 10, 20]
+        //   row x=1: [10, 20, 30]
+        //   row x=2: [20, 30, 40]
+        let data_points = Matrix {
+            data: [[0.0, 10.0, 20.0], [10.0, 20.0, 30.0], [20.0, 30.0, 40.0]],
+        };
 
-        let params = Parameters::new(
-            "Linear",
-            break_points_u1,
-            break_points_u2,
-            data_points.to_pass(),
-        );
+        let params = Parameters::new("Linear", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
@@ -374,15 +358,11 @@ mod tests {
         let break_points_u1 = [0.0, 1.0, 2.0];
         let break_points_u2 = [0.0, 10.0, 20.0];
 
-        let data_points =
-            OldBlockData::new(3, 3, &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
+        let data_points = Matrix {
+            data: [[0.0, 10.0, 20.0], [10.0, 20.0, 30.0], [20.0, 30.0, 40.0]],
+        };
 
-        let params = Parameters::new(
-            "Nearest",
-            break_points_u1,
-            break_points_u2,
-            data_points.to_pass(),
-        );
+        let params = Parameters::new("Nearest", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
@@ -419,15 +399,11 @@ mod tests {
         let break_points_u1 = [0.0, 1.0, 2.0];
         let break_points_u2 = [0.0, 10.0, 20.0];
 
-        let data_points =
-            OldBlockData::new(3, 3, &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
+        let data_points = Matrix {
+            data: [[0.0, 10.0, 20.0], [10.0, 20.0, 30.0], [20.0, 30.0, 40.0]],
+        };
 
-        let params = Parameters::new(
-            "Linear",
-            break_points_u1,
-            break_points_u2,
-            data_points.to_pass(),
-        );
+        let params = Parameters::new("Linear", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, Matrix<2, 2, f64>>::default();
 
@@ -452,10 +428,7 @@ mod tests {
         };
 
         assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer().data, expected.data);
     }
 
     #[test]
@@ -466,15 +439,11 @@ mod tests {
         let break_points_u1 = [0.0, 1.0, 2.0];
         let break_points_u2 = [0.0, 10.0, 20.0];
 
-        let data_points =
-            OldBlockData::new(3, 3, &[0.0, 10.0, 20.0, 10.0, 20.0, 30.0, 20.0, 30.0, 40.0]);
+        let data_points = Matrix {
+            data: [[0.0, 10.0, 20.0], [10.0, 20.0, 30.0], [20.0, 30.0, 40.0]],
+        };
 
-        let params = Parameters::new(
-            "Nearest",
-            break_points_u1,
-            break_points_u2,
-            data_points.to_pass(),
-        );
+        let params = Parameters::new("Nearest", break_points_u1, break_points_u2, data_points);
 
         let mut block = Lookup2DBlock::<3, 3, f64, Matrix<2, 2, f64>>::default();
 
@@ -499,9 +468,6 @@ mod tests {
         };
 
         assert_eq!(res.data, expected.data);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer().data, expected.data);
     }
 }

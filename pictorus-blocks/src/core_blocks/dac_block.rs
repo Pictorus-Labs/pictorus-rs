@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Float;
@@ -21,18 +20,15 @@ impl Parameters {
 
 /// Buffer data to be sent to a DAC (Digital-to-Analog Converter).
 pub struct DacBlock<O: Pass> {
-    pub data: OldBlockData,
     buffer: O,
 }
 
 impl<O> Default for DacBlock<O>
 where
     O: Pass + Default,
-    OldBlockData: FromPass<O>,
 {
     fn default() -> Self {
         DacBlock {
-            data: <OldBlockData as FromPass<O>>::from_pass(<O>::default().as_by()),
             buffer: O::default(),
         }
     }
@@ -41,7 +37,6 @@ where
 impl<F> ProcessBlock for DacBlock<Matrix<1, 2, F>>
 where
     F: Float,
-    OldBlockData: FromPass<Matrix<1, 2, F>>,
 {
     type Parameters = Parameters;
     type Inputs = Matrix<1, 2, F>;
@@ -54,7 +49,6 @@ where
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = *input;
-        self.data = OldBlockData::from_pass(&self.buffer);
         &self.buffer
     }
 

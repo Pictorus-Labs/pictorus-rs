@@ -2,17 +2,14 @@ extern crate alloc;
 use core::time::Duration;
 
 use crate::{traits::Scalar, IsValid};
-use alloc::vec::Vec;
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
 
 use crate::byte_data::{parse_byte_data_spec, try_unpack_data, ByteOrderSpec, DataType};
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Unpacks a byte slice into a specified number of outputs based on the provided data types and byte order.
 pub struct BytesUnpackBlock<const N: usize> {
-    pub data: Vec<OldBlockData>,
     buffer: [f64; N],
     last_valid_time: Option<Duration>,
 }
@@ -20,12 +17,7 @@ pub struct BytesUnpackBlock<const N: usize> {
 impl<const N: usize> Default for BytesUnpackBlock<N> {
     fn default() -> Self {
         let buffer = [0.0; N];
-        let data = buffer
-            .iter()
-            .map(|_| OldBlockData::from_scalar(0.0))
-            .collect();
         BytesUnpackBlock {
-            data,
             buffer,
             last_valid_time: None,
         }
@@ -86,11 +78,6 @@ where
             // If we failed to unpack and it is stale, keep the old buffer but mark as invalid
             self.buffer[N - 1] = 0.0; // last element is is_valid flag
         }
-        self.data = self
-            .buffer
-            .iter()
-            .map(|&x| OldBlockData::from_scalar(x))
-            .collect();
         &self.buffer
     }
 
@@ -100,8 +87,8 @@ where
 }
 
 impl<const N: usize> IsValid for BytesUnpackBlock<N> {
-    fn is_valid(&self, _app_time_s: f64) -> OldBlockData {
-        OldBlockData::from_scalar(self.buffer[N - 1])
+    fn is_valid(&self, _app_time_s: f64) -> f64 {
+        self.buffer[N - 1]
     }
 }
 

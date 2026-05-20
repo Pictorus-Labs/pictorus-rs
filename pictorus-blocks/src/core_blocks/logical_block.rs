@@ -1,6 +1,5 @@
 use core::ops::Sub;
 use num_traits::One;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
@@ -16,22 +15,18 @@ pub struct LogicalBlock<T>
 where
     T: Apply<Parameters>,
     T::Output: Finalize,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     store: T::Output,
-    pub data: OldBlockData,
 }
 
 impl<T> Default for LogicalBlock<T>
 where
     T: Apply<Parameters>,
     T::Output: Finalize,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     fn default() -> Self {
         Self {
             store: T::Output::default(),
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
 }
@@ -40,7 +35,6 @@ impl<T> ProcessBlock for LogicalBlock<T>
 where
     T: Apply<Parameters>,
     T::Output: Finalize,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -55,7 +49,6 @@ where
         T::apply(inputs, parameters, &mut tmp);
         T::Output::finalize(parameters.method, &mut tmp);
         self.store = tmp.expect("apply must initialize the buffer");
-        self.data = OldBlockData::from_pass(self.store.as_by());
         self.store.as_by()
     }
 
@@ -235,23 +228,22 @@ mod tests {
         // All zero aka false inputs = false output
         let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
         assert_eq!(block.buffer(), res);
 
         // Some zero inputs = false output
         let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
 
         // All non-zero inputs = true output
         let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         // Even floats and negative data!
         let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
     }
 
     #[test]
@@ -263,22 +255,22 @@ mod tests {
         // All zero aka false inputs = false output
         let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
 
         // Some zero inputs = true output
         let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         // All non-zero inputs = true output
         let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         // Even floats and negative data!
         let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
     }
 
     #[test]
@@ -292,23 +284,22 @@ mod tests {
         // All zero aka false inputs = true output
         let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         // Some zero inputs = false output
         let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
 
         // All non-zero inputs = false output
         let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
 
         // Even floats and negative data!
         let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
     }
 
     #[test]
@@ -322,22 +313,22 @@ mod tests {
         // All zero aka false inputs = true output
         let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         // Some zero inputs = true output
         let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
         assert_eq!(res, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
 
         // All non-zero inputs = false output
         let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
 
         // Even floats and negative data!
         let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
         assert_eq!(res, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
     }
 
     #[test]
@@ -364,10 +355,7 @@ mod tests {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Or;
         let res = block.process(&params, &ctxt, input);
@@ -375,10 +363,7 @@ mod tests {
             data: [[1.0, 1.0], [1.0, 1.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nor;
         let res = block.process(&params, &ctxt, input);
@@ -386,10 +371,7 @@ mod tests {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nand;
         let res = block.process(&params, &ctxt, input);
@@ -397,10 +379,7 @@ mod tests {
             data: [[1.0, 1.0], [1.0, 1.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 
     #[test]
@@ -421,10 +400,7 @@ mod tests {
             data: [[1.0, 0.0], [0.0, 1.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Or;
         let res = block.process(&params, &ctxt, input);
@@ -432,10 +408,7 @@ mod tests {
             data: [[1.0, 1.0], [1.0, 1.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nor;
         let res = block.process(&params, &ctxt, input);
@@ -443,10 +416,7 @@ mod tests {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nand;
         let res = block.process(&params, &ctxt, input);
@@ -454,9 +424,6 @@ mod tests {
             data: [[0.0, 1.0], [1.0, 0.0]],
         };
         assert_eq!(res, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 }

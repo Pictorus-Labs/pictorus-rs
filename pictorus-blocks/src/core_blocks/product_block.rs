@@ -1,5 +1,4 @@
 use core::marker::PhantomData;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
 // This Block is essentially two blocks hiding in a trench coat; Matrix Multiplication and Component Wise Multiplication.
@@ -17,26 +16,18 @@ use matrix::{ApplyMatMul, ParametersMatrixMult};
 pub struct ProductBlock<T: Apply<M>, M: ProductMethod> {
     _method: PhantomData<M>,
     store: T::Output,
-    pub data: OldBlockData,
 }
 
-impl<T: Apply<M>, M: ProductMethod> Default for ProductBlock<T, M>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply<M>, M: ProductMethod> Default for ProductBlock<T, M> {
     fn default() -> Self {
         Self {
             _method: PhantomData,
             store: T::Output::default(),
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
 }
 
-impl<T: Apply<M>, M: ProductMethod> ProcessBlock for ProductBlock<T, M>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply<M>, M: ProductMethod> ProcessBlock for ProductBlock<T, M> {
     type Inputs = T;
     type Output = T::Output;
     type Parameters = T::Parameters;
@@ -50,7 +41,6 @@ where
         let mut tmp: Option<T::Output> = None;
         T::apply(&mut tmp, parameters, inputs);
         self.store = tmp.expect("apply must initialize the buffer");
-        self.data = OldBlockData::from_pass(self.store.as_by());
         self.store.as_by()
     }
 
@@ -130,7 +120,6 @@ mod tests {
         let output = block.process(&parameters, &context, (11.0, 2.0));
 
         assert_eq!(output, 22.0);
-        assert_eq!(block.data.scalar(), 22.0);
         assert_eq!(block.buffer(), output);
 
         let mut block = ProductBlock::<(f32, f32, f32, f32, f32), ComponentWise>::default();
@@ -138,7 +127,6 @@ mod tests {
         let output = block.process(&parameters, &context, (11.0, 2.0, 3.0, 4.0, 5.0));
 
         assert_eq!(output, 82.5);
-        assert_eq!(block.data.scalar(), 82.5);
     }
     #[test]
     fn test_component_wise_scalar_matrix_mixed() {
@@ -163,10 +151,7 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(&expected)
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 
     #[test]
@@ -195,10 +180,7 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(&expected)
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 
     #[test]
@@ -225,10 +207,7 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(&expected)
-        );
+        assert_eq!(block.buffer(), &expected);
 
         let mut block = ProductBlock::<
             (Matrix<4, 2, f64>, Matrix<2, 3, f64>, Matrix<3, 2, f64>),
@@ -257,9 +236,6 @@ mod tests {
         };
 
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data,
-            <OldBlockData as FromPass<Matrix<4, 2, f64>>>::from_pass(&expected)
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 }

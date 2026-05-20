@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 use core::{cmp::min, str};
 
 use log::debug;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 use crate::{
@@ -66,7 +65,6 @@ impl Parameters {
 /// data is received before the specified expiration period elapses.
 /// The block caches data until a new message is received and parsed.
 pub struct SerialReceiveBlock {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     pub stale_check: StaleTracker,
     previous_stale_check_time_ms: f64,
@@ -77,7 +75,6 @@ pub struct SerialReceiveBlock {
 impl Default for SerialReceiveBlock {
     fn default() -> Self {
         SerialReceiveBlock {
-            data: OldBlockData::from_bytes(&[]),
             buffer: Vec::new(),
             stale_check: StaleTracker::from_ms(0.0),
             previous_stale_check_time_ms: 0.0,
@@ -88,7 +85,7 @@ impl Default for SerialReceiveBlock {
 }
 
 impl IsValid for SerialReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> OldBlockData {
+    fn is_valid(&self, app_time_s: f64) -> f64 {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -246,7 +243,6 @@ impl ProcessBlock for SerialReceiveBlock {
             if start_idx != 0 {
                 debug!("Discarding {start_idx} bytes");
             }
-            self.data.set_bytes(val);
             self.output = val.to_vec();
 
             // TODO: Drain is coming to heapless vec soon! - https://github.com/rust-embedded/heapless/pull/444
@@ -342,7 +338,7 @@ mod tests {
             block
                 .stale_check
                 .is_valid(runtime.context().time().as_secs_f64()),
-            OldBlockData::from_scalar(1.0)
+            1.0
         );
 
         for i in 1..11 {
@@ -354,7 +350,7 @@ mod tests {
                 block
                     .stale_check
                     .is_valid(runtime.context().time().as_secs_f64()),
-                OldBlockData::from_scalar(1.0)
+                1.0
             );
         }
 
@@ -366,7 +362,7 @@ mod tests {
             block
                 .stale_check
                 .is_valid(runtime.context().time().as_secs_f64()),
-            OldBlockData::from_scalar(0.0)
+            0.0
         );
     }
 }

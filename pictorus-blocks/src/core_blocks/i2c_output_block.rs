@@ -1,6 +1,5 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 /// Parameters for I2C Output Block
@@ -26,16 +25,12 @@ impl Parameters {
 
 /// I2C Output Block buffers data to write to an I2C peripheral.
 pub struct I2cOutputBlock {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
 }
 
 impl Default for I2cOutputBlock {
     fn default() -> Self {
-        Self {
-            data: OldBlockData::from_bytes(b""),
-            buffer: Vec::new(),
-        }
+        Self { buffer: Vec::new() }
     }
 }
 
@@ -52,7 +47,6 @@ impl ProcessBlock for I2cOutputBlock {
     ) -> PassBy<'b, Self::Output> {
         self.buffer.clear();
         self.buffer.extend_from_slice(inputs);
-        self.data.set_bytes(&self.buffer);
         &self.buffer
     }
 
@@ -83,7 +77,6 @@ mod tests {
         let output_signal = block.process(&params, &context, input_data);
 
         assert_eq!(output_signal, input_data);
-        assert_eq!(block.data.to_bytes(), input_data);
         assert_eq!(block.buffer(), input_data);
     }
 }

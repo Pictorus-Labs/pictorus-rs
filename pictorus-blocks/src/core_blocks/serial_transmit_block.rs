@@ -1,7 +1,6 @@
 extern crate alloc;
 use alloc::vec::Vec;
 use log::debug;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, Pass, PassBy, ProcessBlock};
 
 use crate::byte_data::{parse_string_to_bytes, BUFF_SIZE_BYTES};
@@ -30,7 +29,6 @@ impl Parameters {
 ///
 /// Data is output as a ByteSliceSignal.
 pub struct SerialTransmitBlock<T: Serialize + Pass> {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     phantom: core::marker::PhantomData<T>,
 }
@@ -41,7 +39,6 @@ where
 {
     fn default() -> Self {
         SerialTransmitBlock {
-            data: OldBlockData::from_bytes(&[]),
             buffer: Vec::with_capacity(BUFF_SIZE_BYTES),
             phantom: core::marker::PhantomData,
         }
@@ -69,7 +66,6 @@ where
         ]
         .concat();
         debug!("Transmitting value: {:?}", &write_val);
-        self.data = OldBlockData::from_bytes(&write_val);
         self.buffer = write_val;
         &self.buffer
     }

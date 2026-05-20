@@ -1,24 +1,15 @@
 use crate::matrix_ext::MatrixNalgebraExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Sums (adds or subtracts) all inputs together.
-pub struct SumBlock<T: Summable>
-where
-    pictorus_block_data::BlockData: FromPass<<T as Summable>::Output>,
-{
+pub struct SumBlock<T: Summable> {
     store: T::Output,
-    pub data: OldBlockData,
 }
 
-impl<T: Summable> Default for SumBlock<T>
-where
-    pictorus_block_data::BlockData: FromPass<<T as Summable>::Output>,
-{
+impl<T: Summable> Default for SumBlock<T> {
     fn default() -> Self {
         Self {
             store: T::Output::default(),
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
 }
@@ -26,7 +17,6 @@ where
 impl<T> ProcessBlock for SumBlock<T>
 where
     T: Summable,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -41,7 +31,6 @@ where
         let mut tmp: Option<T::Output> = None;
         T::get_sum(input, *parameters, &mut tmp);
         self.store = tmp.expect("get_sum must initialize the buffer");
-        self.data = OldBlockData::from_pass(self.store.as_by());
         self.store.as_by()
     }
 

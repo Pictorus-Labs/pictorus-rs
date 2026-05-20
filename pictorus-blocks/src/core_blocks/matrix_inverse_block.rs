@@ -3,7 +3,6 @@ use nalgebra::{
     allocator::Allocator, ArrayStorage, Const, DefaultAllocator, DimDiff, DimMin, DimMinimum,
     DimSub, SMatrix, SquareMatrix, ToTypenum, SVD, U1,
 };
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{Float, Scalar};
@@ -40,7 +39,6 @@ impl Parameters {
 /// The output type of the block is a tuple of (<input_type>, bool), where the
 /// bool indicates whether the inversion was successful.
 pub struct MatrixInverseBlock<T: Apply<M>, M: Method> {
-    pub data: OldBlockData,
     store: T::Output,
     is_data_valid: bool,
 }
@@ -49,11 +47,9 @@ impl<T, M> Default for MatrixInverseBlock<T, M>
 where
     M: Method,
     T: Apply<M>,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
             store: <T::Output>::default(),
             is_data_valid: false,
         }
@@ -64,7 +60,6 @@ impl<T, M> ProcessBlock for MatrixInverseBlock<T, M>
 where
     M: Method,
     T: Apply<M>,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = (T::Output, bool);
@@ -87,7 +82,6 @@ where
             }
         }
         let output = self.store.as_by();
-        self.data = OldBlockData::from_pass(output);
         (output, self.is_data_valid)
     }
 
@@ -96,10 +90,9 @@ where
     }
 }
 
-// TODO: Remove when we remove BlockData
 impl<T: Apply<M>, M: Method> IsValid for MatrixInverseBlock<T, M> {
-    fn is_valid(&self, _: f64) -> OldBlockData {
-        OldBlockData::scalar_from_bool(self.is_data_valid)
+    fn is_valid(&self, _: f64) -> f64 {
+        f64::from(self.is_data_valid)
     }
 }
 
@@ -185,8 +178,7 @@ mod tests {
         let mut block = MatrixInverseBlock::<f64, Inverse>::default();
         let res = block.process(&params, &ctxt, 99.0);
         assert_eq!(res, (99.0, true));
-        assert_eq!(block.data.scalar(), 99.0);
-        assert!(block.is_valid(0.0).any());
+        assert!(block.is_valid(0.0) != 0.0);
         assert_eq!(block.buffer(), res);
     }
 
@@ -203,8 +195,8 @@ mod tests {
         assert_eq!(res.0.data, expected);
         assert!(res.1);
 
-        assert_eq!(block.data.get_data().as_slice(), expected.as_flattened());
-        assert!(block.is_valid(0.0).any());
+        assert_eq!(block.buffer().0.data, expected);
+        assert!(block.is_valid(0.0) != 0.0);
     }
 
     #[test]
@@ -222,11 +214,8 @@ mod tests {
         assert_eq!(res.0.data, expected,);
         assert!(!res.1);
 
-        assert_eq!(
-            invert_block.data.get_data().as_slice(),
-            expected.as_flattened()
-        );
-        assert!(!invert_block.is_valid(0.0).any());
+        assert_eq!(invert_block.buffer().0.data, expected);
+        assert!(invert_block.is_valid(0.0) == 0.0);
 
         // SVD-based pseudo-inverse method should be fine
         let mut svd_block = MatrixInverseBlock::<Matrix<3, 3, f64>, Svd>::default();
@@ -244,11 +233,11 @@ mod tests {
         assert!(res.1);
 
         assert_abs_diff_eq!(
-            svd_block.data.get_data().as_slice(),
+            svd_block.buffer().0.data.as_flattened(),
             expected.as_flattened(),
             epsilon = 1e-8
         );
-        assert!(svd_block.is_valid(0.0).any());
+        assert!(svd_block.is_valid(0.0) != 0.0);
     }
 
     #[test]
@@ -276,7 +265,7 @@ mod tests {
             epsilon = 1e-8
         );
         assert!(res.1);
-        assert!(block.is_valid(0.0).any());
+        assert!(block.is_valid(0.0) != 0.0);
     }
 
     #[test]
@@ -303,6 +292,6 @@ mod tests {
             epsilon = 1e-8
         );
         assert!(res.1);
-        assert!(block.is_valid(0.0).any());
+        assert!(block.is_valid(0.0) != 0.0);
     }
 }

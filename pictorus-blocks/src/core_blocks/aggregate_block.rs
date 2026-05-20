@@ -1,21 +1,17 @@
 use crate::matrix_ext::MatrixNalgebraExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Block for performing an aggregation operation (i.e. sum, min, max) on input data.
 pub struct AggregateBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
 impl<T: Apply> Default for AggregateBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
             buffer: <T::Output>::default(),
         }
     }
@@ -24,7 +20,6 @@ where
 impl<T> ProcessBlock for AggregateBlock<T>
 where
     T: Apply + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -37,7 +32,6 @@ where
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -170,7 +164,6 @@ mod tests {
         };
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 28.0);
-        assert_relative_eq!(block.data.scalar(), 28.0);
         assert_relative_eq!(block.buffer(), output);
     }
 
@@ -186,7 +179,7 @@ mod tests {
         };
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 28.0);
-        assert_relative_eq!(block.data.scalar(), 28.0);
+        assert_relative_eq!(block.buffer(), output);
     }
 
     #[test]
@@ -202,7 +195,7 @@ mod tests {
         input.data[5][3] = 42.0;
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 42.0);
-        assert_relative_eq!(block.data.scalar(), 42.0);
+        assert_relative_eq!(block.buffer(), output);
     }
 
     #[test]
@@ -218,7 +211,7 @@ mod tests {
         input.data[1][2] = 10.99;
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 10.99);
-        assert_relative_eq!(block.data.scalar(), 10.99);
+        assert_relative_eq!(block.buffer(), output);
     }
 
     #[test]
@@ -235,7 +228,7 @@ mod tests {
 
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 13.5);
-        assert_relative_eq!(block.data.scalar(), 13.5);
+        assert_relative_eq!(block.buffer(), output);
     }
 
     #[test]
@@ -252,7 +245,7 @@ mod tests {
 
         let output = block.process(&params, &context, &input);
         assert_relative_eq!(output, 13.5);
-        assert_relative_eq!(block.data.scalar(), 13.5);
+        assert_relative_eq!(block.buffer(), output);
     }
 
     #[test]

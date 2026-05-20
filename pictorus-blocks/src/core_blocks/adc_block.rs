@@ -1,5 +1,4 @@
 use num_traits::Float;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{Context, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the ADC block
@@ -26,7 +25,6 @@ impl Parameters {
 /// Each platform will need to implement an `InputBlock` on the ADC hardware
 /// and pass those results into this block.
 pub struct AdcBlock<I: Scalar, O: Float> {
-    pub data: OldBlockData,
     buffer: O,
     phantom: core::marker::PhantomData<I>,
 }
@@ -38,7 +36,6 @@ where
 {
     fn default() -> Self {
         AdcBlock {
-            data: OldBlockData::from_scalar(0.0),
             buffer: O::zero(),
             phantom: core::marker::PhantomData,
         }
@@ -61,7 +58,6 @@ where
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = O::from(input).expect("Failed to convert input to output");
-        self.data = OldBlockData::from_scalar(self.buffer.into());
         self.buffer
     }
 

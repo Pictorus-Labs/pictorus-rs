@@ -1,7 +1,6 @@
 extern crate alloc;
 use crate::traits::{Float, Scalar};
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 // Ideally this would not have to return a new vec, but that added a lot of complexity
@@ -30,7 +29,6 @@ pub struct CanTransmitBlock<
     // A tuple of input data (1 to 8 values of type S) to convert to an 8 byte CAN data payload.
     I: Pass,
 > {
-    pub data: Vec<OldBlockData>,
     byte_buffer: Vec<u8>,
     _phantom: core::marker::PhantomData<I>,
     tx_cb: TxCallback<S, C>,
@@ -39,14 +37,15 @@ pub struct CanTransmitBlock<
 
 impl<S: Float, C, I: Pass> Default for CanTransmitBlock<S, C, I> {
     fn default() -> Self {
-        panic!("CanTransmitBlock must be initialized using the ::new method");
+        const {
+            panic!("CanTransmitBlock must be initialized using the ::new method");
+        }
     }
 }
 
 impl<S: Float, C, I: Pass> CanTransmitBlock<S, C, I> {
     pub fn new(tx_cb: TxCallback<S, C>, msg: C) -> Self {
         CanTransmitBlock {
-            data: Vec::new(),
             _phantom: core::marker::PhantomData,
             tx_cb,
             msg,

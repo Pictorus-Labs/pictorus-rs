@@ -1,6 +1,5 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, IsValid};
@@ -28,7 +27,6 @@ impl Parameters {
 /// If data is not received within the time indicated in the Parameters, the data is considered stale.
 /// The last valid data is kept in the buffer until new data arrives.
 pub struct SpiReceiveBlock {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     pub stale_check: StaleTracker,
     previous_stale_check_time_ms: f64,
@@ -38,7 +36,6 @@ pub struct SpiReceiveBlock {
 impl Default for SpiReceiveBlock {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(&[]),
             buffer: Vec::new(),
             stale_check: StaleTracker::from_ms(0.),
             previous_stale_check_time_ms: 0.0,
@@ -68,7 +65,6 @@ impl ProcessBlock for SpiReceiveBlock {
             // length check.
             self.buffer.clear();
             self.buffer.extend_from_slice(inputs);
-            self.data.set_bytes(&self.buffer);
             self.stale_check.mark_updated(context.time().as_secs_f64());
         }
 
@@ -82,7 +78,7 @@ impl ProcessBlock for SpiReceiveBlock {
 }
 
 impl IsValid for SpiReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> OldBlockData {
+    fn is_valid(&self, app_time_s: f64) -> f64 {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -114,22 +110,21 @@ mod tests {
             (data.to_vec(), valid)
         };
         assert_eq!(output.0, input_data);
-        assert_eq!(block.data.to_bytes(), input_data);
         assert_eq!(block.buffer(), (output.0.as_slice(), output.1));
         let is_valid = block
             .stale_check
             .is_valid(runtime.context().time().as_secs_f64());
-        assert_eq!(is_valid, OldBlockData::from_scalar(1.0));
+        assert_eq!(is_valid, 1.0);
 
         runtime.set_time(Duration::from_secs(1));
 
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output.0, input_data);
-        assert_eq!(block.data.to_bytes(), input_data);
+        assert_eq!(block.buffer().0, input_data);
         let is_valid = block
             .stale_check
             .is_valid(runtime.context().time().as_secs_f64());
         // However block should be invalid
-        assert_eq!(is_valid, OldBlockData::from_scalar(0.0));
+        assert_eq!(is_valid, 0.0);
     }
 }
