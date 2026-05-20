@@ -1,6 +1,5 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{ByteSliceSignal, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::{CopyInto, DefaultStorage, Scalar};
@@ -50,22 +49,16 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 pub struct SwitchBlock<T: Apply>
 where
     T::Output: DefaultStorage,
-    OldBlockData: FromPass<T::Output>,
 {
-    pub data: OldBlockData,
     buffer: <T::Output as DefaultStorage>::Storage,
 }
 
 impl<T: Apply> Default for SwitchBlock<T>
 where
     T::Output: DefaultStorage,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::from_storage(
-                &T::Output::default_storage(),
-            )),
             buffer: T::Output::default_storage(),
         }
     }
@@ -74,7 +67,6 @@ where
 impl<T: Apply> ProcessBlock for SwitchBlock<T>
 where
     T::Output: DefaultStorage,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -87,9 +79,7 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         T::apply(inputs, parameters, &mut self.buffer);
-        let res = T::Output::from_storage(&self.buffer);
-        self.data = <OldBlockData as FromPass<T::Output>>::from_pass(res);
-        res
+        T::Output::from_storage(&self.buffer)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
@@ -332,7 +322,6 @@ mod tests {
         let input = (0.0, 1.0, 2.0);
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
         assert_eq!(block.buffer(), output);
     }
 
@@ -346,7 +335,7 @@ mod tests {
         let input = (6.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0);
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, 7.0);
-        assert_eq!(block.data.scalar(), 7.0);
+        assert_eq!(block.buffer(), 7.0);
     }
 
     #[test]
@@ -360,7 +349,7 @@ mod tests {
         let input = (1.2345, 1.0, 2.0);
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, 2.0);
-        assert_eq!(block.data.scalar(), 2.0);
+        assert_eq!(block.buffer(), 2.0);
     }
 
     #[test]
@@ -372,12 +361,9 @@ mod tests {
 
         let input = (0.0, &Matrix::from_element(1.0), &Matrix::from_element(2.0));
         let output = block.process(&parameters, &ctxt, input);
-        let expected = Matrix::from_element(1.0);
+        let expected: Matrix<3, 3, f64> = Matrix::from_element(1.0);
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 
     #[test]
@@ -407,12 +393,9 @@ mod tests {
             &Matrix::from_element(7.0),
         );
         let output = block.process(&parameters, &ctxt, input);
-        let expected = Matrix::from_element(7.0);
+        let expected: Matrix<3, 3, f64> = Matrix::from_element(7.0);
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 
     #[test]
@@ -429,12 +412,9 @@ mod tests {
             &Matrix::from_element(2.0),
         );
         let output = block.process(&parameters, &ctxt, input);
-        let expected = Matrix::from_element(2.0);
+        let expected: Matrix<3, 3, f64> = Matrix::from_element(2.0);
         assert_eq!(output, &expected);
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(block.buffer(), &expected);
     }
 
     #[test]
@@ -447,7 +427,7 @@ mod tests {
         let input = (0.0, b"foo".as_slice(), b"bar".as_slice());
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, b"foo");
-        assert_eq!(block.data.raw_string().as_bytes(), b"foo".as_slice());
+        assert_eq!(block.buffer(), b"foo".as_slice());
     }
 
     #[test]
@@ -461,7 +441,7 @@ mod tests {
         let input = (1.2345, b"foo".as_slice(), b"bar".as_slice());
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, b"bar");
-        assert_eq!(block.data.raw_string().as_bytes(), b"bar".as_slice());
+        assert_eq!(block.buffer(), b"bar".as_slice());
     }
 
     #[test]
@@ -492,6 +472,6 @@ mod tests {
         );
         let output = block.process(&parameters, &ctxt, input);
         assert_eq!(output, b"grault");
-        assert_eq!(block.data.raw_string().as_bytes(), b"grault".as_slice());
+        assert_eq!(block.buffer(), b"grault".as_slice());
     }
 }

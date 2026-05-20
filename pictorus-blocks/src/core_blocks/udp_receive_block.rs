@@ -1,6 +1,5 @@
 extern crate alloc;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, IsValid};
@@ -26,7 +25,6 @@ impl Parameters {
 /// been received for a period of time longer than the `stale_age_ms` parameter, the block
 /// will return `false` for `is_valid()`.
 pub struct UdpReceiveBlock {
-    pub data: OldBlockData,
     pub stale_check: StaleTracker,
     buffer: Vec<u8>,
     previous_stale_check_time_ms: f64,
@@ -36,7 +34,6 @@ pub struct UdpReceiveBlock {
 impl Default for UdpReceiveBlock {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(b""),
             stale_check: StaleTracker::from_ms(0.0),
             buffer: Vec::new(),
             previous_stale_check_time_ms: 0.,
@@ -46,7 +43,7 @@ impl Default for UdpReceiveBlock {
 }
 
 impl IsValid for UdpReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> OldBlockData {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -72,7 +69,6 @@ impl ProcessBlock for UdpReceiveBlock {
         if !input.is_empty() {
             self.stale_check.mark_updated(context.time().as_secs_f64());
             self.buffer = input.to_vec();
-            self.data.set_bytes(&self.buffer);
         }
 
         self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());

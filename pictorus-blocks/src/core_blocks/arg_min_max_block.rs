@@ -1,5 +1,4 @@
 use num_traits::{FromPrimitive, Zero};
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Gets the index of the minimum or maximum value in the input.
@@ -14,18 +13,15 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 /// | 2 | 5 | 8 | 11| 14 |
 /// ----------------------
 pub struct ArgMinMaxBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
 impl<T: Apply> Default for ArgMinMaxBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
             buffer: <T::Output>::default(),
         }
     }
@@ -34,7 +30,6 @@ where
 impl<T> ProcessBlock for ArgMinMaxBlock<T>
 where
     T: Apply + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -47,7 +42,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -163,7 +157,6 @@ mod tests {
         let params = Parameters::new("Min");
         let output = block.process(&params, &context, input);
         assert_eq!(output, 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
         assert_eq!(block.buffer(), output);
     }
 
@@ -180,7 +173,7 @@ mod tests {
         let params = Parameters::new("Min");
         let output = block.process(&params, &context, &input);
         assert_eq!(output, 3.0);
-        assert_eq!(block.data.scalar(), 3.0);
+        assert_eq!(block.buffer(), output);
 
         // |  1  3  5 |
         // | 12  4  6 |
@@ -191,6 +184,6 @@ mod tests {
         let params = Parameters::new("Max");
         let output = block.process(&params, &context, &input);
         assert_eq!(output, 1.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), output);
     }
 }

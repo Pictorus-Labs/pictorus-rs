@@ -15,7 +15,6 @@
 //! If you are implementing a custom block for a specific case, you can likely create a much simpler implementation
 //! by restricting the input/output types you need to support. We will be adding more examples of simple custom blocks in the future.
 #![no_std]
-use pictorus_block_data::BlockData;
 
 #[cfg(any(feature = "std", test))]
 extern crate std;
@@ -52,7 +51,6 @@ pub struct ParseEnumError;
 /// Blocks that implement this trait should output a false value for `is_valid`
 /// if the output is not in a valid state.
 pub trait IsValid {
-    // This still uses the deprecated BlockData type.
-    // Eventually we will need to update/replace this trait when BlockData is removed.
-    fn is_valid(&self, app_time_s: f64) -> BlockData;
+    /// Returns `true` if the block output is in a valid state, `false` otherwise.
+    fn is_valid(&self, app_time_s: f64) -> bool;
 }

@@ -1,22 +1,14 @@
 use crate::matrix_ext::MatrixNalgebraExt;
 use crate::traits::Float;
 use core::time::Duration;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Block for applying an Infinite Impulse Response (IIR) filter to an input signal.
-pub struct IirFilterBlock<T: Pass + Default>
-where
-    OldBlockData: FromPass<T>,
-{
-    pub data: OldBlockData,
+pub struct IirFilterBlock<T: Pass + Default> {
     buffer: T,
 }
 
-impl<T: Pass + Default> Default for IirFilterBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Pass + Default> Default for IirFilterBlock<T> {
     fn default() -> Self {
         const {
             panic!(
@@ -27,14 +19,10 @@ where
     }
 }
 
-impl<T: Float> HasIc for IirFilterBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Float> HasIc for IirFilterBlock<T> {
     fn new(parameters: &Self::Parameters) -> Self {
         IirFilterBlock::<T> {
             buffer: parameters.ic,
-            data: <OldBlockData as FromPass<T>>::from_pass(parameters.ic),
         }
     }
 }
@@ -42,12 +30,10 @@ where
 impl<T, const NROWS: usize, const NCOLS: usize> HasIc for IirFilterBlock<Matrix<NROWS, NCOLS, T>>
 where
     T: Float,
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, T>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IirFilterBlock::<pictorus_traits::Matrix<NROWS, NCOLS, T>> {
             buffer: parameters.ic,
-            data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, T>>>::from_pass(&parameters.ic),
         }
     }
 }
@@ -55,7 +41,6 @@ where
 impl<T> ProcessBlock for IirFilterBlock<T>
 where
     T: Float,
-    OldBlockData: FromPass<T>,
 {
     type Inputs = T;
     type Output = T;
@@ -70,7 +55,6 @@ where
         let alpha = timestep_s / (timestep_s + parameters.time_constant_s);
         let res = alpha * inputs + ((T::one() - alpha) * self.buffer);
         self.buffer = res;
-        self.data = <OldBlockData as FromPass<T>>::from_pass(res);
         res
     }
 
@@ -83,7 +67,6 @@ impl<T, const NROWS: usize, const NCOLS: usize> ProcessBlock
     for IirFilterBlock<Matrix<NROWS, NCOLS, T>>
 where
     T: Float,
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, T>>,
 {
     type Inputs = Matrix<NROWS, NCOLS, T>;
     type Output = Matrix<NROWS, NCOLS, T>;
@@ -100,7 +83,6 @@ where
         let input = inputs.as_view();
         let res = input * alpha + (self.buffer.as_view() * (T::one() - alpha));
         self.buffer = Self::Output::from_view(&res.as_view());
-        self.data = OldBlockData::from_pass(&self.buffer);
         &self.buffer
     }
 
@@ -153,7 +135,7 @@ mod tests {
         // roughly 50% of final data
         let res = block.process(&parameters, &ctxt, 1.0);
         assert_relative_eq!(res, 0.5, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 0.5, max_relative = 0.01);
+        assert_relative_eq!(block.buffer(), 0.5, max_relative = 0.01);
     }
 
     #[test]
@@ -192,7 +174,7 @@ mod tests {
             max_relative = 0.01
         );
         assert_relative_eq!(
-            block.data.get_data().as_slice(),
+            block.buffer().data.as_flattened(),
             expected.as_flattened(),
             max_relative = 0.01
         );
@@ -217,14 +199,14 @@ mod tests {
         // roughly 50% of final data
         let res = block.process(&parameters, &ctxt, 1.0);
         assert_relative_eq!(res, 0.5, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 0.5, max_relative = 0.01);
+        assert_relative_eq!(block.buffer(), 0.5, max_relative = 0.01);
 
         // Reset the block with a new initial condition
         let new_ic = 0.5;
         let parameters = Parameters::new(new_ic, time_constants_s);
         let res = block.process(&parameters, &ctxt, 1.0);
         assert_relative_eq!(res, 0.75, max_relative = 0.01);
-        assert_relative_eq!(block.data.scalar(), 0.75, max_relative = 0.01);
+        assert_relative_eq!(block.buffer(), 0.75, max_relative = 0.01);
     }
 
     #[test]
@@ -263,7 +245,7 @@ mod tests {
             max_relative = 0.01
         );
         assert_relative_eq!(
-            block.data.get_data().as_slice(),
+            block.buffer().data.as_flattened(),
             expected.as_flattened(),
             max_relative = 0.01
         );

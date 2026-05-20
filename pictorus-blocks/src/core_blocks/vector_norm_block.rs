@@ -1,5 +1,4 @@
 use crate::matrix_ext::MatrixNalgebraExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters {}
@@ -24,18 +23,15 @@ pub struct VectorNormBlock<T>
 where
     T: Apply,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
 impl<T> Default for VectorNormBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: T::Output::default(),
         }
     }
@@ -44,7 +40,6 @@ where
 impl<T> ProcessBlock for VectorNormBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -57,7 +52,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -151,7 +145,6 @@ mod tests {
 
                     let output = block.process(&p, &c, &input);
                     assert_eq!(output, [<5 $type>].into());
-                    assert_eq!(block.data, OldBlockData::from_scalar([<5 $type>].into()));
                     assert_eq!(block.buffer(), output);
                 }
 
@@ -166,7 +159,7 @@ mod tests {
                     };
                     let output = block.process(&p, &c, &input);
                     assert_eq!(output, [<6 $type>].into());
-                    assert_eq!(block.data, OldBlockData::from_scalar([<6 $type>].into()));
+                    assert_eq!(block.buffer(), output);
                 }
             }
         };

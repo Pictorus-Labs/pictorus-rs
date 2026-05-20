@@ -1,11 +1,10 @@
 extern crate alloc;
 
 use alloc::string::String;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use miniserde::json::{self, Array, Number, Object, Value};
-use pictorus_block_data::{BlockData as OldBlockData, BlockDataType, FromPass};
+use pictorus_block_data::BlockDataType;
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, traits::DefaultStorage, IsValid};
@@ -17,7 +16,6 @@ use crate::{stale_tracker::StaleTracker, traits::DefaultStorage, IsValid};
 /// select_data is a key in the object. If select_data is not provided, we assume
 /// that the passed in bytes represent a single value (either scalar or matrix).
 pub struct JsonLoadBlock<T: Apply> {
-    pub data: Vec<OldBlockData>,
     buffer: T::Storage,
     stale_tracker: Option<StaleTracker>,
 }
@@ -25,9 +23,7 @@ pub struct JsonLoadBlock<T: Apply> {
 impl<T: Apply> Default for JsonLoadBlock<T> {
     fn default() -> Self {
         let buffer = T::default_storage();
-        let data = T::build_block_data(&buffer);
         JsonLoadBlock {
-            data,
             buffer,
             stale_tracker: None,
         }
@@ -47,7 +43,6 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
     ) -> PassBy<'b, Self::Output> {
         let success = T::apply(&mut self.buffer, inputs, parameters);
         if success.is_ok() {
-            self.data = T::build_block_data(&self.buffer);
             let tracker = self
                 .stale_tracker
                 .get_or_insert(StaleTracker::from_ms(parameters.stale_age_ms));
@@ -62,10 +57,10 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
 }
 
 impl<T: Apply> IsValid for JsonLoadBlock<T> {
-    fn is_valid(&self, app_time_s: f64) -> OldBlockData {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         match self.stale_tracker {
             Some(ref tracker) => tracker.is_valid(app_time_s),
-            None => OldBlockData::scalar_from_bool(false),
+            None => false,
         }
     }
 }
@@ -211,7 +206,6 @@ pub trait Apply: Pass {
 
     fn default_storage() -> Self::Storage;
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output>;
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData>;
 }
 
 fn parse_number(num_val: &Number) -> f64 {
@@ -223,10 +217,7 @@ fn parse_number(num_val: &Number) -> f64 {
 }
 
 // Impl for single value
-impl<A: Deserialize> Apply for A
-where
-    OldBlockData: FromPass<A>,
-{
+impl<A: Deserialize> Apply for A {
     type Storage = (A::Storage, bool);
     type Output = (A, bool);
 
@@ -259,21 +250,13 @@ where
         (A::default_storage(), false)
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![OldBlockData::from_pass(A::from_storage(&storage.0))]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (A::from_storage(&storage.0), storage.1)
     }
 }
 
 // Impl for tuple of two values
-impl<A: Deserialize, B: Deserialize> Apply for (A, B)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-{
+impl<A: Deserialize, B: Deserialize> Apply for (A, B) {
     type Storage = (A::Storage, B::Storage, bool);
     type Output = (A, B, bool);
 
@@ -299,13 +282,6 @@ where
         (A::default_storage(), B::default_storage(), false)
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -316,12 +292,7 @@ where
 }
 
 // Impl for tuple of three values
-impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-{
+impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C) {
     type Storage = (A::Storage, B::Storage, C::Storage, bool);
     type Output = (A, B, C, bool);
 
@@ -353,14 +324,6 @@ where
         )
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -372,13 +335,7 @@ where
 }
 
 // Impl for tuple of four values
-impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (A, B, C, D)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-{
+impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (A, B, C, D) {
     type Storage = (A::Storage, B::Storage, C::Storage, D::Storage, bool);
     type Output = (A, B, C, D, bool);
 
@@ -412,15 +369,6 @@ where
         )
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -435,12 +383,6 @@ where
 // Impl for tuple of five values
 impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize, E: Deserialize> Apply
     for (A, B, C, D, E)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
 {
     type Storage = (
         A::Storage,
@@ -484,15 +426,6 @@ where
         )
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-        ]
-    }
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -514,13 +447,6 @@ impl<
         E: Deserialize,
         F: Deserialize,
     > Apply for (A, B, C, D, E, F)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
-    OldBlockData: FromPass<F>,
 {
     type Storage = (
         A::Storage,
@@ -565,16 +491,6 @@ where
             false,
         )
     }
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&storage.5)),
-        ]
-    }
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -598,14 +514,6 @@ impl<
         F: Deserialize,
         G: Deserialize,
     > Apply for (A, B, C, D, E, F, G)
-where
-    OldBlockData: FromPass<A>,
-    OldBlockData: FromPass<B>,
-    OldBlockData: FromPass<C>,
-    OldBlockData: FromPass<D>,
-    OldBlockData: FromPass<E>,
-    OldBlockData: FromPass<F>,
-    OldBlockData: FromPass<G>,
 {
     type Storage = (
         A::Storage,
@@ -657,18 +565,6 @@ where
         )
     }
 
-    fn build_block_data(storage: &Self::Storage) -> Vec<OldBlockData> {
-        vec![
-            <OldBlockData as FromPass<A>>::from_pass(A::from_storage(&storage.0)),
-            <OldBlockData as FromPass<B>>::from_pass(B::from_storage(&storage.1)),
-            <OldBlockData as FromPass<C>>::from_pass(C::from_storage(&storage.2)),
-            <OldBlockData as FromPass<D>>::from_pass(D::from_storage(&storage.3)),
-            <OldBlockData as FromPass<E>>::from_pass(E::from_storage(&storage.4)),
-            <OldBlockData as FromPass<F>>::from_pass(F::from_storage(&storage.5)),
-            <OldBlockData as FromPass<G>>::from_pass(G::from_storage(&storage.6)),
-        ]
-    }
-
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (
             A::from_storage(&storage.0),
@@ -703,8 +599,7 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.2, true));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(1.2)]);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
         assert_eq!(block.buffer(), res);
     }
 
@@ -737,16 +632,8 @@ mod tests {
         );
 
         assert_eq!(res, expected);
-        assert_eq!(
-            block.data,
-            vec![
-                <OldBlockData as FromPass<f64>>::from_pass(expected.0),
-                <OldBlockData as FromPass<ByteSliceSignal>>::from_pass(expected.1),
-                <OldBlockData as FromPass<Matrix<2, 1, f64>>>::from_pass(expected.2),
-                <OldBlockData as FromPass<Matrix<2, 2, f64>>>::from_pass(expected.3),
-            ]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), expected);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -757,8 +644,8 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(0.0)]);
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (0.0, false));
+        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -769,8 +656,8 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(0.0)]);
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (0.0, false));
+        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -781,8 +668,8 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(0.0)]);
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (0.0, false));
+        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -796,11 +683,8 @@ mod tests {
             data: [[1.0], [2.0], [3.0]],
         };
         assert_eq!(res, (expected, true));
-        assert_eq!(
-            block.data,
-            vec![OldBlockData::from_matrix(&[&[1.0, 2.0, 3.0]])]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (expected, true));
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -812,8 +696,8 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         let expected = &Matrix { data: [[]] };
         assert_eq!(res, (expected, true));
-        assert_eq!(block.data, vec![OldBlockData::from_row_slice(0, 1, &[])]);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (expected, true));
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -827,11 +711,8 @@ mod tests {
             data: [[1.0, 3.0], [2.0, 4.0]],
         };
         assert_eq!(res, (expected, true));
-        assert_eq!(
-            block.data,
-            vec![OldBlockData::from_matrix(&[&[1.0, 2.0], &[3.0, 4.0]])]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (expected, true));
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -842,8 +723,8 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, true));
-        assert_eq!(block.data, vec![OldBlockData::from_scalar(1.0)]);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (1.0, true));
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -854,14 +735,8 @@ mod tests {
         let mut block = JsonLoadBlock::<(f64, ByteSliceSignal)>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, b"hello".as_slice(), true));
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-            ]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(block.buffer(), (1.0, b"hello".as_slice(), true));
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -878,26 +753,17 @@ mod tests {
         );
         let mut block = JsonLoadBlock::<(f64, ByteSliceSignal, Matrix<1, 2, f64>)>::default();
         let res = block.process(&params, &ctxt, input);
-        assert_eq!(
-            res,
-            (
-                1.0,
-                b"hello".as_slice(),
-                &Matrix {
-                    data: [[1.0], [2.0]]
-                },
-                true
-            )
+        let expected = (
+            1.0,
+            b"hello".as_slice(),
+            &Matrix {
+                data: [[1.0], [2.0]],
+            },
+            true,
         );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-            ]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(res, expected);
+        assert_eq!(block.buffer(), expected);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -918,30 +784,20 @@ mod tests {
             JsonLoadBlock::<(f64, ByteSliceSignal, Matrix<1, 2, f64>, Matrix<2, 2, f64>)>::default(
             );
         let res = block.process(&params, &ctxt, input);
-        assert_eq!(
-            res,
-            (
-                1.0,
-                b"hello".as_slice(),
-                &Matrix {
-                    data: [[1.0], [2.0]]
-                },
-                &Matrix {
-                    data: [[1.0, 0.0], [0.0, 1.0]]
-                },
-                true
-            )
+        let expected = (
+            1.0,
+            b"hello".as_slice(),
+            &Matrix {
+                data: [[1.0], [2.0]],
+            },
+            &Matrix {
+                data: [[1.0, 0.0], [0.0, 1.0]],
+            },
+            true,
         );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-            ]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(res, expected);
+        assert_eq!(block.buffer(), expected);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -966,32 +822,21 @@ mod tests {
             Matrix<1, 1, f64>,
         )>::default();
         let res = block.process(&params, &ctxt, input);
-        assert_eq!(
-            res,
-            (
-                1.0,
-                b"hello".as_slice(),
-                &Matrix {
-                    data: [[1.0], [2.0]]
-                },
-                &Matrix {
-                    data: [[1.0, 0.0], [0.0, 1.0]]
-                },
-                &Matrix { data: [[1.0]] },
-                true
-            )
+        let expected = (
+            1.0,
+            b"hello".as_slice(),
+            &Matrix {
+                data: [[1.0], [2.0]],
+            },
+            &Matrix {
+                data: [[1.0, 0.0], [0.0, 1.0]],
+            },
+            &Matrix { data: [[1.0]] },
+            true,
         );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-                OldBlockData::from_matrix(&[&[1.0]]),
-            ]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(res, expected);
+        assert_eq!(block.buffer(), expected);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -1018,34 +863,22 @@ mod tests {
             Matrix<1, 1, f64>,
         )>::default();
         let res = block.process(&params, &ctxt, input);
-        assert_eq!(
-            res,
-            (
-                1.0,
-                b"hello".as_slice(),
-                &Matrix {
-                    data: [[1.0], [2.0]]
-                },
-                &Matrix {
-                    data: [[1.0, 0.0], [0.0, 1.0]]
-                },
-                &Matrix { data: [[1.0]] },
-                &Matrix { data: [[2.0]] },
-                true
-            )
+        let expected = (
+            1.0,
+            b"hello".as_slice(),
+            &Matrix {
+                data: [[1.0], [2.0]],
+            },
+            &Matrix {
+                data: [[1.0, 0.0], [0.0, 1.0]],
+            },
+            &Matrix { data: [[1.0]] },
+            &Matrix { data: [[2.0]] },
+            true,
         );
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-                OldBlockData::from_matrix(&[&[1.0]]),
-                OldBlockData::from_matrix(&[&[2.0]]),
-            ]
-        );
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert_eq!(res, expected);
+        assert_eq!(block.buffer(), expected);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -1104,20 +937,8 @@ mod tests {
         );
 
         assert_eq!(res, expected);
+        assert_eq!(block.buffer(), expected);
 
-        assert_eq!(
-            block.data,
-            vec![
-                OldBlockData::from_scalar(1.0),
-                OldBlockData::from_bytes(b"hello"),
-                OldBlockData::from_matrix(&[&[1.0, 2.0]]),
-                OldBlockData::from_matrix(&[&[1.0, 0.0], &[0.0, 1.0]]),
-                OldBlockData::from_matrix(&[&[1.0]]),
-                OldBlockData::from_matrix(&[&[2.0]]),
-                OldBlockData::from_matrix(&[&[3.0, 4.0], &[5.0, 6.0]]),
-            ]
-        );
-
-        assert!(block.is_valid(ctxt.time().as_secs_f64()).any());
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 }

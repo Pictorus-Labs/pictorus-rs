@@ -1,5 +1,4 @@
 use crate::matrix_ext::MatrixNalgebraExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
@@ -21,26 +20,18 @@ impl Default for Parameters {
 ///
 /// For scalar inputs this is just a pass-through
 pub struct TransposeBlock<T: Apply> {
-    pub data: OldBlockData,
     store: T::Output,
 }
 
-impl<T: Apply> Default for TransposeBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> Default for TransposeBlock<T> {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(<T::Output>::default().as_by()),
             store: T::Output::default(),
         }
     }
 }
 
-impl<T: Apply> ProcessBlock for TransposeBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> ProcessBlock for TransposeBlock<T> {
     type Inputs = T;
     type Output = T::Output;
     type Parameters = Parameters;
@@ -51,9 +42,7 @@ where
         _context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
-        let output = T::apply(&mut self.store, input);
-        self.data = OldBlockData::from_pass(output);
-        output
+        T::apply(&mut self.store, input)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
@@ -110,12 +99,11 @@ mod tests {
 
         let output = transpose_block.process(&params, &ctxt, 1.0);
         assert_eq!(output, 1.0);
-        assert_eq!(transpose_block.data.scalar(), 1.0);
         assert_eq!(transpose_block.buffer(), output);
 
         let output = transpose_block.process(&params, &ctxt, 42.0);
         assert_eq!(output, 42.0);
-        assert_eq!(transpose_block.data.scalar(), 42.0);
+        assert_eq!(transpose_block.buffer(), 42.0);
     }
 
     #[test]
@@ -132,9 +120,6 @@ mod tests {
         };
         let output = transpose_block.process(&params, &ctxt, &input);
         assert_eq!(output.data, expected.data);
-        assert_eq!(
-            transpose_block.data.get_data().as_slice(),
-            expected.data.as_flattened()
-        );
+        assert_eq!(transpose_block.buffer().data, expected.data);
     }
 }

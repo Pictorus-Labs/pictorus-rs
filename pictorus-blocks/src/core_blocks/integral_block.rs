@@ -4,30 +4,22 @@ use crate::{
     traits::{Float, MatrixOps},
     Scalar,
 };
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Performs a discrete integration of the input signal.
 ///
 /// It can accept a scalar or a matrix input, for a matrix input it will do an
 /// element wise integration.
-pub struct IntegralBlock<T: Apply>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+pub struct IntegralBlock<T: Apply> {
     ic: T::Output,
     previous_sample: Option<T::Output>,
     // This is still Option<T> because we use this to determine if a reset has occurred or
     // data has not been processed. .buffer needs to return something, so we need the .ic
     // field or re-think how this block handles the first run and resets.
     output: Option<T::Output>,
-    pub data: OldBlockData,
 }
 
-impl<T: Apply> Default for IntegralBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply> Default for IntegralBlock<T> {
     fn default() -> Self {
         const {
             panic!(
@@ -38,10 +30,7 @@ where
     }
 }
 
-impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)>
-where
-    OldBlockData: FromPass<F>,
-{
+impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)> {
     type Inputs = (F, R);
     type Output = F;
     type Parameters = Parameters<(F, R)>;
@@ -84,7 +73,6 @@ where
         }
         // This could be none if we were reset above
         let output = self.output.get_or_insert(parameters.ic);
-        self.data = OldBlockData::from_pass(output.as_by());
         output.as_by()
     }
 
@@ -94,24 +82,18 @@ where
     }
 }
 
-impl<F: Float, R: Scalar> HasIc for IntegralBlock<(F, R)>
-where
-    OldBlockData: FromPass<F>,
-{
+impl<F: Float, R: Scalar> HasIc for IntegralBlock<(F, R)> {
     fn new(parameters: &Self::Parameters) -> Self {
         IntegralBlock::<(F, R)> {
             ic: parameters.ic,
             previous_sample: None,
             output: Some(parameters.ic),
-            data: <OldBlockData as FromPass<F>>::from_pass(parameters.ic.as_by()),
         }
     }
 }
 
 impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
     for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
-where
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, F>>,
 {
     type Inputs = (Matrix<NROWS, NCOLS, F>, R);
     type Output = Matrix<NROWS, NCOLS, F>;
@@ -150,7 +132,6 @@ where
             self.previous_sample = Some(*sample);
         }
         let output = self.output.get_or_insert(parameters.ic);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -161,15 +142,12 @@ where
 
 impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
     for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
-where
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, F>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         IntegralBlock::<(Matrix<NROWS, NCOLS, F>, R)> {
             ic: parameters.ic,
             previous_sample: None,
             output: Some(parameters.ic),
-            data: <OldBlockData as FromPass<Matrix<NROWS, NCOLS, F>>>::from_pass(&parameters.ic),
         }
     }
 }
@@ -311,7 +289,7 @@ mod tests {
         let parameters = Parameters::new(10.0, 50.0, "Rectangle");
         let mut block = IntegralBlock::<(f64, bool)>::new(&parameters);
         // Check the initial value is set
-        assert_eq!(block.data.scalar(), 10.0);
+        assert_eq!(block.buffer(), 10.0);
 
         let input = 25.0;
         let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
@@ -343,10 +321,7 @@ mod tests {
         );
         let mut block = IntegralBlock::<(Matrix<1, 3, f64>, bool)>::new(&parameters);
         // Check the initial value is set
-        assert_eq!(
-            block.data.get_data().as_slice(),
-            [[10.0], [10.0], [10.0]].as_flattened()
-        );
+        assert_eq!(block.buffer().data, [[10.0], [10.0], [10.0]]);
 
         let input = Matrix {
             data: [[1.0], [1.0], [25.0]],

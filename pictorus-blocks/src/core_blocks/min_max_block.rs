@@ -1,7 +1,6 @@
 use crate::matrix_ext::MatrixNalgebraExt;
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
 use nalgebra::SMatrix;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Copy, Clone)]
@@ -30,30 +29,19 @@ impl Parameters {
 ///
 /// If inputs are all scalars, the output will be a scalar
 /// Otherwise the output will be the component-wise minimum or maximum of the inputs
-pub struct MinMaxBlock<T: Apply<Parameters>>
-where
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
-{
-    pub data: OldBlockData,
+pub struct MinMaxBlock<T: Apply<Parameters>> {
     buffer: T::Output,
 }
 
-impl<T: Apply<Parameters>> Default for MinMaxBlock<T>
-where
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
-{
+impl<T: Apply<Parameters>> Default for MinMaxBlock<T> {
     fn default() -> Self {
         MinMaxBlock {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: T::Output::default(),
         }
     }
 }
 
-impl<T: Apply<Parameters>> ProcessBlock for MinMaxBlock<T>
-where
-    OldBlockData: FromPass<T::Output>,
-{
+impl<T: Apply<Parameters>> ProcessBlock for MinMaxBlock<T> {
     type Parameters = Parameters;
     type Inputs = T;
     type Output = T::Output;
@@ -67,7 +55,6 @@ where
         let mut tmp: Option<T::Output> = None;
         T::apply(inputs, parameters, &mut tmp);
         self.buffer = tmp.expect("apply must initialize the buffer");
-        self.data = OldBlockData::from_pass(self.buffer.as_by());
         self.buffer.as_by()
     }
 
@@ -186,13 +173,11 @@ mod tests {
         let input = 99.0;
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(block.data.scalar(), 99.0);
         assert_eq!(block.buffer(), res);
 
         parameters.method = MinMaxMethod::Max;
         let res = block.process(&parameters, &ctxt, input.as_by());
         assert_eq!(res, 99.0);
-        assert_eq!(block.data.scalar(), 99.0);
     }
 
     #[test]
@@ -203,12 +188,12 @@ mod tests {
         let input = Matrix::<2, 2, f64>::from_element(99.0);
         let res = block.process(&parameters, &ctxt, &input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
-        assert_eq!(block.data.get_data().as_slice(), [99.0, 99.0, 99.0, 99.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
 
         parameters.method = MinMaxMethod::Max;
         let res = block.process(&parameters, &ctxt, &input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
-        assert_eq!(block.data.get_data().as_slice(), [99.0, 99.0, 99.0, 99.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
     }
 
     #[test]
@@ -221,12 +206,12 @@ mod tests {
         let input = (99.0, 100.0);
         let res = two_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(two_block.data.scalar(), 99.0);
+        assert_eq!(two_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
         let res = two_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 100.0);
-        assert_eq!(two_block.data.scalar(), 100.0);
+        assert_eq!(two_block.buffer(), 100.0);
 
         // Three inputs
         parameters.method = MinMaxMethod::Min;
@@ -234,12 +219,12 @@ mod tests {
         let input = (99.0, 100.0, 101.0);
         let res = three_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(three_block.data.scalar(), 99.0);
+        assert_eq!(three_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
         let res = three_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 101.0);
-        assert_eq!(three_block.data.scalar(), 101.0);
+        assert_eq!(three_block.buffer(), 101.0);
 
         // Four inputs
         parameters.method = MinMaxMethod::Min;
@@ -247,12 +232,12 @@ mod tests {
         let input = (99.0, 100.0, 101.0, 102.0);
         let res = four_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(four_block.data.scalar(), 99.0);
+        assert_eq!(four_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
         let res = four_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 102.0);
-        assert_eq!(four_block.data.scalar(), 102.0);
+        assert_eq!(four_block.buffer(), 102.0);
 
         // Five inputs
         parameters.method = MinMaxMethod::Min;
@@ -260,12 +245,12 @@ mod tests {
         let input = (99.0, 100.0, 101.0, 102.0, 103.0);
         let res = five_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(five_block.data.scalar(), 99.0);
+        assert_eq!(five_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
         let res = five_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 103.0);
-        assert_eq!(five_block.data.scalar(), 103.0);
+        assert_eq!(five_block.buffer(), 103.0);
 
         // Six inputs
         parameters.method = MinMaxMethod::Min;
@@ -273,12 +258,12 @@ mod tests {
         let input = (99.0, 100.0, 101.0, 102.0, 103.0, 104.0);
         let res = six_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(six_block.data.scalar(), 99.0);
+        assert_eq!(six_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
         let res = six_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 104.0);
-        assert_eq!(six_block.data.scalar(), 104.0);
+        assert_eq!(six_block.buffer(), 104.0);
 
         // Seven inputs
         parameters.method = MinMaxMethod::Min;
@@ -286,12 +271,12 @@ mod tests {
         let input = (99.0, 100.0, 101.0, 102.0, 103.0, 104.0, 105.0);
         let res = seven_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(seven_block.data.scalar(), 99.0);
+        assert_eq!(seven_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
         let res = seven_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 105.0);
-        assert_eq!(seven_block.data.scalar(), 105.0);
+        assert_eq!(seven_block.buffer(), 105.0);
 
         // Eight inputs
         parameters.method = MinMaxMethod::Min;
@@ -299,12 +284,12 @@ mod tests {
         let input = (99.0, 100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0);
         let res = eight_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 99.0);
-        assert_eq!(eight_block.data.scalar(), 99.0);
+        assert_eq!(eight_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
         let res = eight_block.process(&parameters, &ctxt, input);
         assert_eq!(res, 106.0);
-        assert_eq!(eight_block.data.scalar(), 106.0);
+        assert_eq!(eight_block.buffer(), 106.0);
     }
 
     #[test]
@@ -324,12 +309,12 @@ mod tests {
         );
         let res = two_block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
-        assert_eq!(two_block.data.get_data().as_slice(), [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(two_block.buffer().data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
 
         parameters.method = MinMaxMethod::Max;
         let res = two_block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [5.0, 6.0, 7.0, 8.0]);
-        assert_eq!(two_block.data.get_data().as_slice(), [5.0, 6.0, 7.0, 8.0]);
+        assert_eq!(two_block.buffer().data.as_flattened(), [5.0, 6.0, 7.0, 8.0]);
 
         // Three inputs
         parameters.method = MinMaxMethod::Min;
@@ -348,13 +333,16 @@ mod tests {
         );
         let res = three_block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
-        assert_eq!(three_block.data.get_data().as_slice(), [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(
+            three_block.buffer().data.as_flattened(),
+            [1.0, 2.0, 3.0, 4.0]
+        );
 
         parameters.method = MinMaxMethod::Max;
         let res = three_block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [9.0, 10.0, 11.0, 12.0]);
         assert_eq!(
-            three_block.data.get_data().as_slice(),
+            three_block.buffer().data.as_flattened(),
             [9.0, 10.0, 11.0, 12.0]
         );
 
@@ -382,13 +370,16 @@ mod tests {
         );
         let res = four_block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
-        assert_eq!(four_block.data.get_data().as_slice(), [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(
+            four_block.buffer().data.as_flattened(),
+            [1.0, 2.0, 3.0, 4.0]
+        );
 
         parameters.method = MinMaxMethod::Max;
         let res = four_block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [13.0, 14.0, 15.0, 16.0]);
         assert_eq!(
-            four_block.data.get_data().as_slice(),
+            four_block.buffer().data.as_flattened(),
             [13.0, 14.0, 15.0, 16.0]
         );
     }
@@ -403,12 +394,12 @@ mod tests {
         let input = (99.0, &Matrix::from_element(1.0));
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(block.data.get_data().as_slice(), [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
-        assert_eq!(block.data.get_data().as_slice(), [99.0, 99.0, 99.0, 99.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
 
         // Matrix and scalar
         let mut block = MinMaxBlock::<(Matrix<2, 2, f64>, f64)>::default();
@@ -416,12 +407,12 @@ mod tests {
         let input = (&Matrix::from_element(1.0), 99.0);
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(block.data.get_data().as_slice(), [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
-        assert_eq!(block.data.get_data().as_slice(), [99.0, 99.0, 99.0, 99.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
 
         // (Scalar, matrix, scalar)
         let mut block = MinMaxBlock::<(f64, Matrix<2, 2, f64>, f64)>::default();
@@ -429,13 +420,13 @@ mod tests {
         let input = (99.0, &Matrix::from_element(1.0), 100.0);
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(block.data.get_data().as_slice(), [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [100.0, 100.0, 100.0, 100.0]);
         assert_eq!(
-            block.data.get_data().as_slice(),
+            block.buffer().data.as_flattened(),
             [100.0, 100.0, 100.0, 100.0]
         );
 
@@ -445,11 +436,11 @@ mod tests {
         let input = (&Matrix::from_element(1.0), 99.0, &Matrix::from_element(2.0));
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(block.data.get_data().as_slice(), [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
         let res = block.process(&parameters, &ctxt, input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
-        assert_eq!(block.data.get_data().as_slice(), [99.0, 99.0, 99.0, 99.0]);
+        assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
     }
 }

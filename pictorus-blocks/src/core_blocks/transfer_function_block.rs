@@ -1,7 +1,6 @@
 use crate::traits::{Float, MatrixOps};
 use heapless::Deque;
 use num_traits::Zero;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the TransferFunctionBlock
@@ -55,7 +54,6 @@ pub struct TransferFunctionBlock<const NUM_SIZE: usize, const DEN_SIZE: usize, F
 where
     I: Default,
 {
-    pub data: OldBlockData,
     buffer: I,
     /// Stores input samples, typically denoted as x[n]
     input: Deque<I, NUM_SIZE>,
@@ -69,11 +67,9 @@ impl<const NUM_SIZE: usize, const DEN_SIZE: usize, F, I> Default
 where
     F: Float,
     I: Pass + Default,
-    OldBlockData: FromPass<I>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<I>>::from_pass(<I>::default().as_by()),
             buffer: I::default(),
             input: Deque::new(),
             output: Deque::new(),
@@ -86,8 +82,6 @@ macro_rules! impl_transfer_function {
     ($type:ty) => {
         impl<const NUM_SIZE: usize, const DEN_SIZE: usize> ProcessBlock
             for TransferFunctionBlock<NUM_SIZE, DEN_SIZE, $type, $type>
-        where
-            OldBlockData: FromPass<f64>,
         {
             type Inputs = $type;
             type Output = $type;
@@ -151,7 +145,6 @@ macro_rules! impl_transfer_function {
 
                 self.input.pop_back();
 
-                self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
 
@@ -169,7 +162,6 @@ macro_rules! impl_transfer_function {
             for TransferFunctionBlock<NUM_SIZE, DEN_SIZE, $type, Matrix<ROWS, COLS, $type>>
         where
             $type: Float,
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -236,7 +228,6 @@ macro_rules! impl_transfer_function {
 
                 self.input.pop_back();
 
-                self.data = OldBlockData::from_pass(self.buffer.as_by());
                 &self.buffer
             }
 

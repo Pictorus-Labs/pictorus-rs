@@ -1,5 +1,4 @@
 use crate::traits::{CopyInto, Scalar, SizePromotion};
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Performs a bitwise operation on the input values.
@@ -11,21 +10,17 @@ use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 pub struct BitwiseOperatorBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<<T as Apply>::Output>,
 {
     store: T::Output,
-    pub data: OldBlockData,
 }
 
 impl<T> Default for BitwiseOperatorBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<<T as Apply>::Output>,
 {
     fn default() -> Self {
         Self {
             store: T::Output::default(),
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
         }
     }
 }
@@ -33,7 +28,6 @@ where
 impl<T> ProcessBlock for BitwiseOperatorBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<<T as Apply>::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -46,7 +40,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let result = T::apply(inputs, *parameters, &mut self.store);
-        self.data = OldBlockData::from_pass(result);
         result
     }
 

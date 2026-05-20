@@ -1,7 +1,6 @@
 use crate::traits::Float;
 use crate::traits::{MatrixOps, Scalar};
 use core::time::Duration;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Perform a frequency filter operation on a signal, either as a low pass or high pass filter.
@@ -13,7 +12,6 @@ use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 /// independently to each element of the matrix.
 #[derive(Debug)]
 pub struct FrequencyFilterBlock<T: Pass> {
-    pub data: OldBlockData,
     prev_data: Option<PreviousData<T>>,
     output: T,
 }
@@ -25,10 +23,7 @@ struct PreviousData<T: Pass> {
     prev_time: Duration,
 }
 
-impl<T: Pass + Default> Default for FrequencyFilterBlock<T>
-where
-    OldBlockData: FromPass<T>,
-{
+impl<T: Pass + Default> Default for FrequencyFilterBlock<T> {
     fn default() -> Self {
         const {
             panic!(
@@ -42,7 +37,6 @@ where
 impl<T> HasIc for FrequencyFilterBlock<T>
 where
     T: Pass + Default + Float,
-    OldBlockData: FromPass<T>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         FrequencyFilterBlock::<T> {
@@ -51,7 +45,6 @@ where
                 prev_output: parameters.ic,
                 prev_time: Duration::ZERO,
             }),
-            data: OldBlockData::from_pass(parameters.ic.as_by()),
             output: parameters.ic,
         }
     }
@@ -61,7 +54,6 @@ impl<T, const NROWS: usize, const NCOLS: usize> HasIc
     for FrequencyFilterBlock<Matrix<NROWS, NCOLS, T>>
 where
     T: Pass + Default + Float + Scalar,
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, T>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         FrequencyFilterBlock::<pictorus_traits::Matrix<NROWS, NCOLS, T>> {
@@ -70,7 +62,6 @@ where
                 prev_output: parameters.ic,
                 prev_time: Duration::ZERO,
             }),
-            data: OldBlockData::from_pass(parameters.ic.as_by()),
             output: parameters.ic,
         }
     }
@@ -79,7 +70,6 @@ where
 impl<T> ProcessBlock for FrequencyFilterBlock<T>
 where
     T: Pass + Default + Float,
-    OldBlockData: FromPass<T>,
 {
     type Inputs = T;
     type Output = T;
@@ -110,7 +100,6 @@ where
             prev_output: self.output,
             prev_time: context.time(),
         });
-        self.data = OldBlockData::from_pass(self.output.as_by());
         self.output.as_by()
     }
 
@@ -123,7 +112,6 @@ impl<T, const NROWS: usize, const NCOLS: usize> ProcessBlock
     for FrequencyFilterBlock<Matrix<NROWS, NCOLS, T>>
 where
     T: Pass + Default + Float + Scalar,
-    OldBlockData: FromPass<Matrix<NROWS, NCOLS, T>>,
 {
     type Inputs = Matrix<NROWS, NCOLS, T>;
     type Output = Matrix<NROWS, NCOLS, T>;
@@ -156,7 +144,6 @@ where
             prev_output: self.output,
             prev_time: context.time(),
         });
-        self.data = OldBlockData::from_pass(self.output.as_by());
         self.output.as_by()
     }
 

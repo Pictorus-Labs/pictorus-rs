@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock, Scalar};
 use strum::EnumString;
 
@@ -17,7 +16,6 @@ use strum::EnumString;
 /// The first execution of this block has no value to compare with
 /// so it will always emit `false`
 pub struct ChangeDetectionBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: T::Output,
     last_input: Option<T>,
 }
@@ -25,7 +23,6 @@ pub struct ChangeDetectionBlock<T: Apply> {
 impl<T> Default for ChangeDetectionBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         const {
@@ -40,12 +37,10 @@ where
 impl<T> HasIc for ChangeDetectionBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         ChangeDetectionBlock::<T> {
             buffer: T::Output::default(),
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             last_input: Some(parameters.ic),
         }
     }
@@ -54,7 +49,6 @@ where
 impl<T> ProcessBlock for ChangeDetectionBlock<T>
 where
     T: Apply,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -67,7 +61,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters, &mut self.last_input);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 

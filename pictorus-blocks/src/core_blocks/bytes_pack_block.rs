@@ -2,12 +2,10 @@ extern crate alloc;
 use crate::byte_data::{parse_byte_data_spec, try_pack_data, ByteOrderSpec, DataType};
 use crate::traits::Scalar;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Packs scalar inputs into a byte buffer according to the provided data spec.
 pub struct BytesPackBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     _unused: core::marker::PhantomData<T>,
 }
@@ -15,7 +13,6 @@ pub struct BytesPackBlock<T: Apply> {
 impl<T: Apply> Default for BytesPackBlock<T> {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(b""),
             buffer: Vec::new(),
             _unused: core::marker::PhantomData,
         }
@@ -34,7 +31,6 @@ impl<T: Apply> ProcessBlock for BytesPackBlock<T> {
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = T::pack_bytes(inputs, parameters);
-        self.data = OldBlockData::from_bytes(&self.buffer);
         self.buffer.as_slice()
     }
 
@@ -229,7 +225,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
@@ -253,7 +248,7 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
 
         // Make sure buffer is cleared between runs, this logic is just in one test because it is written
         // for the ProcessBlock impl and so is shared between all input possibilities
@@ -270,7 +265,7 @@ mod tests {
         };
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
@@ -296,7 +291,7 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
@@ -330,7 +325,7 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
@@ -366,7 +361,7 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
@@ -406,7 +401,7 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
@@ -450,7 +445,7 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
@@ -507,6 +502,6 @@ mod tests {
 
         let output = block.process(&params, &context, inputs);
         assert_eq!(output, expected.as_slice());
-        assert_eq!(block.data, OldBlockData::from_bytes(&expected));
+        assert_eq!(block.buffer(), expected.as_slice());
     }
 }

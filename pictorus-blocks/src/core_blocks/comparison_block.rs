@@ -1,5 +1,4 @@
 use crate::traits::{Apply, ApplyInto, MatrixOps, Scalar};
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// The type of comparison operation to perform
@@ -46,20 +45,16 @@ impl Parameters {
 pub struct ComparisonBlock<T>
 where
     T: Apply<Parameters>,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
 impl<T> Default for ComparisonBlock<T>
 where
     T: Apply<Parameters>,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: T::Output::default(),
         }
     }
@@ -68,7 +63,6 @@ where
 impl<T> ProcessBlock for ComparisonBlock<T>
 where
     T: Apply<Parameters>,
-    OldBlockData: FromPass<<T as Apply<Parameters>>::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -83,7 +77,6 @@ where
         let mut tmp: Option<T::Output> = None;
         T::apply(inputs, parameters, &mut tmp);
         self.buffer = tmp.expect("apply must initialize the buffer");
-        self.data = OldBlockData::from_pass(self.buffer.as_by());
         self.buffer.as_by()
     }
 

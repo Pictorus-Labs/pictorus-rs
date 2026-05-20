@@ -1,5 +1,3 @@
-use alloc::{vec, vec::Vec};
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{
     tuple_array_interop::TupleEquivalent, Matrix, Pass, PassBy, ProcessBlock, Scalar,
 };
@@ -35,7 +33,6 @@ pub struct VectorIndexBlock<const N: usize, T: Scalar, I: Pass>
 where
     [T; N]: TupleEquivalent<T, N>,
 {
-    pub data: Vec<OldBlockData>,
     buffer: <[T; N] as TupleEquivalent<T, N>>::TupleEquivalent,
     _phantom: core::marker::PhantomData<I>,
 }
@@ -46,7 +43,6 @@ where
 {
     fn default() -> Self {
         VectorIndexBlock {
-            data: vec![OldBlockData::from_scalar(0.0); N],
             buffer: [T::default(); N].into_tuple(),
             _phantom: core::marker::PhantomData,
         }
@@ -77,12 +73,9 @@ where
             // Check if the matrix index is within the bounds of the matrix dimensions, out-of-bounds indexes will
             // be set to 0.
             if *x < flattened.len() {
-                let value = flattened[*x];
-                output[i] = value;
-                self.data[i] = OldBlockData::from_scalar(value.into());
+                output[i] = flattened[*x];
             } else {
                 output[i] = T::default();
-                self.data[i] = OldBlockData::from_scalar(T::default().into());
             }
         }
 
@@ -100,7 +93,6 @@ mod tests {
     use super::*;
     use crate::std::string::ToString;
     use crate::testing::StubContext;
-    use pictorus_block_data::BlockData;
     use pictorus_traits::{Matrix, ProcessBlock};
     use std::string::String;
     use std::vec;
@@ -167,10 +159,8 @@ mod tests {
         let output = index_block.process(&parameters, &c, &input);
         assert_eq!(output.0, 7.0);
         assert_eq!(output.1, 8.0);
-        assert_eq!(index_block.data[0].scalar(), 7.0);
-        assert_eq!(index_block.data[0], BlockData::from_scalar(7.0));
-        assert_eq!(index_block.data[1].scalar(), 8.0);
-        assert_eq!(index_block.data[1], BlockData::from_scalar(8.0));
+        assert_eq!(index_block.buffer().0, 7.0);
+        assert_eq!(index_block.buffer().1, 8.0);
     }
 
     #[test]
@@ -188,10 +178,8 @@ mod tests {
         let output = index_block.process(&parameters, &c, &input);
         assert_eq!(output.0, 7.0);
         assert_eq!(output.1, 0.0);
-        assert_eq!(index_block.data[0].scalar(), 7.0);
-        assert_eq!(index_block.data[0], BlockData::from_scalar(7.0));
-        assert_eq!(index_block.data[1].scalar(), 0.0);
-        assert_eq!(index_block.data[1], BlockData::from_scalar(0.0));
+        assert_eq!(index_block.buffer().0, 7.0);
+        assert_eq!(index_block.buffer().1, 0.0);
     }
 
     #[test]

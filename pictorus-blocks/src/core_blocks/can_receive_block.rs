@@ -1,5 +1,4 @@
 extern crate alloc;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, traits::Float, IsValid};
@@ -41,7 +40,6 @@ pub struct CanReceiveBlock<
     stale_check: StaleTracker,
     _phantom: core::marker::PhantomData<O>,
     output_buffer: O::Output,
-    pub data: [OldBlockData; N],
     cache: [S; N],
     previous_stale_check_time_ms: f64,
 }
@@ -58,13 +56,11 @@ impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>>
     CanReceiveBlock<N, S, C, O>
 {
     pub fn new(rx_cb: RxCallback<C, S>) -> Self {
-        let data = core::array::from_fn(|_f| OldBlockData::from_scalar(0.));
         let cache = [S::zero(); N];
         CanReceiveBlock {
             rx_cb,
             stale_check: StaleTracker::from_ms(0.),
             _phantom: core::marker::PhantomData,
-            data,
             output_buffer: O::Output::default(),
             cache,
             previous_stale_check_time_ms: 0.0,
@@ -99,10 +95,6 @@ where
             if let Some(can_decoder) = C::new(parameters.frame_id, inputs) {
                 (self.rx_cb)(&can_decoder, self.cache.as_mut_slice());
                 self.stale_check.mark_updated(context.time().as_secs_f64());
-
-                for (i, val) in self.cache.iter().enumerate() {
-                    self.data[i] = OldBlockData::from_scalar((*val).into());
-                }
             }
         }
 
@@ -123,7 +115,7 @@ where
 impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> IsValid
     for CanReceiveBlock<N, S, C, O>
 {
-    fn is_valid(&self, app_time_s: f64) -> OldBlockData {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -293,24 +285,14 @@ mod tests {
 
         let output = block.process(&parameters, &runtime.context(), &[42, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(output.0, 42.);
-        assert_eq!(
-            block
-                .is_valid(runtime.context().time.as_secs_f64())
-                .scalar(),
-            1.0
-        );
+        assert!(block.is_valid(runtime.context().time.as_secs_f64()));
 
         runtime.set_time(Duration::from_secs(2));
 
         // Simulate a stale message
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output.0, 42.);
-        assert_eq!(
-            block
-                .is_valid(runtime.context().time.as_secs_f64())
-                .scalar(),
-            0.0
-        );
+        assert!(!block.is_valid(runtime.context().time.as_secs_f64()));
     }
 
     #[test]
@@ -327,24 +309,14 @@ mod tests {
 
         let output = block.process(&parameters, &runtime.context(), &[42, 1, 2, 3, 4, 5, 6, 7]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., true));
-        assert_eq!(
-            block
-                .is_valid(runtime.context().time.as_secs_f64())
-                .scalar(),
-            1.0
-        );
+        assert!(block.is_valid(runtime.context().time.as_secs_f64()));
 
         // Simulate stale message
         runtime.set_time(Duration::from_secs(2));
 
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., false));
-        assert_eq!(
-            block
-                .is_valid(runtime.context().time.as_secs_f64())
-                .scalar(),
-            0.0
-        );
+        assert!(!block.is_valid(runtime.context().time.as_secs_f64()));
     }
 
     #[test]

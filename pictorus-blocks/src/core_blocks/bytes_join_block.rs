@@ -2,13 +2,11 @@ extern crate alloc;
 use crate::byte_data::parse_string_to_bytes;
 use crate::traits::Serialize;
 use alloc::vec::Vec;
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Joins multiple signals into a single byte slice by
 /// serializing each signal and joining them with a delimiter.
 pub struct BytesJoinBlock<T: Apply> {
-    pub data: OldBlockData,
     buffer: Vec<u8>,
     _unused: core::marker::PhantomData<T>,
 }
@@ -30,7 +28,6 @@ impl Parameters {
 impl<T: Apply> Default for BytesJoinBlock<T> {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_bytes(b""),
             buffer: Vec::new(),
             _unused: core::marker::PhantomData,
         }
@@ -49,7 +46,6 @@ impl<T: Apply> ProcessBlock for BytesJoinBlock<T> {
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer = T::apply(inputs, parameters);
-        self.data.set_bytes(&self.buffer);
         &self.buffer
     }
 
@@ -222,7 +218,6 @@ mod tests {
 
         let expected_string = "1.0/ [[1.0,2.0,3.0],[4.0,5.0,6.0]]/ hello there".to_string();
         assert_eq!(res, expected_string.as_bytes());
-        assert_eq!(block.data.raw_string(), expected_string);
         assert_eq!(block.buffer(), expected_string.as_bytes());
     }
 
@@ -238,7 +233,7 @@ mod tests {
 
         let expected_string = "привет⚡こんにちは".to_string();
         assert_eq!(res, expected_string.as_bytes());
-        assert_eq!(block.data.raw_string(), expected_string);
+        assert_eq!(block.buffer(), expected_string.as_bytes());
     }
 
     #[test]
@@ -253,6 +248,6 @@ mod tests {
 
         let expected = b"\x80\x81\x82\x83\x99\x84\x85\x86\x87";
         assert_eq!(res, expected);
-        assert_eq!(block.data.to_bytes().as_slice(), expected);
+        assert_eq!(block.buffer(), expected);
     }
 }

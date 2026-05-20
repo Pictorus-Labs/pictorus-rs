@@ -1,5 +1,4 @@
 use crate::matrix_ext::MatrixNalgebraExt;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Context, Matrix, Pass, PassBy};
 
 pub struct Parameters {
@@ -23,18 +22,15 @@ pub struct CrossProductBlock<T>
 where
     T: Apply + Pass + Default,
 {
-    pub data: OldBlockData,
     buffer: T::Output,
 }
 
 impl<T> Default for CrossProductBlock<T>
 where
     T: Apply + Pass + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T::Output>>::from_pass(T::Output::default().as_by()),
             buffer: T::Output::default(),
         }
     }
@@ -43,7 +39,6 @@ where
 impl<T> pictorus_traits::ProcessBlock for CrossProductBlock<T>
 where
     T: Pass + Apply + Default,
-    OldBlockData: FromPass<T::Output>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -56,7 +51,6 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
-        self.data = OldBlockData::from_pass(output);
         output
     }
 
@@ -109,7 +103,6 @@ float_matrix_impl!(f32);
 mod tests {
 
     use crate::testing::StubContext;
-    use pictorus_block_data::{BlockData, ToPass};
     use pictorus_traits::ProcessBlock;
 
     use super::*;
@@ -126,14 +119,15 @@ mod tests {
         let p = Parameters::new();
         let mut cross_block =
             CrossProductBlock::<(Matrix<1, 3, f64>, Matrix<1, 3, f64>)>::default();
-        let input1 = BlockData::new(1, 3, &[1.0, 0.0, 0.0]);
-        let input2 = BlockData::new(1, 3, &[0.0, 1.0, 0.0]);
-        cross_block.process(&p, &context, (&input1.to_pass(), &input2.to_pass()));
+        let input1: Matrix<1, 3, f64> = Matrix {
+            data: [[1.0], [0.0], [0.0]],
+        };
+        let input2: Matrix<1, 3, f64> = Matrix {
+            data: [[0.0], [1.0], [0.0]],
+        };
+        cross_block.process(&p, &context, (&input1, &input2));
 
-        assert_eq!(
-            cross_block.data,
-            BlockData::from_matrix(&[&[0.0, 0.0, 1.0]])
-        );
+        assert_eq!(cross_block.buffer().data, [[0.0], [0.0], [1.0]]);
     }
 
     #[test]
@@ -142,14 +136,15 @@ mod tests {
         let p = Parameters::new();
         let mut cross_block =
             CrossProductBlock::<(Matrix<3, 1, f64>, Matrix<3, 1, f64>)>::default();
-        let input1 = BlockData::new(3, 1, &[1.0, 0.0, 0.0]);
-        let input2 = BlockData::new(3, 1, &[0.0, 1.0, 0.0]);
-        cross_block.process(&p, &context, (&input1.to_pass(), &input2.to_pass()));
+        let input1: Matrix<3, 1, f64> = Matrix {
+            data: [[1.0, 0.0, 0.0]],
+        };
+        let input2: Matrix<3, 1, f64> = Matrix {
+            data: [[0.0, 1.0, 0.0]],
+        };
+        cross_block.process(&p, &context, (&input1, &input2));
 
-        assert_eq!(
-            cross_block.data,
-            BlockData::from_matrix(&[&[0.0], &[0.0], &[1.0]])
-        );
+        assert_eq!(cross_block.buffer().data, [[0.0, 0.0, 1.0]]);
     }
 
     #[test]

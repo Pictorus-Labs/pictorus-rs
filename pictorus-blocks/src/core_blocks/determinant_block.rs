@@ -1,5 +1,4 @@
 use nalgebra::{ArrayStorage, Const, DimMin, SquareMatrix, ToTypenum};
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 pub struct Parameters {}
@@ -18,7 +17,6 @@ impl Parameters {
 
 /// A block that calculates the determinant of a square matrix.
 pub struct DeterminantBlock<S: Scalar, T> {
-    pub data: OldBlockData,
     buffer: S,
     phantom_type: core::marker::PhantomData<T>,
 }
@@ -27,11 +25,9 @@ impl<S, T> Default for DeterminantBlock<S, T>
 where
     S: Default + Scalar + Pass,
     T: Pass,
-    OldBlockData: FromPass<S>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<S>>::from_pass(S::default().as_by()),
             buffer: S::default(),
             phantom_type: core::marker::PhantomData,
         }
@@ -43,7 +39,6 @@ macro_rules! impl_determinant_block {
         impl<const N: usize> ProcessBlock for DeterminantBlock<$type, Matrix<N, N, $type>>
         where
             Const<N>: ToTypenum + DimMin<Const<N>, Output = Const<N>>,
-            OldBlockData: FromPass<$type>,
         {
             type Inputs = Matrix<N, N, $type>;
             type Output = $type;
@@ -57,7 +52,6 @@ macro_rules! impl_determinant_block {
             ) -> PassBy<'b, Self::Output> {
                 self.buffer =
                     SquareMatrix::from_array_storage(ArrayStorage(inputs.data)).determinant();
-                self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
 
@@ -66,10 +60,7 @@ macro_rules! impl_determinant_block {
             }
         }
 
-        impl ProcessBlock for DeterminantBlock<$type, $type>
-        where
-            OldBlockData: FromPass<$type>,
-        {
+        impl ProcessBlock for DeterminantBlock<$type, $type> {
             type Inputs = $type;
             type Output = $type;
             type Parameters = Parameters;
@@ -81,7 +72,6 @@ macro_rules! impl_determinant_block {
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'b, Self::Output> {
                 self.buffer = inputs;
-                self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
 
@@ -100,7 +90,6 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use paste::paste;
-    use pictorus_block_data::BlockDataType;
 
     #[test]
     fn test_determinant_default_buffer_no_panic() {
@@ -123,8 +112,6 @@ mod tests {
                     let output = det_block.process(&p, &c, &input);
 
                     assert!(output == -2.0);
-                    assert!(det_block.data.scalar() == -2.0);
-                    assert!(det_block.data.get_type() == BlockDataType::Scalar);
                     assert_eq!(det_block.buffer(), output);
 
                     let mut det_block_3x3 = DeterminantBlock::<$type, Matrix<3, 3, $type>>::default();
@@ -133,8 +120,7 @@ mod tests {
                     };
                     let output = det_block_3x3.process(&p, &c, &input_3x3);
                     assert!(output == -33.0);
-                    assert!(det_block_3x3.data.scalar() == -33.0);
-                    assert!(det_block_3x3.data.get_type() == BlockDataType::Scalar);
+                    assert_eq!(det_block_3x3.buffer(), output);
                 }
             }
         }

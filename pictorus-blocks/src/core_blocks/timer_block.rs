@@ -1,4 +1,3 @@
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{PassBy, ProcessBlock, Scalar};
 
 #[derive(strum::EnumString)]
@@ -37,7 +36,6 @@ impl Parameters {
 ///
 /// This block is useful for tracking how much time has passed since an event for logical conditions.
 pub struct TimerBlock<T> {
-    pub data: OldBlockData,
     buffer: T,
     timer_running: bool,
     start_time_s: T,
@@ -49,7 +47,6 @@ where
 {
     fn default() -> Self {
         Self {
-            data: OldBlockData::from_scalar(0.0),
             buffer: T::zero(),
             timer_running: false,
             start_time_s: T::zero(),
@@ -88,7 +85,6 @@ impl ProcessBlock for TimerBlock<f64> {
         let trigger_high = input > 0.0;
         // Early exit if not running and input trigger is false
         if !self.timer_running && !trigger_high {
-            self.data.set_scalar(self.buffer);
             return self.buffer;
         }
 
@@ -114,7 +110,6 @@ impl ProcessBlock for TimerBlock<f64> {
             }
         }
 
-        self.data.set_scalar(self.buffer);
         self.buffer
     }
 
@@ -143,34 +138,34 @@ mod tests {
         let mut block = TimerBlock::<f64>::default();
 
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
         assert_eq!(block.buffer(), output);
 
         runtime.set_time(time::Duration::from_secs_f64(1.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 5.0);
+        assert_eq!(block.buffer(), 5.0);
         assert_eq!(output, 5.0);
 
         runtime.set_time(time::Duration::from_secs_f64(2.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 4.0);
+        assert_eq!(block.buffer(), 4.0);
         assert_eq!(output, 4.0);
 
         // Countdown not interrupted
         runtime.set_time(time::Duration::from_secs_f64(3.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 3.0);
+        assert_eq!(block.buffer(), 3.0);
         assert_eq!(output, 3.0);
 
         runtime.set_time(time::Duration::from_secs_f64(10.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
 
         runtime.set_time(time::Duration::from_secs_f64(11.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
     }
 
@@ -183,36 +178,36 @@ mod tests {
         // Timer hasn't started
         runtime.set_time(time::Duration::from_secs_f64(1.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
 
         // Timer started, should be at countdown_time_s
         runtime.set_time(time::Duration::from_secs_f64(2.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 5.0);
+        assert_eq!(block.buffer(), 5.0);
         assert_eq!(output, 5.0);
 
         runtime.set_time(time::Duration::from_secs_f64(3.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 4.0);
+        assert_eq!(block.buffer(), 4.0);
         assert_eq!(output, 4.0);
 
         // Countdown interrupted, resets
         runtime.set_time(time::Duration::from_secs_f64(4.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 5.0);
+        assert_eq!(block.buffer(), 5.0);
         assert_eq!(output, 5.0);
 
         // Countdown interrupted, resets
         runtime.set_time(time::Duration::from_secs_f64(5.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 5.0);
+        assert_eq!(block.buffer(), 5.0);
         assert_eq!(output, 5.0);
 
         // Countdown resumes
         runtime.set_time(time::Duration::from_secs_f64(6.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 4.0);
+        assert_eq!(block.buffer(), 4.0);
         assert_eq!(output, 4.0);
     }
 
@@ -225,34 +220,34 @@ mod tests {
         // Timer hasn't started
         runtime.set_time(time::Duration::from_secs_f64(1.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
 
         // Timer started, should be at time since start
         runtime.set_time(time::Duration::from_secs_f64(2.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
 
         runtime.set_time(time::Duration::from_secs_f64(3.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
         assert_eq!(output, 1.0);
 
         // StopWatch not interrupted
         runtime.set_time(time::Duration::from_secs_f64(4.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 2.0);
+        assert_eq!(block.buffer(), 2.0);
         assert_eq!(output, 2.0);
 
         runtime.set_time(time::Duration::from_secs_f64(10.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 8.0);
+        assert_eq!(block.buffer(), 8.0);
         assert_eq!(output, 8.0);
 
         runtime.set_time(time::Duration::from_secs_f64(100.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 98.0);
+        assert_eq!(block.buffer(), 98.0);
         assert_eq!(output, 98.0);
     }
 
@@ -265,35 +260,35 @@ mod tests {
         // Timer hasn't started
         runtime.set_time(time::Duration::from_secs_f64(1.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
 
         // Timer started, should be at time since start
         runtime.set_time(time::Duration::from_secs_f64(2.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
 
         runtime.set_time(time::Duration::from_secs_f64(3.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 1.0);
+        assert_eq!(block.buffer(), 1.0);
         assert_eq!(output, 1.0);
 
         // StopWatch interrupted
         runtime.set_time(time::Duration::from_secs_f64(4.0));
         let output = block.process(&p, &runtime.context(), 1.0);
-        assert_eq!(block.data.scalar(), 0.0);
+        assert_eq!(block.buffer(), 0.0);
         assert_eq!(output, 0.0);
 
         // StopWatch resumes
         runtime.set_time(time::Duration::from_secs_f64(10.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 6.0);
+        assert_eq!(block.buffer(), 6.0);
         assert_eq!(output, 6.0);
 
         runtime.set_time(time::Duration::from_secs_f64(100.0));
         let output = block.process(&p, &runtime.context(), 0.0);
-        assert_eq!(block.data.scalar(), 96.0);
+        assert_eq!(block.buffer(), 96.0);
         assert_eq!(output, 96.0);
     }
 }

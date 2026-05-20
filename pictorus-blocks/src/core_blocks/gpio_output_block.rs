@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-use pictorus_block_data::BlockData as OldBlockData;
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
@@ -10,7 +9,6 @@ use crate::traits::Scalar;
 /// The block itself just handles converting the input to a boolean.
 /// The hardware interaction happens downstream of this block.
 pub struct GpioOutputBlock<T: ToBool> {
-    pub data: OldBlockData,
     buffer: bool,
     _unused: PhantomData<T>,
 }
@@ -34,7 +32,6 @@ impl<T: ToBool> Default for GpioOutputBlock<T> {
         GpioOutputBlock {
             _unused: PhantomData,
             buffer: false,
-            data: OldBlockData::scalar_from_bool(false),
         }
     }
 }
@@ -52,7 +49,6 @@ impl<T: ToBool> ProcessBlock for GpioOutputBlock<T> {
     ) -> PassBy<'b, Self::Output> {
         let res = T::to_bool(input);
         self.buffer = res;
-        self.data.set_scalar_bool(res);
         res
     }
 
