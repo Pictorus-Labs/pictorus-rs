@@ -85,7 +85,7 @@ impl Default for SerialReceiveBlock {
 }
 
 impl IsValid for SerialReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> f64 {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -334,35 +334,26 @@ mod tests {
         let input_data = b"$Hello World\r\n";
         let result = block.process(&parameters, &runtime.context(), input_data);
         assert!(result.1);
-        assert_eq!(
-            block
-                .stale_check
-                .is_valid(runtime.context().time().as_secs_f64()),
-            1.0
-        );
+        assert!(block
+            .stale_check
+            .is_valid(runtime.context().time().as_secs_f64()));
 
         for i in 1..11 {
             // 100ms to 1s
             runtime.set_time(Duration::from_millis(i * 100)); // 10 Hz runtime (100ms per tick)
             let result = block.process(&parameters, &runtime.context(), &[]);
             assert!(result.1);
-            assert_eq!(
-                block
-                    .stale_check
-                    .is_valid(runtime.context().time().as_secs_f64()),
-                1.0
-            );
+            assert!(block
+                .stale_check
+                .is_valid(runtime.context().time().as_secs_f64()));
         }
 
         // Stale
         runtime.set_time(Duration::from_millis(11 * 100)); // 1.1s
         let result = block.process(&parameters, &runtime.context(), &[]);
         assert!(!result.1);
-        assert_eq!(
-            block
-                .stale_check
-                .is_valid(runtime.context().time().as_secs_f64()),
-            0.0
-        );
+        assert!(!block
+            .stale_check
+            .is_valid(runtime.context().time().as_secs_f64()));
     }
 }

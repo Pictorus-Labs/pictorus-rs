@@ -78,7 +78,7 @@ impl ProcessBlock for SpiReceiveBlock {
 }
 
 impl IsValid for SpiReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> f64 {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -114,7 +114,7 @@ mod tests {
         let is_valid = block
             .stale_check
             .is_valid(runtime.context().time().as_secs_f64());
-        assert_eq!(is_valid, 1.0);
+        assert!(is_valid);
 
         runtime.set_time(Duration::from_secs(1));
 
@@ -125,6 +125,6 @@ mod tests {
             .stale_check
             .is_valid(runtime.context().time().as_secs_f64());
         // However block should be invalid
-        assert_eq!(is_valid, 0.0);
+        assert!(!is_valid);
     }
 }

@@ -87,8 +87,8 @@ where
 }
 
 impl<const N: usize> IsValid for BytesUnpackBlock<N> {
-    fn is_valid(&self, _app_time_s: f64) -> f64 {
-        self.buffer[N - 1]
+    fn is_valid(&self, _app_time_s: f64) -> bool {
+        self.buffer[N - 1] != 0.0
     }
 }
 

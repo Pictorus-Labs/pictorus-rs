@@ -52,7 +52,7 @@ impl Default for I2cInputBlock {
 }
 
 impl IsValid for I2cInputBlock {
-    fn is_valid(&self, app_time_s: f64) -> f64 {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(output.0, input_data);
         assert_eq!(block.buffer(), (output.0.as_slice(), output.1));
         let valid = block.is_valid(runtime.context().time().as_secs_f64());
-        assert_eq!(valid, 1.0);
+        assert!(valid);
 
         runtime.set_time(Duration::from_secs(1));
 
@@ -127,6 +127,6 @@ mod tests {
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output.0, input_data);
         let valid = block.is_valid(runtime.context().time().as_secs_f64());
-        assert_eq!(valid, 0.0);
+        assert!(!valid);
     }
 }

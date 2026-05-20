@@ -53,8 +53,8 @@ impl StaleTracker {
     }
 
     // TODO: Update with core::time::Duration when all blocks are updated
-    pub fn is_valid(&self, app_time_s: f64) -> f64 {
-        f64::from(self.is_valid_bool(app_time_s))
+    pub fn is_valid(&self, app_time_s: f64) -> bool {
+        self.is_valid_bool(app_time_s)
     }
 }
 
@@ -65,7 +65,7 @@ mod test {
     fn test_is_valid_not_updated() {
         let tracker = StaleTracker::from_ms(5000.0);
         let valid = tracker.is_valid(0.0);
-        assert_eq!(valid, 0.0);
+        assert!(!valid);
     }
 
     #[test]
@@ -73,7 +73,7 @@ mod test {
         let mut tracker = StaleTracker::from_ms(5000.0);
         tracker.mark_updated(0.0);
         let valid = tracker.is_valid(0.0);
-        assert_eq!(valid, 1.0);
+        assert!(valid);
     }
 
     #[test]
@@ -81,6 +81,6 @@ mod test {
         let mut tracker = StaleTracker::from_ms(1.0);
         tracker.mark_updated(0.0);
         let valid = tracker.is_valid(2.0);
-        assert_eq!(valid, 0.0);
+        assert!(!valid);
     }
 }

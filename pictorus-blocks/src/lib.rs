@@ -51,6 +51,6 @@ pub struct ParseEnumError;
 /// Blocks that implement this trait should output a false value for `is_valid`
 /// if the output is not in a valid state.
 pub trait IsValid {
-    /// Returns `1.0` if the block output is in a valid state, `0.0` otherwise.
-    fn is_valid(&self, app_time_s: f64) -> f64;
+    /// Returns `true` if the block output is in a valid state, `false` otherwise.
+    fn is_valid(&self, app_time_s: f64) -> bool;
 }

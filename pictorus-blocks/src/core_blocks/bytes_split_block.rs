@@ -107,8 +107,8 @@ impl<T: Apply> ProcessBlock for BytesSplitBlock<T> {
 }
 
 impl<T: Apply> IsValid for BytesSplitBlock<T> {
-    fn is_valid(&self, _app_time_s: f64) -> f64 {
-        f64::from(T::is_valid(&self.buffer))
+    fn is_valid(&self, _app_time_s: f64) -> bool {
+        T::is_valid(&self.buffer)
     }
 }
 
@@ -798,20 +798,20 @@ mod tests {
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
 
         context.time += context.fundamental_timestep;
         let input = br#"123:4.56:78.9"#;
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true)); // stale time has not elapsed
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
 
         context.time = Duration::from_secs_f64(2.0);
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), false)); // stale time has elapsed
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), false));
-        assert_eq!(block.is_valid(0.0), 0.0);
+        assert!(!block.is_valid(0.0));
 
         // Now input is valid again
         context.time += context.fundamental_timestep;
@@ -819,7 +819,7 @@ mod tests {
         let output = block.process(&params, &context, input);
         assert_eq!(output, (1.03, 11.0, b"17".as_slice(), true));
         assert_eq!(block.buffer(), (1.03, 11.0, b"17".as_slice(), true));
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -833,7 +833,7 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (b"\x00".as_ref(), b"\x02".as_ref(), true));
         assert_eq!(block.buffer(), (b"\x00".as_ref(), b"\x02".as_ref(), true));
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -846,7 +846,7 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (42.0, true));
         assert_eq!(block.buffer(), (42.0, true));
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -859,7 +859,7 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, b"42.0".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, b"42.0".as_slice(), true));
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -872,7 +872,7 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -892,7 +892,7 @@ mod tests {
             block.buffer(),
             (123.0, 42.0, 4.56, b"78.9".as_slice(), true)
         );
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -918,7 +918,7 @@ mod tests {
             block.buffer(),
             (123.0, 42.0, 4.56, 78.9, b"78.9".as_slice(), true)
         );
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -948,7 +948,7 @@ mod tests {
             block.buffer(),
             (123.0, 42.0, b"78.9".as_slice(), 4.56, 78.9, 4.56, true)
         );
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -1005,6 +1005,6 @@ mod tests {
                 true
             )
         );
-        assert_ne!(block.is_valid(0.0), 0.0);
+        assert!(block.is_valid(0.0));
     }
 }

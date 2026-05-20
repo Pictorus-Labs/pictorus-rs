@@ -115,7 +115,7 @@ where
 impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> IsValid
     for CanReceiveBlock<N, S, C, O>
 {
-    fn is_valid(&self, app_time_s: f64) -> f64 {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }
@@ -285,14 +285,14 @@ mod tests {
 
         let output = block.process(&parameters, &runtime.context(), &[42, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(output.0, 42.);
-        assert_eq!(block.is_valid(runtime.context().time.as_secs_f64()), 1.0);
+        assert!(block.is_valid(runtime.context().time.as_secs_f64()));
 
         runtime.set_time(Duration::from_secs(2));
 
         // Simulate a stale message
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output.0, 42.);
-        assert_eq!(block.is_valid(runtime.context().time.as_secs_f64()), 0.0);
+        assert!(!block.is_valid(runtime.context().time.as_secs_f64()));
     }
 
     #[test]
@@ -309,14 +309,14 @@ mod tests {
 
         let output = block.process(&parameters, &runtime.context(), &[42, 1, 2, 3, 4, 5, 6, 7]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., true));
-        assert_eq!(block.is_valid(runtime.context().time.as_secs_f64()), 1.0);
+        assert!(block.is_valid(runtime.context().time.as_secs_f64()));
 
         // Simulate stale message
         runtime.set_time(Duration::from_secs(2));
 
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., false));
-        assert_eq!(block.is_valid(runtime.context().time.as_secs_f64()), 0.0);
+        assert!(!block.is_valid(runtime.context().time.as_secs_f64()));
     }
 
     #[test]

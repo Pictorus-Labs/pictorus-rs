@@ -43,7 +43,7 @@ impl Default for UdpReceiveBlock {
 }
 
 impl IsValid for UdpReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> f64 {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }

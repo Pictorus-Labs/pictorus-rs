@@ -57,10 +57,10 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
 }
 
 impl<T: Apply> IsValid for JsonLoadBlock<T> {
-    fn is_valid(&self, app_time_s: f64) -> f64 {
+    fn is_valid(&self, app_time_s: f64) -> bool {
         match self.stale_tracker {
             Some(ref tracker) => tracker.is_valid(app_time_s),
-            None => 0.0,
+            None => false,
         }
     }
 }
@@ -599,7 +599,7 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.2, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
         assert_eq!(block.buffer(), res);
     }
 
@@ -633,7 +633,7 @@ mod tests {
 
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -645,7 +645,7 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) == 0.0);
+        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -657,7 +657,7 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) == 0.0);
+        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -669,7 +669,7 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) == 0.0);
+        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -684,7 +684,7 @@ mod tests {
         };
         assert_eq!(res, (expected, true));
         assert_eq!(block.buffer(), (expected, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -697,7 +697,7 @@ mod tests {
         let expected = &Matrix { data: [[]] };
         assert_eq!(res, (expected, true));
         assert_eq!(block.buffer(), (expected, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -712,7 +712,7 @@ mod tests {
         };
         assert_eq!(res, (expected, true));
         assert_eq!(block.buffer(), (expected, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -724,7 +724,7 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, true));
         assert_eq!(block.buffer(), (1.0, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -736,7 +736,7 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, b"hello".as_slice(), true));
         assert_eq!(block.buffer(), (1.0, b"hello".as_slice(), true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -763,7 +763,7 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -797,7 +797,7 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -836,7 +836,7 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -878,7 +878,7 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -939,6 +939,6 @@ mod tests {
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
 
-        assert!(block.is_valid(ctxt.time().as_secs_f64()) != 0.0);
+        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 }
