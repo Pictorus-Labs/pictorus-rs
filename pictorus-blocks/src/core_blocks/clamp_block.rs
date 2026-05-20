@@ -166,17 +166,12 @@ mod test {
                     let input = Matrix {
                         data: [[pos_2.into(), $type::zero().into()], [$type::one().into(), neg_2.into()]]
                     };
+                    let expected = Matrix {
+                        data: [[$type::one(), $type::zero()], [$type::one(), -$type::one()]],
+                    };
                     let output = block.process(&parameters, &c, &input);
-                    assert_eq!(
-                        output,
-                        &Matrix {
-                            data: [[$type::one(), $type::zero()], [$type::one(), -$type::one()]]
-                        }
-                    );
-                    assert_eq!(block.buffer().data[0][0], $type::one());
-                    assert_eq!(block.buffer().data[0][1], $type::zero());
-                    assert_eq!(block.buffer().data[1][0], $type::one());
-                    assert_eq!(block.buffer().data[1][1], -$type::one());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
                 }
             }
         };
@@ -229,17 +224,12 @@ mod test {
                     let input = Matrix {
                         data: [[pos_3.into(), $type::zero().into()], [$type::one().into(), pos_2.into()]]
                     };
+                    let expected = Matrix {
+                        data: [[pos_2, $type::one()], [$type::one(), pos_2]],
+                    };
                     let output = block.process(&parameters, &c, &input);
-                    assert_eq!(
-                        output,
-                        &Matrix {
-                            data: [[pos_2, $type::one()], [$type::one(), pos_2]]
-                        }
-                    );
-                    assert_eq!(block.buffer().data[0][0], pos_2);
-                    assert_eq!(block.buffer().data[0][1], $type::one());
-                    assert_eq!(block.buffer().data[1][0], $type::one());
-                    assert_eq!(block.buffer().data[1][1], pos_2);
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
                 }
             }
         };

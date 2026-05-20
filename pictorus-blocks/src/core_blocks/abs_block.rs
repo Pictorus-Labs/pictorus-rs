@@ -126,51 +126,54 @@ mod tests {
                 fn [<test_abs_block_vector_1x2_ $name>]() {
                     let mut block = AbsBlock::<Matrix<1, 2, $type>>::default();
                     let context = StubContext::default();
-                    let mut input = Matrix::<1, 2, $type>::zeroed();
-                    input.data[0][0] = <$type>::one();
-                    input.data[1][0] = -<$type>::one();
+                    let input = Matrix {
+                        data: [[<$type>::one()], [-<$type>::one()]],
+                    };
+                    let expected = Matrix {
+                        data: [[<$type>::one()], [<$type>::one()]],
+                    };
 
                     let output = block.process(&Parameter::new(), &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(block.buffer().data[0][0], <$type>::one());
-                    assert_eq!(block.buffer().data[1][0], <$type>::one());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
                 }
 
                 #[test]
                 fn [<test_abs_block_vector_2x1_ $name>]() {
                     let mut block = AbsBlock::<Matrix<2, 1, $type>>::default();
                     let context = StubContext::default();
-                    let mut input = Matrix::<2, 1, $type>::zeroed();
-                    input.data[0][0] = <$type>::one();
-                    input.data[0][1] = -<$type>::one();
+                    let input = Matrix {
+                        data: [[<$type>::one(), -<$type>::one()]],
+                    };
+                    let expected = Matrix {
+                        data: [[<$type>::one(), <$type>::one()]],
+                    };
 
                     let output = block.process(&Parameter::new(), &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(block.buffer().data[0][0], <$type>::one());
-                    assert_eq!(block.buffer().data[0][1], <$type>::one());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
                 }
 
                 #[test]
                 fn [<test_abs_block_matrix_ $name>]() {
                     let mut block = AbsBlock::<Matrix<2, 2, $type>>::default();
                     let context = StubContext::default();
-                    let mut input = Matrix::<2, 2, $type>::zeroed();
-                    input.data[0][0] = <$type>::one();
-                    input.data[0][1] = -<$type>::one();
-                    input.data[1][0] = <$type>::one();
-                    input.data[1][1] = -<$type>::one();
+                    let input = Matrix {
+                        data: [
+                            [<$type>::one(), -<$type>::one()],
+                            [<$type>::one(), -<$type>::one()],
+                        ],
+                    };
+                    let expected = Matrix {
+                        data: [
+                            [<$type>::one(), <$type>::one()],
+                            [<$type>::one(), <$type>::one()],
+                        ],
+                    };
 
                     let output = block.process(&Parameter::new(), &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(block.buffer().data[0][0], <$type>::one());
-                    assert_eq!(block.buffer().data[0][1], <$type>::one());
-                    assert_eq!(block.buffer().data[1][0], <$type>::one());
-                    assert_eq!(block.buffer().data[1][1], <$type>::one());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
                 }
             }
         };

@@ -188,70 +188,52 @@ mod tests {
                         data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::one() + <$type>::one()]],
                     };
 
+                    let expected = Matrix {
+                        data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::zero()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::zero());
-                    assert_eq!(block.buffer().data[0][0], <$type>::one());
-                    assert_eq!(block.buffer().data[0][1], <$type>::zero());
-                    assert_eq!(block.buffer().data[1][0], <$type>::zero());
-                    assert_eq!(block.buffer().data[1][1], <$type>::zero());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::NotEqual;
+                    let expected = Matrix {
+                        data: [[<$type>::zero(), <$type>::one()], [<$type>::one(), <$type>::one()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(block.buffer().data[0][0], <$type>::zero());
-                    assert_eq!(block.buffer().data[0][1], <$type>::one());
-                    assert_eq!(block.buffer().data[1][0], <$type>::one());
-                    assert_eq!(block.buffer().data[1][1], <$type>::one());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::LessThan;
+                    let expected = Matrix {
+                        data: [[<$type>::zero(), <$type>::one()], [<$type>::one(), <$type>::zero()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::zero());
-                    assert_eq!(block.buffer().data[0][0], <$type>::zero());
-                    assert_eq!(block.buffer().data[0][1], <$type>::one());
-                    assert_eq!(block.buffer().data[1][0], <$type>::one());
-                    assert_eq!(block.buffer().data[1][1], <$type>::zero());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::LessOrEqual;
+                    let expected = Matrix {
+                        data: [[<$type>::one(), <$type>::one()], [<$type>::one(), <$type>::zero()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::zero());
-                    assert_eq!(block.buffer().data[0][0], <$type>::one());
-                    assert_eq!(block.buffer().data[0][1], <$type>::one());
-                    assert_eq!(block.buffer().data[1][0], <$type>::one());
-                    assert_eq!(block.buffer().data[1][1], <$type>::zero());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::GreaterThan;
+                    let expected = Matrix {
+                        data: [[<$type>::zero(), <$type>::zero()], [<$type>::zero(), <$type>::one()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(block.buffer().data[0][0], <$type>::zero());
-                    assert_eq!(block.buffer().data[0][1], <$type>::zero());
-                    assert_eq!(block.buffer().data[1][0], <$type>::zero());
-                    assert_eq!(block.buffer().data[1][1], <$type>::one());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::GreaterOrEqual;
+                    let expected = Matrix {
+                        data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::one()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(block.buffer().data[0][0], <$type>::one());
-                    assert_eq!(block.buffer().data[0][1], <$type>::zero());
-                    assert_eq!(block.buffer().data[1][0], <$type>::zero());
-                    assert_eq!(block.buffer().data[1][1], <$type>::one());
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
                 }
             }
         };
