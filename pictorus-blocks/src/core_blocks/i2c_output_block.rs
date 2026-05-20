@@ -24,14 +24,9 @@ impl Parameters {
 }
 
 /// I2C Output Block buffers data to write to an I2C peripheral.
+#[derive(Default)]
 pub struct I2cOutputBlock {
     buffer: Vec<u8>,
-}
-
-impl Default for I2cOutputBlock {
-    fn default() -> Self {
-        Self { buffer: Vec::new() }
-    }
 }
 
 impl ProcessBlock for I2cOutputBlock {

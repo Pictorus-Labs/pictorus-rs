@@ -3,6 +3,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+use miniserde::de;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Parameters for UDP Transmit Block
@@ -30,14 +31,9 @@ impl Parameters {
 ///
 /// This block sends data to a Hardware specific UDP `OutputBlock` that is added
 /// by codegen
+#[derive(Default)]
 pub struct UdpTransmitBlock {
     buffer: Vec<u8>,
-}
-
-impl Default for UdpTransmitBlock {
-    fn default() -> Self {
-        Self { buffer: Vec::new() }
-    }
 }
 
 impl ProcessBlock for UdpTransmitBlock {
