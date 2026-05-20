@@ -3,7 +3,6 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use miniserde::de;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Parameters for UDP Transmit Block
