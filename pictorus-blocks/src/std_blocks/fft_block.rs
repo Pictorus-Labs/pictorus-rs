@@ -1,5 +1,4 @@
 use crate::traits::Float;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
 use std::sync::Arc;
@@ -8,11 +7,7 @@ use std::sync::Arc;
 ///
 /// On each time step a new sample is added to the buffer. When the buffer is full, FFT is performed on the samples.
 /// The size of this buffer is set by the generic parameter `N`.
-pub struct FftBlock<T: Float, const N: usize>
-where
-    OldBlockData: FromPass<Matrix<2, N, T>>,
-{
-    pub data: OldBlockData,
+pub struct FftBlock<T: Float, const N: usize> {
     /// Samples buffer that stores samples as we accumulate them.
     samples: [T; N],
     /// Index of the next sample to be added to the buffer.
@@ -31,7 +26,6 @@ impl<T: Float, const N: usize> Default for FftBlock<T, N> {
             samples: [T::default(); N],
             sample_index: 0,
             output: Matrix::zeroed(),
-            data: <OldBlockData as FromPass<Matrix<2, N, T>>>::from_pass(Matrix::zeroed().as_by()),
             fft,
         }
     }
@@ -61,7 +55,6 @@ impl<T: Float, const N: usize> ProcessBlock for FftBlock<T, N> {
                 self.output.data[i][0] = buf_val.re;
                 self.output.data[i][1] = buf_val.im;
             }
-            self.data = <OldBlockData as FromPass<Matrix<2, N, T>>>::from_pass(self.output.as_by());
         } else {
             self.sample_index += 1;
         }

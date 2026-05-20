@@ -1,4 +1,3 @@
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 use super::comparison_block::ComparisonType;
@@ -28,18 +27,15 @@ where
 ///
 /// The output is the same size as the input and each element is the result of the comparison.
 pub struct CompareToValueBlock<T: Pass> {
-    pub data: OldBlockData,
     buffer: T,
 }
 
 impl<T> Default for CompareToValueBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -47,10 +43,7 @@ where
 
 macro_rules! impl_compare_to_value_block {
     ($type:ty) => {
-        impl ProcessBlock for CompareToValueBlock<$type>
-        where
-            OldBlockData: FromPass<$type>,
-        {
+        impl ProcessBlock for CompareToValueBlock<$type> {
             type Inputs = $type;
             type Output = $type;
             type Parameters = Parameter<$type>;
@@ -70,7 +63,6 @@ macro_rules! impl_compare_to_value_block {
                     ComparisonType::GreaterOrEqual => input >= parameters.value,
                 };
                 self.buffer = val.into();
-                self.data = OldBlockData::from_scalar(self.buffer.into());
                 self.buffer
             }
 
@@ -81,8 +73,6 @@ macro_rules! impl_compare_to_value_block {
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for CompareToValueBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -107,7 +97,6 @@ macro_rules! impl_compare_to_value_block {
                         self.buffer.data[c][r] = val.into();
                     }
                 }
-                self.data = OldBlockData::from_pass(&self.buffer);
                 &self.buffer
             }
 
@@ -158,33 +147,32 @@ mod tests {
 
                     let output = block.process(&parameters, &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
                     assert_eq!(block.buffer(), output);
 
                     parameters.comparison_type = ComparisonType::NotEqual;
                     let output = block.process(&parameters, &context, <$type>::zero());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
+                    assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::LessThan;
                     let output = block.process(&parameters, &context, <$type>::zero());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
+                    assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::LessOrEqual;
                     let output = block.process(&parameters, &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
+                    assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::GreaterThan;
                     let output = block.process(&parameters, &context, <$type>::one() + <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
+                    assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::GreaterOrEqual;
                     let output = block.process(&parameters, &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
-                    assert_eq!(block.data.scalar(), <$type>::one().into());
+                    assert_eq!(block.buffer(), <$type>::one());
                 }
 
                 #[test]
@@ -200,70 +188,52 @@ mod tests {
                         data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::one() + <$type>::one()]],
                     };
 
+                    let expected = Matrix {
+                        data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::zero()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::zero());
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::zero().into()], &[<$type>::zero().into(), <$type>::zero().into()]])
-                    );
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::NotEqual;
+                    let expected = Matrix {
+                        data: [[<$type>::zero(), <$type>::one()], [<$type>::one(), <$type>::one()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::zero().into(), <$type>::one().into()], &[<$type>::one().into(), <$type>::one().into()]])
-                    );
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::LessThan;
+                    let expected = Matrix {
+                        data: [[<$type>::zero(), <$type>::one()], [<$type>::one(), <$type>::zero()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::zero());
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::zero().into(), <$type>::one().into()], &[<$type>::one().into(), <$type>::zero().into()]])
-                    );
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::LessOrEqual;
+                    let expected = Matrix {
+                        data: [[<$type>::one(), <$type>::one()], [<$type>::one(), <$type>::zero()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::one());
-                    assert_eq!(output.data[1][0], <$type>::one());
-                    assert_eq!(output.data[1][1], <$type>::zero());
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::one().into()], &[<$type>::one().into(), <$type>::zero().into()]])
-                    );
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::GreaterThan;
+                    let expected = Matrix {
+                        data: [[<$type>::zero(), <$type>::zero()], [<$type>::zero(), <$type>::one()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::zero());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::zero().into(), <$type>::zero().into()], &[<$type>::zero().into(), <$type>::one().into()]])
-                    );
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
 
                     parameters.comparison_type = ComparisonType::GreaterOrEqual;
+                    let expected = Matrix {
+                        data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::one()]],
+                    };
                     let output = block.process(&parameters, &context, &input);
-                    assert_eq!(output.data[0][0], <$type>::one());
-                    assert_eq!(output.data[0][1], <$type>::zero());
-                    assert_eq!(output.data[1][0], <$type>::zero());
-                    assert_eq!(output.data[1][1], <$type>::one());
-                    assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[<$type>::one().into(), <$type>::zero().into()], &[<$type>::zero().into(), <$type>::one().into()]])
-                    );
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
                 }
             }
         };

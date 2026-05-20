@@ -1,6 +1,5 @@
 use crate::traits::{Float, MatrixOps};
 use num_traits::Zero;
-use pictorus_block_data::{BlockData as OldBlockData, FromPass};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
 
 /// Rate limit block parameters
@@ -27,18 +26,15 @@ where
 /// the rate of change of the signal as specified by the Rising and
 /// Falling rates.
 pub struct RateLimitBlock<T> {
-    pub data: OldBlockData,
     buffer: T,
 }
 
 impl<T> Default for RateLimitBlock<T>
 where
     T: Pass + Default,
-    OldBlockData: FromPass<T>,
 {
     fn default() -> Self {
         Self {
-            data: <OldBlockData as FromPass<T>>::from_pass(T::default().as_by()),
             buffer: T::default(),
         }
     }
@@ -49,7 +45,6 @@ macro_rules! impl_rate_limit_block {
         impl ProcessBlock for RateLimitBlock<$type>
         where
             $type: num_traits::Zero,
-            OldBlockData: FromPass<$type>,
         {
             type Inputs = $type;
             type Output = $type;
@@ -74,7 +69,6 @@ macro_rules! impl_rate_limit_block {
                         // b + clamped_change_rate * timestep_s;
                         self.buffer + clamped_change_rate * timestep_s
                     };
-                    self.data = OldBlockData::from_scalar(self.buffer.into());
                     self.buffer
                 } else {
                     //First Run ever
@@ -89,8 +83,6 @@ macro_rules! impl_rate_limit_block {
 
         impl<const ROWS: usize, const COLS: usize> ProcessBlock
             for RateLimitBlock<Matrix<ROWS, COLS, $type>>
-        where
-            OldBlockData: FromPass<Matrix<ROWS, COLS, $type>>,
         {
             type Inputs = Matrix<ROWS, COLS, $type>;
             type Output = Matrix<ROWS, COLS, $type>;
@@ -118,7 +110,6 @@ macro_rules! impl_rate_limit_block {
                     });
 
                     self.buffer = output;
-                    self.data = OldBlockData::from_pass(&output);
                     &self.buffer
                 } else {
                     //First Run ever
@@ -144,7 +135,6 @@ mod tests {
     use crate::testing::StubRuntime;
     use core::time::Duration;
     use paste::paste;
-    use pictorus_block_data::BlockData as OldBlockData;
 
     #[test]
     fn test_rate_limit_default_buffer_no_panic() {
@@ -175,39 +165,38 @@ mod tests {
                     // Test rising rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), 3.0);
-                    assert_eq!(block.data.scalar(), 2.0);
                     assert_eq!(output, 2.0);
                     assert_eq!(block.buffer(), output);
 
                     // Test rising rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), 30.0);
-                    assert_eq!(block.data.scalar(), 4.0);
                     assert_eq!(output, 4.0);
+                    assert_eq!(block.buffer(), 4.0);
 
                     // Value doesn't change if input matches current state
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), 4.0);
-                    assert_eq!(block.data.scalar(), 4.0);
                     assert_eq!(output, 4.0);
+                    assert_eq!(block.buffer(), 4.0);
 
                     // Test falling rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), -30.0);
-                    assert_eq!(block.data.scalar(), 3.0);
                     assert_eq!(output, 3.0);
+                    assert_eq!(block.buffer(), 3.0);
 
                     // Test falling rate
                     runtime.tick();
                     let output = block.process(&parameters, &runtime.context(), -0.5);
-                    assert_eq!(block.data.scalar(), 2.0);
                     assert_eq!(output, 2.0);
+                    assert_eq!(block.buffer(), 2.0);
 
                     // Test passing in no timestep does not change output
                     runtime.context.timestep = Some(Duration::from_secs(0));
                     let output = block.process(&parameters, &runtime.context(), -30.0);
-                    assert_eq!(block.data.scalar(), 2.0);
                     assert_eq!(output, 2.0);
+                    assert_eq!(block.buffer(), 2.0);
                 }
 
                 #[test]
@@ -237,8 +226,10 @@ mod tests {
                         }
                     );
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[2.0, 2.0], &[2.0, 2.0]])
+                        block.buffer(),
+                        &Matrix {
+                            data: [[2.0, 2.0], [2.0, 2.0]],
+                        }
                     );
 
                     // Test rising rate
@@ -254,8 +245,10 @@ mod tests {
                         }
                     );
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[4.0, 4.0], &[4.0, 4.0]])
+                        block.buffer(),
+                        &Matrix {
+                            data: [[4.0, 4.0], [4.0, 4.0]],
+                        }
                     );
 
                     // Value doesn't change if input matches current state
@@ -271,8 +264,10 @@ mod tests {
                         }
                     );
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[4.0, 4.0], &[4.0, 4.0]])
+                        block.buffer(),
+                        &Matrix {
+                            data: [[4.0, 4.0], [4.0, 4.0]],
+                        }
                     );
 
                     // Test falling rate
@@ -288,8 +283,10 @@ mod tests {
                         }
                     );
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[3.0, 3.0], &[3.0, 3.8]])
+                        block.buffer(),
+                        &Matrix {
+                            data: [[3.0, 3.0], [3.0, 3.8]],
+                        }
                     );
 
                     // Test falling rate
@@ -305,8 +302,10 @@ mod tests {
                         }
                     );
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[2.0, 2.0], &[2.5, 3.6]])
+                        block.buffer(),
+                        &Matrix {
+                            data: [[2.0, 2.5], [2.0, 3.6]],
+                        }
                     );
 
                     // Test passing in no timestep does not change output
@@ -322,8 +321,10 @@ mod tests {
                         }
                     );
                     assert_eq!(
-                        block.data,
-                        OldBlockData::from_matrix(&[&[2.0, 2.0], &[2.5, 3.6]])
+                        block.buffer(),
+                        &Matrix {
+                            data: [[2.0, 2.5], [2.0, 3.6]],
+                        }
                     );
                 }
             }
