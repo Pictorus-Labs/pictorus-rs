@@ -4,10 +4,36 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use miniserde::json::{self, Array, Number, Object, Value};
-use pictorus_block_data::BlockDataType;
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, traits::DefaultStorage, IsValid};
+
+/// Block-output data shape, parsed from the user-supplied select-data spec strings.
+///
+/// Note: the data type is not used at runtime — the actual output type is encoded into
+/// the generics of the block instance. This enum exists only to parse the spec strings
+/// codegen passes in (e.g. `"Scalar:fieldname"`).
+#[derive(Clone, Debug, PartialEq, Copy)]
+pub enum BlockDataType {
+    BytesArray,
+    Scalar,
+    Vector,
+    Matrix,
+}
+
+impl core::str::FromStr for BlockDataType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "BytesArray" => Ok(Self::BytesArray),
+            "Scalar" => Ok(Self::Scalar),
+            "Vector" => Ok(Self::Vector),
+            "Matrix" => Ok(Self::Matrix),
+            _ => Err(()),
+        }
+    }
+}
 
 /// Deserializes bytes encoded as JSON into the specified output signals.
 ///

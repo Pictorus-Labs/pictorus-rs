@@ -1,12 +1,10 @@
 use alloc::str;
 use alloc::string::String;
-use alloc::vec::Vec;
 
 use core::{convert::Infallible, time::Duration};
 use num_traits::{AsPrimitive, Float};
 
 use log::debug;
-use pictorus_block_data::{BlockData, BlockDataType};
 use serde::{Deserialize, Serialize};
 
 pub struct PictorusVars {
@@ -45,27 +43,6 @@ impl From<Infallible> for PictorusError {
     fn from(_: Infallible) -> Self {
         unreachable!();
     }
-}
-
-pub fn parse_select_spec(data: &[String]) -> Vec<(BlockDataType, usize)> {
-    data.iter()
-        .map(|d| d.split_once(':').expect("Invalid select data format"))
-        .map(|(dt, index)| {
-            (
-                dt.parse::<BlockDataType>().unwrap(),
-                string_to_scalar(index).unwrap() as usize,
-            )
-        })
-        .collect()
-}
-
-pub fn update_state_output(outputs: &mut [BlockData], block: &BlockData, index: usize) {
-    // Simple helper to only clone into the output of a State if the Block data has
-    // actually updated.
-    if *block == outputs[index] {
-        return;
-    }
-    outputs[index] = block.clone();
 }
 
 pub fn positive_duration(f: f64) -> Duration {
@@ -385,6 +362,7 @@ mod tests {
     use super::*;
     use alloc::string::ToString;
     use alloc::vec;
+    use alloc::vec::Vec;
     use pictorus_traits::Matrix;
     use std::collections::HashMap;
     use temp_env::with_vars;

@@ -1,19 +1,17 @@
 [workspace]
 members = [
-  "pictorus-block-data",
   "pictorus-traits",
   "pictorus-blocks",
   "pictorus-internal",
   "pictorus-linux",
   "pictorus-sim",
-  "pictorus-stm32", 
+  "pictorus-stm32",
   "pictorus-renesas",
   "pictorus-px4",
   "px4-msgs-sys",
 ]
 # Exclude platform-specific crates from the default crates
 default-members = [
-  "pictorus-block-data",
   "pictorus-traits",
   "pictorus-blocks",
   "pictorus-internal",

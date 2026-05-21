@@ -109,7 +109,6 @@ exceptions = [
     # list
     { allow = ["BUSL-1.1"], crate = "pictorus-blocks" },
     { allow = ["BUSL-1.1"], crate = "pictorus-traits" },
-    { allow = ["BUSL-1.1"], crate = "pictorus-block-data" },
     { allow = ["BUSL-1.1"], crate = "pictorus-linux" },
     { allow = ["BUSL-1.1"], crate = "pictorus-internal" },
     { allow = ["BUSL-1.1"], crate = "pictorus-sim" },
