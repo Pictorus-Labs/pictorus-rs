@@ -68,7 +68,7 @@ impl<const RX_BUFFER_SIZE: usize, const TX_BUFFER_SIZE: usize> InputBlock
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let size = parameters.read_bytes;
-        if let Err(_) = self.buffer.resize(size, 0) {
+        if self.buffer.resize(size, 0).is_err() {
             // TODO: Error handling
         }
         let result = self.i2c.write_read(
@@ -99,10 +99,10 @@ impl<const RX_BUFFER_SIZE: usize, const TX_BUFFER_SIZE: usize> OutputBlock
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         let mut tx_buffer: heapless::Vec<u8, TX_BUFFER_SIZE> = heapless::Vec::new();
-        if let Err(_) = tx_buffer.push(parameters.command) {
+        if tx_buffer.push(parameters.command).is_err() {
             // TODO: Error handling
         }
-        if let Err(_) = tx_buffer.extend_from_slice(inputs) {
+        if tx_buffer.extend_from_slice(inputs).is_err() {
             // TODO: Error handling
         }
         self.i2c.write(parameters.address, &tx_buffer).ok();
