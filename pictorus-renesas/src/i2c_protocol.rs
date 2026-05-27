@@ -1,14 +1,16 @@
-use alloc::vec::Vec;
 use embedded_hal::i2c::{I2c, Operation};
+use heapless::Vec;
 use pictorus_blocks::I2cInputBlockParams;
 use pictorus_traits::{ByteSliceSignal, InputBlock, OutputBlock};
 
-pub struct I2cWrapper {
+pub struct I2cWrapper<const RX_BUFFER_SIZE: usize, const TX_BUFFER_SIZE: usize> {
     i2c: ra4m2_hal::i2c::I2c0,
-    buffer: Vec<u8>,
+    buffer: Vec<u8, RX_BUFFER_SIZE>,
 }
 
-impl I2cWrapper {
+impl<const RX_BUFFER_SIZE: usize, const TX_BUFFER_SIZE: usize>
+    I2cWrapper<RX_BUFFER_SIZE, TX_BUFFER_SIZE>
+{
     pub fn new(i2c: ra4m2_hal::i2c::I2c0) -> Self {
         I2cWrapper {
             i2c,
@@ -17,7 +19,9 @@ impl I2cWrapper {
     }
 }
 
-impl InputBlock for I2cWrapper {
+impl<const RX_BUFFER_SIZE: usize, const TX_BUFFER_SIZE: usize> InputBlock
+    for I2cWrapper<RX_BUFFER_SIZE, TX_BUFFER_SIZE>
+{
     type Output = ByteSliceSignal;
     type Parameters = I2cInputBlockParams;
 
@@ -27,7 +31,9 @@ impl InputBlock for I2cWrapper {
         _context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let size = parameters.read_bytes;
-        self.buffer.resize(size, 0);
+        if let Err(_) = self.buffer.resize(size, 0) {
+            // TODO: Error handling
+        }
 
         // Write register, then read data
         let result = self.i2c.transaction(
@@ -46,7 +52,9 @@ impl InputBlock for I2cWrapper {
     }
 }
 
-impl OutputBlock for I2cWrapper {
+impl<const RX_BUFFER_SIZE: usize, const TX_BUFFER_SIZE: usize> OutputBlock
+    for I2cWrapper<RX_BUFFER_SIZE, TX_BUFFER_SIZE>
+{
     type Inputs = ByteSliceSignal;
     type Parameters = pictorus_blocks::I2cOutputBlockParams;
 
@@ -56,9 +64,15 @@ impl OutputBlock for I2cWrapper {
         _context: &dyn pictorus_traits::Context,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
-        let mut tx_buffer = Vec::new();
-        tx_buffer.push(parameters.command);
-        tx_buffer.extend_from_slice(inputs);
+        let mut tx_buffer: Vec<u8, TX_BUFFER_SIZE> = Vec::new();
+
+        if let Err(_) = tx_buffer.push(parameters.command) {
+            // TODO: Error handling
+        }
+
+        if let Err(_) = tx_buffer.extend_from_slice(inputs) {
+            // TODO: Error handling
+        }
 
         let result = self.i2c.transaction(
             parameters.address,

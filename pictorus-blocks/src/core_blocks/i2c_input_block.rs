@@ -1,5 +1,4 @@
-extern crate alloc;
-use alloc::vec::Vec;
+use heapless::Vec;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, IsValid};
@@ -33,14 +32,14 @@ impl Parameters {
 }
 
 /// I2C Input Block buffers data read from an I2C peripheral.
-pub struct I2cInputBlock {
+pub struct I2cInputBlock<const RX_BUFFER_SIZE: usize> {
     pub stale_check: StaleTracker,
-    buffer: Vec<u8>,
+    buffer: Vec<u8, RX_BUFFER_SIZE>,
     last_valid: bool,
     previous_stale_check_time_ms: f64,
 }
 
-impl Default for I2cInputBlock {
+impl<const RX_BUFFER_SIZE: usize> Default for I2cInputBlock<RX_BUFFER_SIZE> {
     fn default() -> Self {
         Self {
             stale_check: StaleTracker::from_ms(0.0),
@@ -51,13 +50,13 @@ impl Default for I2cInputBlock {
     }
 }
 
-impl IsValid for I2cInputBlock {
+impl<const RX_BUFFER_SIZE: usize> IsValid for I2cInputBlock<RX_BUFFER_SIZE> {
     fn is_valid(&self, app_time_s: f64) -> bool {
         self.stale_check.is_valid(app_time_s)
     }
 }
 
-impl ProcessBlock for I2cInputBlock {
+impl<const RX_BUFFER_SIZE: usize> ProcessBlock for I2cInputBlock<RX_BUFFER_SIZE> {
     type Parameters = Parameters;
     type Inputs = ByteSliceSignal;
     type Output = (ByteSliceSignal, bool);
@@ -78,7 +77,12 @@ impl ProcessBlock for I2cInputBlock {
         if inputs.len() == parameters.read_bytes {
             self.buffer.clear();
             self.stale_check.mark_updated(context.time().as_secs_f64());
-            self.buffer.extend_from_slice(inputs);
+            if let Err(_) = self.buffer.extend_from_slice(inputs) {
+                // TODO: Error handling
+                self.buffer.clear();
+                self.last_valid = false;
+                return (&self.buffer, self.last_valid);
+            }
         }
 
         self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
@@ -99,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_i2c_input_default_buffer_no_panic() {
-        let block = I2cInputBlock::default();
+        let block = I2cInputBlock::<1024>::default();
         assert_eq!(block.buffer(), (b"".as_ref(), false));
     }
 
@@ -107,7 +111,7 @@ mod tests {
     fn test_i2c_input_block() {
         let parameters = Parameters::new(0., 0., 10., 100.0);
         let mut runtime = StubRuntime::default();
-        let mut block = I2cInputBlock::default();
+        let mut block = I2cInputBlock::<1024>::default();
 
         let input_data: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 

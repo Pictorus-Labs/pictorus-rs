@@ -1,5 +1,4 @@
-extern crate alloc;
-use alloc::vec::Vec;
+use heapless::Vec;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
 /// Parameters for I2C Output Block
@@ -25,11 +24,11 @@ impl Parameters {
 
 /// I2C Output Block buffers data to write to an I2C peripheral.
 #[derive(Default)]
-pub struct I2cOutputBlock {
-    buffer: Vec<u8>,
+pub struct I2cOutputBlock<const TX_BUFFER_SIZE: usize> {
+    buffer: Vec<u8, TX_BUFFER_SIZE>,
 }
 
-impl ProcessBlock for I2cOutputBlock {
+impl<const TX_BUFFER_SIZE: usize> ProcessBlock for I2cOutputBlock<TX_BUFFER_SIZE> {
     type Parameters = Parameters;
     type Inputs = ByteSliceSignal;
     type Output = ByteSliceSignal;
@@ -41,7 +40,9 @@ impl ProcessBlock for I2cOutputBlock {
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer.clear();
-        self.buffer.extend_from_slice(inputs);
+        if let Err(_) = self.buffer.extend_from_slice(inputs) {
+            // TODO: Error handling
+        }
         &self.buffer
     }
 
@@ -57,13 +58,13 @@ mod tests {
 
     #[test]
     fn test_i2c_output_default_buffer_no_panic() {
-        let block = I2cOutputBlock::default();
+        let block = I2cOutputBlock::<1024>::default();
         assert_eq!(block.buffer(), b"".as_ref());
     }
 
     #[test]
     fn test_i2c_output_block() {
-        let mut block = I2cOutputBlock::default();
+        let mut block = I2cOutputBlock::<1024>::default();
         let params = Parameters::new(64., 1.);
         let context = StubContext::default();
 
