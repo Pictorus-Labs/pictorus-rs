@@ -77,7 +77,7 @@ impl<const RX_BUFFER_SIZE: usize> ProcessBlock for I2cInputBlock<RX_BUFFER_SIZE>
         if inputs.len() == parameters.read_bytes {
             self.buffer.clear();
             self.stale_check.mark_updated(context.time().as_secs_f64());
-            if let Err(_) = self.buffer.extend_from_slice(inputs) {
+            if self.buffer.extend_from_slice(inputs).is_err() {
                 // TODO: Error handling
                 self.buffer.clear();
                 self.last_valid = false;

@@ -40,7 +40,7 @@ impl<const TX_BUFFER_SIZE: usize> ProcessBlock for I2cOutputBlock<TX_BUFFER_SIZE
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer.clear();
-        if let Err(_) = self.buffer.extend_from_slice(inputs) {
+        if self.buffer.extend_from_slice(inputs).is_err() {
             // TODO: Error handling
         }
         &self.buffer
