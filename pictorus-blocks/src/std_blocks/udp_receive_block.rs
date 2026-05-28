@@ -26,20 +26,11 @@ impl Parameters {
 /// in the graph. If no data is available the buffer will remain unchanged. If no data has
 /// been received for a period of time longer than the `stale_age_ms` parameter, the block
 /// will return `false` for `is_valid()`.
+#[derive(Default)]
 pub struct UdpReceiveBlock {
     stale_check: StaleTracker,
     buffer: Vec<u8>,
     last_valid: bool,
-}
-
-impl Default for UdpReceiveBlock {
-    fn default() -> Self {
-        Self {
-            stale_check: StaleTracker::default(),
-            buffer: Vec::new(),
-            last_valid: false,
-        }
-    }
 }
 
 impl ProcessBlock for UdpReceiveBlock {
