@@ -1,4 +1,3 @@
-extern crate alloc;
 use crate::byte_data::{parse_byte_data_spec, try_pack_data, ByteOrderSpec, DataType};
 use crate::traits::Scalar;
 use alloc::vec::Vec;

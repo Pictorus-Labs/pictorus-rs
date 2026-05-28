@@ -1,4 +1,3 @@
-extern crate alloc;
 use crate::byte_data::{find_all_bytes_idx, parse_string_to_read_delimiter};
 use crate::traits::{DefaultStorage, Scalar};
 use crate::IsValid;

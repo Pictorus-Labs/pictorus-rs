@@ -92,7 +92,9 @@ macro_rules! float_matrix_impl {
                         let mut data = *input;
                         let data = data.data.as_flattened_mut();
                         view.iter().enumerate().for_each(|(i, &x)| data[i] = x);
-                        data.sort_by(|a, b| a.partial_cmp(b).expect("NaNs are not supported"));
+                        data.sort_unstable_by(|a, b| {
+                            a.partial_cmp(b).expect("NaNs are not supported")
+                        });
                         let mid = data.len() / 2;
                         if data.len() % 2 == 0 {
                             (data[mid - 1] + data[mid]) / Self::Output::from(2u8)

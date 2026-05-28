@@ -1,4 +1,3 @@
-extern crate alloc;
 use alloc::vec::Vec;
 use log::debug;
 use pictorus_traits::{ByteSliceSignal, Context, Pass, PassBy, ProcessBlock};

@@ -1,12 +1,18 @@
 //! A collection of traits that are used in the corelib-blocks library
-extern crate alloc;
+#[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 use core::time::Duration;
 use nalgebra::{ComplexField, RealField, SimdPartialOrd};
-use pictorus_traits::{ByteSliceSignal, Matrix, Pass, PassBy};
-
+use pictorus_traits::{Matrix, Pass, PassBy};
+#[cfg(feature = "alloc")]
 pub mod serialize;
+#[cfg(feature = "alloc")]
 pub use serialize::Serialize;
+
+// ByteSliceSignal is only imported in this file to use with `alloc`
+// gated implementations.
+#[cfg(feature = "alloc")]
+use pictorus_traits::ByteSliceSignal;
 
 /// A re-export of the pictorus_traits::Scalar trait to allow for easier blanket implementations
 pub trait Scalar:
@@ -129,6 +135,7 @@ impl<T: Scalar, const NCOLS: usize, const NRWOS: usize> DefaultStorage for Matri
     }
 }
 
+#[cfg(feature = "alloc")]
 impl DefaultStorage for ByteSliceSignal {
     type Storage = Vec<u8>;
 
@@ -178,6 +185,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl CopyInto<Vec<u8>> for ByteSliceSignal {
     fn copy_into(source: PassBy<Self>, dest: &mut Vec<u8>) {
         dest.clear();

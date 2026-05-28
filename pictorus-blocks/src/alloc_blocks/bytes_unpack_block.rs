@@ -1,4 +1,3 @@
-extern crate alloc;
 use core::time::Duration;
 
 use crate::{traits::Scalar, IsValid};
@@ -134,8 +133,8 @@ impl Unpack for f64 {
 
 #[cfg(test)]
 mod tests {
+    use super::super::bytes_pack_block::{BytesPackBlock, Parameters as PackParameters};
     use super::*;
-    use crate::core_blocks::bytes_pack_block::{BytesPackBlock, Parameters as PackParameters};
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
 

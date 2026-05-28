@@ -3,9 +3,12 @@
 //! crate.
 //!
 //! ## Block Types
-//! There are currently two categories of blocks defined in this crate:
-//! - Core Blocks - These are blocks that are available on all platforms.
-//! - Standard Blocks - These blocks are only available on platforms that support the standard library.
+//! There are currently three categories of blocks defined in this crate:
+//! - Core Blocks - These are blocks that are available on all platforms (no `std`, no `alloc`).
+//! - Alloc Blocks - These blocks require the `alloc` crate and are gated behind the `alloc` feature.
+//!   The `alloc` feature is currently on by default; consumers in fully no-alloc environments
+//!   should set `default-features = false`.
+//! - Standard Blocks - These blocks require `std` and are gated behind the `std` feature.
 //!
 //! ## Implementing Custom Blocks
 //! The blocks in this crate can be helpful as a starting point for implementing a custom block,
@@ -19,12 +22,19 @@
 #[cfg(any(feature = "std", test))]
 extern crate std;
 
-// TODO: Remoove this when we no longer require alloc
+// Use alloc for tests. The `std` feature incorporates `alloc`
+#[cfg(any(feature = "alloc", test))]
 extern crate alloc;
 
 // Set of blocks that do not depend on `std` or `alloc`
 mod core_blocks;
 pub use core_blocks::*;
+
+// Set of blocks that depend on `alloc`
+#[cfg(feature = "alloc")]
+mod alloc_blocks;
+#[cfg(feature = "alloc")]
+pub use alloc_blocks::*;
 
 // Set of blocks that depend on `std`
 #[cfg(feature = "std")]
@@ -32,6 +42,7 @@ mod std_blocks;
 #[cfg(feature = "std")]
 pub use std_blocks::*;
 
+#[cfg(feature = "alloc")]
 pub mod byte_data;
 mod matrix_ext;
 pub use matrix_ext::{MatrixExt, MatrixNalgebraExt};

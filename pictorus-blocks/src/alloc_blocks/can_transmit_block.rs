@@ -1,4 +1,3 @@
-extern crate alloc;
 use crate::traits::{Float, Scalar};
 use alloc::vec::Vec;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
