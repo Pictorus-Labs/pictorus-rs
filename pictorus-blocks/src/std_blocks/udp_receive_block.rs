@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use core::time::Duration;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
-use crate::stale_tracker::StaleTracker;
+use crate::stale_tracker::{duration_from_ms_f64, StaleTracker};
 
 /// Parameters for UDP Receive Block
 #[doc(hidden)]
@@ -13,7 +13,7 @@ pub struct Parameters {
 impl Parameters {
     pub fn new(stale_age_ms: f64) -> Self {
         Self {
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }
@@ -24,8 +24,8 @@ impl Parameters {
 /// by codegen. It attempts to read data each timestep and if data is available, it
 /// will update its internal buffer making that data available to blocks connected to it
 /// in the graph. If no data is available the buffer will remain unchanged. If no data has
-/// been received for a period of time longer than the `stale_age_ms` parameter, the block
-/// will return `false` for `is_valid()`.
+/// been received for a period longer than the `stale_age` parameter, the block's trailing
+/// output bool flips to `false`.
 #[derive(Default)]
 pub struct UdpReceiveBlock {
     stale_check: StaleTracker,

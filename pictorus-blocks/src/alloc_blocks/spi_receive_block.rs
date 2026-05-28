@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use core::time::Duration;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
-use crate::stale_tracker::StaleTracker;
+use crate::stale_tracker::{duration_from_ms_f64, StaleTracker};
 
 /// Parameters for the SPI receive block
 #[doc(hidden)]
@@ -17,7 +17,7 @@ impl Parameters {
     pub fn new(read_bytes: f64, stale_age_ms: f64) -> Self {
         Self {
             read_bytes: read_bytes as usize,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }

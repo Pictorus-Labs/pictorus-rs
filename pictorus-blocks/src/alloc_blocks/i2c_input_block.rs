@@ -3,7 +3,7 @@ use core::time::Duration;
 use alloc::vec::Vec;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
-use crate::stale_tracker::StaleTracker;
+use crate::stale_tracker::{duration_from_ms_f64, StaleTracker};
 
 /// Parameters for I2C Input Block
 #[doc(hidden)]
@@ -28,7 +28,7 @@ impl Parameters {
             address: addr_u8,
             command: command_u8,
             read_bytes: read_bytes_u8,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }

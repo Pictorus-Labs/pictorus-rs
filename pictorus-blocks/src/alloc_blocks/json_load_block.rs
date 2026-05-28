@@ -5,7 +5,10 @@ use core::time::Duration;
 use miniserde::json::{self, Array, Number, Object, Value};
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, traits::DefaultStorage};
+use crate::{
+    stale_tracker::{duration_from_ms_f64, StaleTracker},
+    traits::DefaultStorage,
+};
 
 /// Block-output data shape, parsed from the user-supplied select-data spec strings.
 ///
@@ -99,7 +102,7 @@ impl Parameters {
         let select_data = Self::parse_select_spec(select_data);
         Self {
             select_data,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 

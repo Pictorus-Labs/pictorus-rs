@@ -2,7 +2,10 @@ use core::time::Duration;
 
 use pictorus_traits::{ByteSliceSignal, Pass, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, traits::Float};
+use crate::{
+    stale_tracker::{duration_from_ms_f64, StaleTracker},
+    traits::Float,
+};
 
 type RxCallback<C, S> = fn(&C, &mut [S]);
 
@@ -21,7 +24,7 @@ impl Parameters {
         Self {
             frame_id,
             length,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }

@@ -10,7 +10,7 @@ use crate::{
         compare_bytes, find_bytes_idx, parse_string_to_read_delimiter, rfind_all_bytes_idx,
         rfind_bytes_idx, ByteDataError, BUFF_SIZE_BYTES,
     },
-    stale_tracker::StaleTracker,
+    stale_tracker::{duration_from_ms_f64, StaleTracker},
 };
 
 /// Parameters for the Serial Receive Block
@@ -52,7 +52,7 @@ impl Parameters {
             start_delimiter,
             end_delimiter,
             read_bytes: read_bytes as usize,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }

@@ -1,6 +1,9 @@
 use core::time::Duration;
 
-use crate::{stale_tracker::StaleTracker, traits::Scalar};
+use crate::{
+    stale_tracker::{duration_from_ms_f64, StaleTracker},
+    traits::Scalar,
+};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
 
@@ -92,7 +95,7 @@ impl<N: ArrayLength> Parameters<N> {
             .expect("Bytes Data Spec is incorrectly sized for the number of inputs");
         Self {
             pack_spec,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }

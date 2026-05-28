@@ -1,5 +1,5 @@
 use crate::byte_data::{find_all_bytes_idx, parse_string_to_read_delimiter};
-use crate::stale_tracker::StaleTracker;
+use crate::stale_tracker::{duration_from_ms_f64, StaleTracker};
 use crate::traits::{DefaultStorage, Scalar};
 use alloc::borrow::ToOwned;
 use alloc::{string::String, vec::Vec};
@@ -39,7 +39,7 @@ impl Parameters {
         Self {
             delimiter: delimiter.to_owned(),
             desired_output_idx,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 
