@@ -227,7 +227,7 @@ pub fn main() {
 
     // let output_vals = block.process(&params, &context, &[0.0, 0.0, 0.0]);
 
-    //Miror flow of parallel_children.rs example but with the float shenanigans
+    //Mirror flow of parallel_children.rs example but with the float shenanigans
     // Tick 1: turn power on. Per the activation rule, the children do not consume transitions this tick — they enter at their default.
     let out = block.process(
         &params,

@@ -125,7 +125,7 @@ pub trait NodeInterface {
     fn reset(&mut self);
 
     /// A convenience method that combines `tick` with default output initialization
-    /// Does not need to be implmented and should only be called at the top Root level of the state machine tree
+    /// Does not need to be implemented and should only be called at the top Root level of the state machine tree
     /// All nodes below the Root will have their snapshots written to the output by their parents' `tick` implementations,
     ///  so they do not need to be ticked directly
     fn step(&mut self, input: &Self::Input) -> Self::Output {
