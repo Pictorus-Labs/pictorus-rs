@@ -1,6 +1,6 @@
 use crate::byte_data::{find_all_bytes_idx, parse_string_to_read_delimiter};
+use crate::stale_tracker::StaleTracker;
 use crate::traits::{DefaultStorage, Scalar};
-use crate::IsValid;
 use alloc::borrow::ToOwned;
 use alloc::{string::String, vec::Vec};
 use core::time::Duration;
@@ -17,7 +17,7 @@ use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 /// the block will output false for the "is_valid" output.
 pub struct BytesSplitBlock<T: Apply> {
     buffer: T::Storage,
-    last_valid_time: Option<Duration>,
+    stale_check: StaleTracker,
 }
 
 /// Parameters for the Bytes Split Block
@@ -61,7 +61,7 @@ impl<T: Apply> Default for BytesSplitBlock<T> {
     fn default() -> Self {
         Self {
             buffer: T::default_storage_value(),
-            last_valid_time: None,
+            stale_check: StaleTracker::default(),
         }
     }
 }
@@ -84,30 +84,25 @@ impl<T: Apply> ProcessBlock for BytesSplitBlock<T> {
         };
         let delim_idxs = find_all_bytes_idx(inputs, &parsed_deliminator.0, &parsed_deliminator.1);
 
-        let update_age = context.time() - self.last_valid_time.unwrap_or_default();
-
         let parse_success = T::apply(
             &mut self.buffer,
             inputs,
             parameters,
             &delim_idxs,
             parsed_deliminator.2,
-            update_age,
         );
         if parse_success {
-            self.last_valid_time = Some(context.time());
+            self.stale_check.mark_updated(context.time());
         }
+        let valid = self
+            .stale_check
+            .is_valid(context.time(), parameters.stale_age);
+        T::set_valid(&mut self.buffer, valid);
         <T as Apply>::storage_as_by(&self.buffer)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
         <T as Apply>::storage_as_by(&self.buffer)
-    }
-}
-
-impl<T: Apply> IsValid for BytesSplitBlock<T> {
-    fn is_valid(&self, _app_time_s: f64) -> bool {
-        T::is_valid(&self.buffer)
     }
 }
 
@@ -148,28 +143,28 @@ fn parse_bytes<T: FromBytes>(
 }
 
 pub trait Apply: Pass {
-    /// The type of the storage for the block. This will be the storage type for each of the outputs plus a bool all in a tuple
-    /// The bool is used for the always include `is_valid` output
+    /// The type of the storage for the block. This will be the storage type for each of the outputs plus a bool all in a tuple.
+    /// The bool slot is overwritten by the block from the `StaleTracker` on each tick.
     type Storage;
 
     type Output: Pass;
 
-    /// Handles parsing input into the storage type, also manages the is_valid output. Outputs `true` if it was able to parse the input
-    /// and `false` if it was not able to parse the input. This is used to update the `last_valid_time` field of the block.
+    /// Parses input into the storage type. Returns `true` if the parse succeeded so the
+    /// block can mark the [`StaleTracker`] as updated. The trailing bool slot of `dest`
+    /// is ignored here and updated separately by the `set_valid` call
     fn apply(
         dest: &mut Self::Storage,
         input_bytes: &[u8],
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool;
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output>;
 
     fn default_storage_value() -> Self::Storage;
 
-    fn is_valid(storage: &Self::Storage) -> bool;
+    fn set_valid(storage: &mut Self::Storage, valid: bool);
 }
 
 impl<A: FromBytes> Apply for A {
@@ -182,7 +177,6 @@ impl<A: FromBytes> Apply for A {
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool {
         let parsed_data = parse_bytes::<A>(
             input_bytes,
@@ -194,9 +188,6 @@ impl<A: FromBytes> Apply for A {
             *dest = (parsed_data, true);
             true
         } else {
-            if update_age > params.stale_age {
-                dest.1 = false;
-            }
             false
         }
     }
@@ -209,8 +200,8 @@ impl<A: FromBytes> Apply for A {
         (A::from_storage(&storage.0), storage.1)
     }
 
-    fn is_valid(storage: &Self::Storage) -> bool {
-        storage.1
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.1 = valid;
     }
 }
 
@@ -224,7 +215,6 @@ impl<A: FromBytes, B: FromBytes> Apply for (A, B) {
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool {
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
@@ -242,9 +232,6 @@ impl<A: FromBytes, B: FromBytes> Apply for (A, B) {
             *dest = (parsed_data_a, parsed_data_b, true);
             true
         } else {
-            if update_age > params.stale_age {
-                dest.2 = false;
-            }
             false
         }
     }
@@ -260,8 +247,9 @@ impl<A: FromBytes, B: FromBytes> Apply for (A, B) {
             storage.2,
         )
     }
-    fn is_valid(storage: &Self::Storage) -> bool {
-        storage.2
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.2 = valid;
     }
 }
 
@@ -275,7 +263,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes> Apply for (A, B, C) {
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool {
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
@@ -301,9 +288,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes> Apply for (A, B, C) {
             *dest = (parsed_data_a, parsed_data_b, parsed_data_c, true);
             true
         } else {
-            if update_age > params.stale_age {
-                dest.3 = false;
-            }
             false
         }
     }
@@ -325,8 +309,9 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes> Apply for (A, B, C) {
             storage.3,
         )
     }
-    fn is_valid(storage: &Self::Storage) -> bool {
-        storage.3
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.3 = valid;
     }
 }
 
@@ -340,7 +325,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes> Apply for (A, B, C,
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool {
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
@@ -382,9 +366,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes> Apply for (A, B, C,
             );
             true
         } else {
-            if update_age > params.stale_age {
-                dest.4 = false;
-            }
             false
         }
     }
@@ -409,8 +390,8 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes> Apply for (A, B, C,
         )
     }
 
-    fn is_valid(storage: &Self::Storage) -> bool {
-        storage.4
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.4 = valid;
     }
 }
 
@@ -433,7 +414,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes> Apply
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool {
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
@@ -488,9 +468,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes> Apply
             );
             true
         } else {
-            if update_age > params.stale_age {
-                dest.5 = false;
-            }
             false
         }
     }
@@ -517,8 +494,8 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes> Apply
         )
     }
 
-    fn is_valid(storage: &Self::Storage) -> bool {
-        storage.5
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.5 = valid;
     }
 }
 
@@ -542,7 +519,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes, F: Fr
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool {
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
@@ -606,9 +582,6 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes, F: Fr
             );
             true
         } else {
-            if update_age > params.stale_age {
-                dest.6 = false;
-            }
             false
         }
     }
@@ -637,8 +610,8 @@ impl<A: FromBytes, B: FromBytes, C: FromBytes, D: FromBytes, E: FromBytes, F: Fr
         )
     }
 
-    fn is_valid(storage: &Self::Storage) -> bool {
-        storage.6
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.6 = valid;
     }
 }
 
@@ -670,7 +643,6 @@ impl<
         params: &Parameters,
         delim_idxs: &[usize],
         delim_len: usize,
-        update_age: Duration,
     ) -> bool {
         let parsed_data_a = parse_bytes::<A>(
             input_bytes,
@@ -743,9 +715,6 @@ impl<
             );
             true
         } else {
-            if update_age > params.stale_age {
-                dest.7 = false;
-            }
             false
         }
     }
@@ -776,8 +745,8 @@ impl<
         )
     }
 
-    fn is_valid(storage: &Self::Storage) -> bool {
-        storage.7
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.7 = valid;
     }
 }
 
@@ -797,20 +766,17 @@ mod tests {
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
-        assert!(block.is_valid(0.0));
 
         context.time += context.fundamental_timestep;
         let input = br#"123:4.56:78.9"#;
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true)); // stale time has not elapsed
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
-        assert!(block.is_valid(0.0));
 
         context.time = Duration::from_secs_f64(2.0);
         let output = block.process(&params, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), false)); // stale time has elapsed
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), false));
-        assert!(!block.is_valid(0.0));
 
         // Now input is valid again
         context.time += context.fundamental_timestep;
@@ -818,7 +784,6 @@ mod tests {
         let output = block.process(&params, &context, input);
         assert_eq!(output, (1.03, 11.0, b"17".as_slice(), true));
         assert_eq!(block.buffer(), (1.03, 11.0, b"17".as_slice(), true));
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -832,7 +797,6 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (b"\x00".as_ref(), b"\x02".as_ref(), true));
         assert_eq!(block.buffer(), (b"\x00".as_ref(), b"\x02".as_ref(), true));
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -845,7 +809,6 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (42.0, true));
         assert_eq!(block.buffer(), (42.0, true));
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -858,7 +821,6 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, b"42.0".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, b"42.0".as_slice(), true));
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -871,7 +833,6 @@ mod tests {
         let output = block.process(&parameters, &context, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -891,7 +852,6 @@ mod tests {
             block.buffer(),
             (123.0, 42.0, 4.56, b"78.9".as_slice(), true)
         );
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -917,7 +877,6 @@ mod tests {
             block.buffer(),
             (123.0, 42.0, 4.56, 78.9, b"78.9".as_slice(), true)
         );
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -947,7 +906,6 @@ mod tests {
             block.buffer(),
             (123.0, 42.0, b"78.9".as_slice(), 4.56, 78.9, 4.56, true)
         );
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -1004,6 +962,5 @@ mod tests {
                 true
             )
         );
-        assert!(block.is_valid(0.0));
     }
 }

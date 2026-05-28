@@ -56,12 +56,3 @@ mod testing;
 #[derive(Debug)]
 /// Error raised when parsing an enum from a string fails.
 pub struct ParseEnumError;
-
-/// Trait for blocks that can have stale/invalid ouput.
-///
-/// Blocks that implement this trait should output a false value for `is_valid`
-/// if the output is not in a valid state.
-pub trait IsValid {
-    /// Returns `true` if the block output is in a valid state, `false` otherwise.
-    fn is_valid(&self, app_time_s: f64) -> bool;
-}

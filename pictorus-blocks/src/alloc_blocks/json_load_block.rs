@@ -1,10 +1,11 @@
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::time::Duration;
 
 use miniserde::json::{self, Array, Number, Object, Value};
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, traits::DefaultStorage, IsValid};
+use crate::{stale_tracker::StaleTracker, traits::DefaultStorage};
 
 /// Block-output data shape, parsed from the user-supplied select-data spec strings.
 ///
@@ -41,15 +42,14 @@ impl core::str::FromStr for BlockDataType {
 /// that the passed in bytes represent a single value (either scalar or matrix).
 pub struct JsonLoadBlock<T: Apply> {
     buffer: T::Storage,
-    stale_tracker: Option<StaleTracker>,
+    stale_check: StaleTracker,
 }
 
 impl<T: Apply> Default for JsonLoadBlock<T> {
     fn default() -> Self {
-        let buffer = T::default_storage();
         JsonLoadBlock {
-            buffer,
-            stale_tracker: None,
+            buffer: T::default_storage(),
+            stale_check: StaleTracker::default(),
         }
     }
 }
@@ -65,27 +65,18 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
         context: &dyn Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let success = T::apply(&mut self.buffer, inputs, parameters);
-        if success.is_ok() {
-            let tracker = self
-                .stale_tracker
-                .get_or_insert(StaleTracker::from_ms(parameters.stale_age_ms));
-            tracker.mark_updated(context.time().as_secs_f64());
+        if T::apply(&mut self.buffer, inputs, parameters).is_ok() {
+            self.stale_check.mark_updated(context.time());
         }
+        let valid = self
+            .stale_check
+            .is_valid(context.time(), parameters.stale_age);
+        T::set_valid(&mut self.buffer, valid);
         T::storage_as_by(&self.buffer)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
         T::storage_as_by(&self.buffer)
-    }
-}
-
-impl<T: Apply> IsValid for JsonLoadBlock<T> {
-    fn is_valid(&self, app_time_s: f64) -> bool {
-        match self.stale_tracker {
-            Some(ref tracker) => tracker.is_valid(app_time_s),
-            None => false,
-        }
     }
 }
 
@@ -96,8 +87,8 @@ pub struct Parameters {
     /// Note: The data type is not actually used in code, but encoded into the
     /// generics of the block instance.
     pub select_data: Vec<(BlockDataType, String)>,
-    /// The age in milliseconds after which the data is considered stale
-    pub stale_age_ms: f64,
+    /// The age after which the data is considered stale
+    pub stale_age: Duration,
 }
 
 impl Parameters {
@@ -108,7 +99,7 @@ impl Parameters {
         let select_data = Self::parse_select_spec(select_data);
         Self {
             select_data,
-            stale_age_ms,
+            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
         }
     }
 
@@ -230,6 +221,9 @@ pub trait Apply: Pass {
 
     fn default_storage() -> Self::Storage;
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output>;
+    /// Overwrites the trailing validity bool in `storage`. The block sets this from its
+    /// [`StaleTracker`] after each call to [`apply`].
+    fn set_valid(storage: &mut Self::Storage, valid: bool);
 }
 
 fn parse_number(num_val: &Number) -> f64 {
@@ -265,7 +259,6 @@ impl<A: Deserialize> Apply for A {
             *dest = (v1, true);
             Ok(())
         } else {
-            dest.1 = false;
             Err(())
         }
     }
@@ -276,6 +269,10 @@ impl<A: Deserialize> Apply for A {
 
     fn storage_as_by(storage: &Self::Storage) -> PassBy<'_, Self::Output> {
         (A::from_storage(&storage.0), storage.1)
+    }
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.1 = valid;
     }
 }
 
@@ -297,7 +294,6 @@ impl<A: Deserialize, B: Deserialize> Apply for (A, B) {
             *dest = (v1, v2, true);
             Ok(())
         } else {
-            dest.2 = false;
             Err(())
         }
     }
@@ -312,6 +308,10 @@ impl<A: Deserialize, B: Deserialize> Apply for (A, B) {
             B::from_storage(&storage.1),
             storage.2,
         )
+    }
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.2 = valid;
     }
 }
 
@@ -334,7 +334,6 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C) {
             *dest = (v1, v2, v3, true);
             Ok(())
         } else {
-            dest.3 = false;
             Err(())
         }
     }
@@ -355,6 +354,10 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize> Apply for (A, B, C) {
             C::from_storage(&storage.2),
             storage.3,
         )
+    }
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.3 = valid;
     }
 }
 
@@ -378,7 +381,6 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (
             *dest = (v1, v2, v3, v4, true);
             Ok(())
         } else {
-            dest.4 = false;
             Err(())
         }
     }
@@ -401,6 +403,10 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize> Apply for (
             D::from_storage(&storage.3),
             storage.4,
         )
+    }
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.4 = valid;
     }
 }
 
@@ -434,7 +440,6 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize, E: Deserial
             *dest = (v1, v2, v3, v4, v5, true);
             Ok(())
         } else {
-            dest.5 = false;
             Err(())
         }
     }
@@ -459,6 +464,10 @@ impl<A: Deserialize, B: Deserialize, C: Deserialize, D: Deserialize, E: Deserial
             E::from_storage(&storage.4),
             storage.5,
         )
+    }
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.5 = valid;
     }
 }
 
@@ -500,7 +509,6 @@ impl<
             *dest = (v1, v2, v3, v4, v5, v6, true);
             Ok(())
         } else {
-            dest.6 = false;
             Err(())
         }
     }
@@ -525,6 +533,10 @@ impl<
             F::from_storage(&storage.5),
             storage.6,
         )
+    }
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.6 = valid;
     }
 }
 
@@ -571,7 +583,6 @@ impl<
             *dest = (v1, v2, v3, v4, v5, v6, v7, true);
             Ok(())
         } else {
-            dest.7 = false;
             Err(())
         }
     }
@@ -601,6 +612,10 @@ impl<
             storage.7,
         )
     }
+
+    fn set_valid(storage: &mut Self::Storage, valid: bool) {
+        storage.7 = valid;
+    }
 }
 
 #[cfg(test)]
@@ -623,7 +638,6 @@ mod tests {
         let mut block = JsonLoadBlock::<f64>::default();
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.2, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
         assert_eq!(block.buffer(), res);
     }
 
@@ -657,7 +671,6 @@ mod tests {
 
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -669,7 +682,6 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -681,7 +693,6 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -693,7 +704,6 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
-        assert!(!block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -708,7 +718,6 @@ mod tests {
         };
         assert_eq!(res, (expected, true));
         assert_eq!(block.buffer(), (expected, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -721,7 +730,6 @@ mod tests {
         let expected = &Matrix { data: [[]] };
         assert_eq!(res, (expected, true));
         assert_eq!(block.buffer(), (expected, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -736,7 +744,6 @@ mod tests {
         };
         assert_eq!(res, (expected, true));
         assert_eq!(block.buffer(), (expected, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -748,7 +755,6 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, true));
         assert_eq!(block.buffer(), (1.0, true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -760,7 +766,6 @@ mod tests {
         let res = block.process(&params, &ctxt, input);
         assert_eq!(res, (1.0, b"hello".as_slice(), true));
         assert_eq!(block.buffer(), (1.0, b"hello".as_slice(), true));
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -787,7 +792,6 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -821,7 +825,6 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -860,7 +863,6 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -902,7 +904,6 @@ mod tests {
         );
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 
     #[test]
@@ -962,7 +963,5 @@ mod tests {
 
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
-
-        assert!(block.is_valid(ctxt.time().as_secs_f64()));
     }
 }

@@ -1,4 +1,4 @@
-use crate::{matrix_ext::MatrixNalgebraExt, IsValid};
+use crate::matrix_ext::MatrixNalgebraExt;
 use nalgebra::{
     allocator::Allocator, ArrayStorage, Const, DefaultAllocator, DimDiff, DimMin, DimMinimum,
     DimSub, SMatrix, SquareMatrix, ToTypenum, SVD, U1,
@@ -90,12 +90,6 @@ where
     }
 }
 
-impl<T: Apply<M>, M: Method> IsValid for MatrixInverseBlock<T, M> {
-    fn is_valid(&self, _: f64) -> bool {
-        self.is_data_valid
-    }
-}
-
 pub trait Apply<M: Method>: Pass {
     type Output: Pass + Default;
 
@@ -178,7 +172,6 @@ mod tests {
         let mut block = MatrixInverseBlock::<f64, Inverse>::default();
         let res = block.process(&params, &ctxt, 99.0);
         assert_eq!(res, (99.0, true));
-        assert!(block.is_valid(0.0));
         assert_eq!(block.buffer(), res);
     }
 
@@ -196,7 +189,7 @@ mod tests {
         assert!(res.1);
 
         assert_eq!(block.buffer().0.data, expected);
-        assert!(block.is_valid(0.0));
+        assert!(block.buffer().1);
     }
 
     #[test]
@@ -215,7 +208,7 @@ mod tests {
         assert!(!res.1);
 
         assert_eq!(invert_block.buffer().0.data, expected);
-        assert!(!invert_block.is_valid(0.0));
+        assert!(!invert_block.buffer().1);
 
         // SVD-based pseudo-inverse method should be fine
         let mut svd_block = MatrixInverseBlock::<Matrix<3, 3, f64>, Svd>::default();
@@ -237,7 +230,7 @@ mod tests {
             expected.as_flattened(),
             epsilon = 1e-8
         );
-        assert!(svd_block.is_valid(0.0));
+        assert!(svd_block.buffer().1);
     }
 
     #[test]
@@ -265,7 +258,6 @@ mod tests {
             epsilon = 1e-8
         );
         assert!(res.1);
-        assert!(block.is_valid(0.0));
     }
 
     #[test]
@@ -292,6 +284,5 @@ mod tests {
             epsilon = 1e-8
         );
         assert!(res.1);
-        assert!(block.is_valid(0.0));
     }
 }

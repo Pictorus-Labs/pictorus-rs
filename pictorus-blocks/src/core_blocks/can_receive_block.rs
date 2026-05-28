@@ -1,6 +1,8 @@
+use core::time::Duration;
+
 use pictorus_traits::{ByteSliceSignal, Pass, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, traits::Float, IsValid};
+use crate::{stale_tracker::StaleTracker, traits::Float};
 
 type RxCallback<C, S> = fn(&C, &mut [S]);
 
@@ -10,8 +12,8 @@ pub struct Parameters {
     pub frame_id: embedded_can::Id,
     /// Number of bytes in the data frame
     length: usize,
-    /// Stale age in milliseconds
-    stale_age_ms: f64,
+    /// Stale age — after this elapses without a new frame, the output is marked invalid.
+    stale_age: Duration,
 }
 
 impl Parameters {
@@ -19,7 +21,7 @@ impl Parameters {
         Self {
             frame_id,
             length,
-            stale_age_ms,
+            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
         }
     }
 }
@@ -40,7 +42,6 @@ pub struct CanReceiveBlock<
     _phantom: core::marker::PhantomData<O>,
     output_buffer: O::Output,
     cache: [S; N],
-    previous_stale_check_time_ms: f64,
 }
 
 impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> Default
@@ -58,11 +59,10 @@ impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>>
         let cache = [S::zero(); N];
         CanReceiveBlock {
             rx_cb,
-            stale_check: StaleTracker::from_ms(0.),
+            stale_check: StaleTracker::default(),
             _phantom: core::marker::PhantomData,
             output_buffer: O::Output::default(),
             cache,
-            previous_stale_check_time_ms: 0.0,
         }
     }
 }
@@ -85,37 +85,23 @@ where
         context: &dyn pictorus_traits::Context,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        if self.previous_stale_check_time_ms != parameters.stale_age_ms {
-            self.stale_check = StaleTracker::from_ms(parameters.stale_age_ms);
-            self.previous_stale_check_time_ms = parameters.stale_age_ms;
-        }
-
         if inputs.len() == parameters.length {
             if let Some(can_decoder) = C::new(parameters.frame_id, inputs) {
                 (self.rx_cb)(&can_decoder, self.cache.as_mut_slice());
-                self.stale_check.mark_updated(context.time().as_secs_f64());
+                self.stale_check.mark_updated(context.time());
             }
         }
 
-        // Update buffer
-        self.output_buffer = O::to_tuple(
-            &self.cache,
-            self.stale_check.is_valid_bool(context.time().as_secs_f64()),
-        )
-        .expect("parameters.signal_count is shorter than output tuple type");
+        let valid = self
+            .stale_check
+            .is_valid(context.time(), parameters.stale_age);
+        self.output_buffer = O::to_tuple(&self.cache, valid)
+            .expect("parameters.signal_count is shorter than output tuple type");
         self.output_buffer.as_by()
     }
 
     fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
         self.output_buffer.as_by()
-    }
-}
-
-impl<const N: usize, S: Float, C, O: Pass + Default + ToTupleOutput<S>> IsValid
-    for CanReceiveBlock<N, S, C, O>
-{
-    fn is_valid(&self, app_time_s: f64) -> bool {
-        self.stale_check.is_valid(app_time_s)
     }
 }
 
@@ -282,15 +268,13 @@ mod tests {
             CanReceiveBlock::<1, f64, StubCanParser, f64>::new(stub_can_parser_callback);
 
         let output = block.process(&parameters, &runtime.context(), &[42, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(output.0, 42.);
-        assert!(block.is_valid(runtime.context().time.as_secs_f64()));
+        assert_eq!(output, (42., true));
 
         runtime.set_time(Duration::from_secs(2));
 
         // Simulate a stale message
         let output = block.process(&parameters, &runtime.context(), &[]);
-        assert_eq!(output.0, 42.);
-        assert!(!block.is_valid(runtime.context().time.as_secs_f64()));
+        assert_eq!(output, (42., false));
     }
 
     #[test]
@@ -307,14 +291,12 @@ mod tests {
 
         let output = block.process(&parameters, &runtime.context(), &[42, 1, 2, 3, 4, 5, 6, 7]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., true));
-        assert!(block.is_valid(runtime.context().time.as_secs_f64()));
 
         // Simulate stale message
         runtime.set_time(Duration::from_secs(2));
 
         let output = block.process(&parameters, &runtime.context(), &[]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., false));
-        assert!(!block.is_valid(runtime.context().time.as_secs_f64()));
     }
 
     #[test]

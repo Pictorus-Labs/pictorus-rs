@@ -1,7 +1,9 @@
+use core::time::Duration;
+
 use alloc::vec::Vec;
 use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, IsValid};
+use crate::stale_tracker::StaleTracker;
 
 /// Parameters for I2C Input Block
 #[doc(hidden)]
@@ -12,8 +14,8 @@ pub struct Parameters {
     pub command: u8,
     /// Number of bytes to read from the I2C device
     pub read_bytes: usize,
-    /// Stale age in milliseconds
-    stale_age_ms: f64,
+    /// Stale age
+    stale_age: Duration,
 }
 
 impl Parameters {
@@ -26,34 +28,17 @@ impl Parameters {
             address: addr_u8,
             command: command_u8,
             read_bytes: read_bytes_u8,
-            stale_age_ms,
+            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
         }
     }
 }
 
 /// I2C Input Block buffers data read from an I2C peripheral.
+#[derive(Default)]
 pub struct I2cInputBlock {
-    pub stale_check: StaleTracker,
+    stale_check: StaleTracker,
     buffer: Vec<u8>,
     last_valid: bool,
-    previous_stale_check_time_ms: f64,
-}
-
-impl Default for I2cInputBlock {
-    fn default() -> Self {
-        Self {
-            stale_check: StaleTracker::from_ms(0.0),
-            buffer: Vec::new(),
-            last_valid: false,
-            previous_stale_check_time_ms: 0.,
-        }
-    }
-}
-
-impl IsValid for I2cInputBlock {
-    fn is_valid(&self, app_time_s: f64) -> bool {
-        self.stale_check.is_valid(app_time_s)
-    }
 }
 
 impl ProcessBlock for I2cInputBlock {
@@ -67,20 +52,17 @@ impl ProcessBlock for I2cInputBlock {
         context: &dyn Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        if self.previous_stale_check_time_ms != parameters.stale_age_ms {
-            self.stale_check = StaleTracker::from_ms(parameters.stale_age_ms);
-            self.previous_stale_check_time_ms = parameters.stale_age_ms;
-        }
-
         // Make sure the data is the correct size, if so, update the stale check, otherwise
         // something has gone wrong.
         if inputs.len() == parameters.read_bytes {
             self.buffer.clear();
-            self.stale_check.mark_updated(context.time().as_secs_f64());
+            self.stale_check.mark_updated(context.time());
             self.buffer.extend_from_slice(inputs);
         }
 
-        self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
+        self.last_valid = self
+            .stale_check
+            .is_valid(context.time(), parameters.stale_age);
         (&self.buffer, self.last_valid)
     }
 
@@ -115,17 +97,15 @@ mod tests {
             (data.to_vec(), valid)
         };
         assert_eq!(output.0, input_data);
+        assert!(output.1);
         assert_eq!(block.buffer(), (output.0.as_slice(), output.1));
-        let valid = block.is_valid(runtime.context().time().as_secs_f64());
-        assert!(valid);
 
         runtime.set_time(Duration::from_secs(1));
 
         // When the I2cWrapper has an error, the buffer is clear and the parameters.read_bytes is not
         // equal to the length of the empty buffer, however the previous value is buffered
-        let output = block.process(&parameters, &runtime.context(), &[]);
-        assert_eq!(output.0, input_data);
-        let valid = block.is_valid(runtime.context().time().as_secs_f64());
+        let (data, valid) = block.process(&parameters, &runtime.context(), &[]);
+        assert_eq!(data, input_data);
         assert!(!valid);
     }
 }

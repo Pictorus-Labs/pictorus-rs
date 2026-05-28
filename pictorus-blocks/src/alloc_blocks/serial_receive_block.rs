@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::time::Duration;
 use core::{cmp::min, str};
 
 use log::debug;
@@ -10,7 +11,6 @@ use crate::{
         rfind_bytes_idx, ByteDataError, BUFF_SIZE_BYTES,
     },
     stale_tracker::StaleTracker,
-    IsValid,
 };
 
 /// Parameters for the Serial Receive Block
@@ -28,9 +28,9 @@ pub struct Parameters {
     end_delimiter: (Vec<u8>, Vec<usize>, usize),
     /// The number of bytes to read from the peripheral
     read_bytes: usize,
-    /// The age in milliseconds before the data is considered stale. Stale date is still
-    /// cached until new data comes in.
-    stale_age_ms: f64,
+    /// The age before the data is considered stale. Stale data is still cached until
+    /// new data comes in.
+    stale_age: Duration,
 }
 
 impl Parameters {
@@ -52,7 +52,7 @@ impl Parameters {
             start_delimiter,
             end_delimiter,
             read_bytes: read_bytes as usize,
-            stale_age_ms,
+            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
         }
     }
 }
@@ -63,30 +63,12 @@ impl Parameters {
 /// The `is_valid` signal will continue to emit true as long as new
 /// data is received before the specified expiration period elapses.
 /// The block caches data until a new message is received and parsed.
+#[derive(Default)]
 pub struct SerialReceiveBlock {
     buffer: Vec<u8>,
-    pub stale_check: StaleTracker,
-    previous_stale_check_time_ms: f64,
+    stale_check: StaleTracker,
     output: Vec<u8>,
     last_valid: bool,
-}
-
-impl Default for SerialReceiveBlock {
-    fn default() -> Self {
-        SerialReceiveBlock {
-            buffer: Vec::new(),
-            stale_check: StaleTracker::from_ms(0.0),
-            previous_stale_check_time_ms: 0.0,
-            output: Vec::new(),
-            last_valid: false,
-        }
-    }
-}
-
-impl IsValid for SerialReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> bool {
-        self.stale_check.is_valid(app_time_s)
-    }
 }
 
 impl SerialReceiveBlock {
@@ -228,11 +210,6 @@ impl ProcessBlock for SerialReceiveBlock {
         context: &dyn Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        if self.previous_stale_check_time_ms != parameters.stale_age_ms {
-            self.stale_check = StaleTracker::from_ms(parameters.stale_age_ms);
-            self.previous_stale_check_time_ms = parameters.stale_age_ms;
-        }
-
         // Inputs is a Vec<u8> copying into a Vec<u8>
         self.buffer.extend_from_slice(inputs);
 
@@ -248,14 +225,16 @@ impl ProcessBlock for SerialReceiveBlock {
             self.buffer
                 .drain(..(min(end_idx + parameters.end_delimiter.2, self.buffer.len())));
 
-            self.stale_check.mark_updated(context.time().as_secs_f64());
+            self.stale_check.mark_updated(context.time());
         } else if self.buffer.len() >= BUFF_SIZE_BYTES * 2 {
             self.buffer.clear();
             self.buffer.extend_from_slice(inputs);
             debug!("Read too many bytes without a valid message. Clearing buffer",);
         }
 
-        self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
+        self.last_valid = self
+            .stale_check
+            .is_valid(context.time(), parameters.stale_age);
         (&self.output, self.last_valid)
     }
 
@@ -333,26 +312,17 @@ mod tests {
         let input_data = b"$Hello World\r\n";
         let result = block.process(&parameters, &runtime.context(), input_data);
         assert!(result.1);
-        assert!(block
-            .stale_check
-            .is_valid(runtime.context().time().as_secs_f64()));
 
         for i in 1..11 {
             // 100ms to 1s
             runtime.set_time(Duration::from_millis(i * 100)); // 10 Hz runtime (100ms per tick)
             let result = block.process(&parameters, &runtime.context(), &[]);
             assert!(result.1);
-            assert!(block
-                .stale_check
-                .is_valid(runtime.context().time().as_secs_f64()));
         }
 
         // Stale
         runtime.set_time(Duration::from_millis(11 * 100)); // 1.1s
         let result = block.process(&parameters, &runtime.context(), &[]);
         assert!(!result.1);
-        assert!(!block
-            .stale_check
-            .is_valid(runtime.context().time().as_secs_f64()));
     }
 }
