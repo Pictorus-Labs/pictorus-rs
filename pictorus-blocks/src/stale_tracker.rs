@@ -18,17 +18,11 @@ impl StaleTracker {
     }
 }
 
-/// Convert a millisecond duration supplied as an `f64` parameter into a `Duration`.
+/// Convert a millisecond duration supplied as an `f64` into a `Duration`.
 ///
-/// `Duration::from_secs_f64` panics on negative, NaN, or infinite inputs. Codegen-supplied
-/// stale-age parameters are not statically validated, so out-of-domain values fold to
-/// `Duration::ZERO` — i.e. the block is treated as immediately stale rather than panicking.
+/// This will panic on negative, NaN, or infinite inputs.
 pub fn duration_from_ms_f64(ms: f64) -> Duration {
-    if ms.is_finite() && ms >= 0.0 {
-        Duration::from_secs_f64(ms / 1000.0)
-    } else {
-        Duration::ZERO
-    }
+    Duration::from_secs_f64(ms / 1000.0)
 }
 
 #[cfg(test)]
@@ -62,10 +56,26 @@ mod test {
     }
 
     #[test]
-    fn test_duration_from_ms_f64_invalid_inputs_fold_to_zero() {
-        assert_eq!(duration_from_ms_f64(-1.0), Duration::ZERO);
-        assert_eq!(duration_from_ms_f64(f64::NAN), Duration::ZERO);
-        assert_eq!(duration_from_ms_f64(f64::INFINITY), Duration::ZERO);
-        assert_eq!(duration_from_ms_f64(f64::NEG_INFINITY), Duration::ZERO);
+    #[should_panic]
+    fn test_duration_from_ms_f64_negative_input_panics() {
+        duration_from_ms_f64(-1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_duration_from_ms_f64_nan_input_panics() {
+        duration_from_ms_f64(f64::NAN);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_duration_from_ms_f64_infinite_input_panics() {
+        duration_from_ms_f64(f64::INFINITY);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_duration_from_ms_f64_neg_infinite_input_panics() {
+        duration_from_ms_f64(f64::NEG_INFINITY);
     }
 }
