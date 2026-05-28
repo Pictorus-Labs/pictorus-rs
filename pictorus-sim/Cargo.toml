@@ -10,7 +10,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
+pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0", features = ["std"] }
 pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
 pictorus-internal = { path = "../pictorus-internal", version = "0.0.0", features = [
   "std",

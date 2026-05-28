@@ -1,4 +1,3 @@
-extern crate alloc;
 use super::Scalar;
 use alloc::{string::String, vec::Vec};
 use miniserde::{

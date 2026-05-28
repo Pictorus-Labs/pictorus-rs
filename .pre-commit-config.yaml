@@ -15,3 +15,12 @@ repos:
         entry: cargo clippy -- -D warnings
         language: system
         pass_filenames: false
+      - id: check-no-default-features
+        name: check (no default features)
+        description: |
+          Ensure default-member crates still compile without any features.
+          Catches accidental use of alloc-only APIs (e.g. `slice::sort_by`,
+          `to_vec`, `format!`) in code meant for core_blocks.
+        entry: cargo check --no-default-features
+        language: system
+        pass_filenames: false

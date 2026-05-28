@@ -51,7 +51,9 @@ impl<T: DefaultStorage> ProcessBlock for PassthroughBlock<T> {
 #[cfg(test)]
 mod tests {
     use crate::testing::StubContext;
-    use pictorus_traits::{ByteSliceSignal, Matrix, Pass};
+    #[cfg(feature = "alloc")]
+    use pictorus_traits::ByteSliceSignal;
+    use pictorus_traits::{Matrix, Pass};
 
     use super::*;
 
@@ -73,6 +75,7 @@ mod tests {
         assert_eq!(block.buffer(), output);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_passthrough_block_bytes() {
         let ctxt = StubContext::default();

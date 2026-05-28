@@ -29,10 +29,16 @@ jobs:
           components: rustfmt, clippy
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
+      - name: Run Clippy (pictorus-blocks, alloc only)
+        # Explicitly disable defaults so this exercises the alloc-without-std
+        # combo.
+        run: cargo clippy -p pictorus-blocks --all-targets --no-default-features --features alloc
       - name: Run Cargo Deny
         uses: EmbarkStudios/cargo-deny-action@v2
       - name: Run all tests
         run: cargo test --all-features
+      - name: Run pictorus-blocks tests (alloc only)
+        run: cargo test -p pictorus-blocks --lib --no-default-features --features alloc
       - name: Run no_std tests
         run: cargo test --no-default-features
   compile:

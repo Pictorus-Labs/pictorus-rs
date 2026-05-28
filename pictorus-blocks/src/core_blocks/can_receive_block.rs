@@ -1,4 +1,3 @@
-extern crate alloc;
 use pictorus_traits::{ByteSliceSignal, Pass, ProcessBlock};
 
 use crate::{stale_tracker::StaleTracker, traits::Float, IsValid};
@@ -219,7 +218,6 @@ mod tests {
 
     use super::*;
     use crate::testing::StubRuntime;
-    extern crate alloc;
     use embedded_can::StandardId;
 
     const MAX_BYTES_PER_CAN_DATA_FRAME: usize = 8;
