@@ -1,4 +1,3 @@
-extern crate alloc;
 use core::time::Duration;
 
 use crate::{traits::Scalar, IsValid};

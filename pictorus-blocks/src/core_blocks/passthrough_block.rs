@@ -75,6 +75,10 @@ mod tests {
         assert_eq!(block.buffer(), output);
     }
 
+    // `alloc` is available in tests via lib.rs (the `extern crate alloc;` declaration
+    // covers `cfg(test)`), but `PassthroughBlock::<ByteSliceSignal>::default()` requires
+    // `DefaultStorage for ByteSliceSignal`, whose impl in `traits.rs` is gated on
+    // `feature = "alloc"`. This test only compiles when the feature is on.
     #[cfg(feature = "alloc")]
     #[test]
     fn test_passthrough_block_bytes() {

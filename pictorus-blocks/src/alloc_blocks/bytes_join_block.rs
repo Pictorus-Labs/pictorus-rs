@@ -1,4 +1,3 @@
-extern crate alloc;
 use crate::byte_data::parse_string_to_bytes;
 use crate::traits::Serialize;
 use alloc::vec::Vec;

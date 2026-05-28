@@ -22,10 +22,8 @@
 #[cfg(any(feature = "std", test))]
 extern crate std;
 
-// `alloc` is needed when the `alloc` feature is on, when `std` is on (std implies alloc),
-// or when running tests (the test harness pulls in std, and several core_blocks tests
-// reach for alloc paths).
-#[cfg(any(feature = "alloc", feature = "std", test))]
+// Use alloc for tests. The `std` feature incorporates `alloc`
+#[cfg(any(feature = "alloc", test))]
 extern crate alloc;
 
 // Set of blocks that do not depend on `std` or `alloc`

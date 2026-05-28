@@ -1,4 +1,3 @@
-extern crate alloc;
 use crate::traits::serialize::{ByteSliceFormat, Serialize};
 use alloc::{string::String, vec::Vec};
 use miniserde::json::{self, Value};
