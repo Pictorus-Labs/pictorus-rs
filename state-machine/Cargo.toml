@@ -1,0 +1,14 @@
+[package]
+edition = "2024"
+name = "state-machine"
+description = "A state machine implementation for Pictorus."
+version = "0.0.0"
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+enum-map = "2.7.3"
+
