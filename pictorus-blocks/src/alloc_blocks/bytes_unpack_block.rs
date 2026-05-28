@@ -1,6 +1,9 @@
 use core::time::Duration;
 
-use crate::{traits::Scalar, IsValid};
+use crate::{
+    stale_tracker::{duration_from_ms_f64, StaleTracker},
+    traits::Scalar,
+};
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
 
@@ -8,17 +11,19 @@ use crate::byte_data::{parse_byte_data_spec, try_unpack_data, ByteOrderSpec, Dat
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Unpacks a byte slice into a specified number of outputs based on the provided data types and byte order.
+///
+/// The output is `[f64; N]` where the last element is a `1.0`/`0.0` validity flag — true while
+/// the most recent successful unpack is still within the configured `stale_age`.
 pub struct BytesUnpackBlock<const N: usize> {
     buffer: [f64; N],
-    last_valid_time: Option<Duration>,
+    stale_check: StaleTracker,
 }
 
 impl<const N: usize> Default for BytesUnpackBlock<N> {
     fn default() -> Self {
-        let buffer = [0.0; N];
         BytesUnpackBlock {
-            buffer,
-            last_valid_time: None,
+            buffer: [0.0; N],
+            stale_check: StaleTracker::default(),
         }
     }
 }
@@ -46,16 +51,9 @@ where
         context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let maybe_stale = if let Some(last_valid) = self.last_valid_time {
-            (context.time() - last_valid) > parameters.stale_age
-        } else {
-            // We've never had a valid time, so consider it stale if we don't get a valid read now
-            true
-        };
         let mut new_buffer = [0.0; N];
-        // Use Unpack::unpack N-1 times to fill the buffer
-        // if it fails at any point, keep the old buffer values
-        // the data at N is the `is_valid` flag
+        // Use Unpack::unpack N-1 times to fill the buffer; if it fails at any point,
+        // keep the old buffer values. The data at N-1 is the `is_valid` flag.
         let mut inputs = inputs;
         let mut unpack_success = true;
         for (i, elem) in new_buffer.iter_mut().enumerate().take(N - 1) {
@@ -70,24 +68,22 @@ where
             inputs = advanced_data;
         }
         if unpack_success {
-            new_buffer[N - 1] = 1.0; // last element is is_valid flag
             self.buffer = new_buffer;
-            self.last_valid_time = Some(context.time());
-        } else if maybe_stale {
-            // If we failed to unpack and it is stale, keep the old buffer but mark as invalid
-            self.buffer[N - 1] = 0.0; // last element is is_valid flag
+            self.stale_check.mark_updated(context.time());
         }
+        self.buffer[N - 1] = if self
+            .stale_check
+            .is_valid(context.time(), parameters.stale_age)
+        {
+            1.0
+        } else {
+            0.0
+        };
         &self.buffer
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
         &self.buffer
-    }
-}
-
-impl<const N: usize> IsValid for BytesUnpackBlock<N> {
-    fn is_valid(&self, _app_time_s: f64) -> bool {
-        self.buffer[N - 1] != 0.0
     }
 }
 
@@ -99,7 +95,7 @@ impl<N: ArrayLength> Parameters<N> {
             .expect("Bytes Data Spec is incorrectly sized for the number of inputs");
         Self {
             pack_spec,
-            stale_age: Duration::from_secs_f64(stale_age_ms / 1000.0),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }

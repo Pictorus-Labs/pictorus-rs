@@ -1,17 +1,20 @@
 use alloc::vec::Vec;
+use core::time::Duration;
 use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
-use crate::{stale_tracker::StaleTracker, IsValid};
+use crate::stale_tracker::{duration_from_ms_f64, StaleTracker};
 
 /// Parameters for UDP Receive Block
 #[doc(hidden)]
 pub struct Parameters {
-    pub stale_age_ms: f64,
+    pub stale_age: Duration,
 }
 
 impl Parameters {
     pub fn new(stale_age_ms: f64) -> Self {
-        Self { stale_age_ms }
+        Self {
+            stale_age: duration_from_ms_f64(stale_age_ms),
+        }
     }
 }
 
@@ -21,30 +24,13 @@ impl Parameters {
 /// by codegen. It attempts to read data each timestep and if data is available, it
 /// will update its internal buffer making that data available to blocks connected to it
 /// in the graph. If no data is available the buffer will remain unchanged. If no data has
-/// been received for a period of time longer than the `stale_age_ms` parameter, the block
-/// will return `false` for `is_valid()`.
+/// been received for a period longer than the `stale_age` parameter, the block's trailing
+/// output bool flips to `false`.
+#[derive(Default)]
 pub struct UdpReceiveBlock {
-    pub stale_check: StaleTracker,
+    stale_check: StaleTracker,
     buffer: Vec<u8>,
-    previous_stale_check_time_ms: f64,
     last_valid: bool,
-}
-
-impl Default for UdpReceiveBlock {
-    fn default() -> Self {
-        Self {
-            stale_check: StaleTracker::from_ms(0.0),
-            buffer: Vec::new(),
-            previous_stale_check_time_ms: 0.,
-            last_valid: false,
-        }
-    }
-}
-
-impl IsValid for UdpReceiveBlock {
-    fn is_valid(&self, app_time_s: f64) -> bool {
-        self.stale_check.is_valid(app_time_s)
-    }
 }
 
 impl ProcessBlock for UdpReceiveBlock {
@@ -58,19 +44,16 @@ impl ProcessBlock for UdpReceiveBlock {
         context: &dyn pictorus_traits::Context,
         input: PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
-        if self.previous_stale_check_time_ms != parameters.stale_age_ms {
-            self.stale_check = StaleTracker::from_ms(parameters.stale_age_ms);
-            self.previous_stale_check_time_ms = parameters.stale_age_ms;
-        }
-
         // Make sure the data is the correct size, if so, update the stale check, otherwise
         // something has gone wrong.
         if !input.is_empty() {
-            self.stale_check.mark_updated(context.time().as_secs_f64());
+            self.stale_check.mark_updated(context.time());
             self.buffer = input.to_vec();
         }
 
-        self.last_valid = self.stale_check.is_valid_bool(context.time().as_secs_f64());
+        self.last_valid = self
+            .stale_check
+            .is_valid(context.time(), parameters.stale_age);
         (&self.buffer, self.last_valid)
     }
 
