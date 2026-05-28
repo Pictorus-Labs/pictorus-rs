@@ -185,29 +185,13 @@ pub fn build_baz_node() -> BazNode {
 
 // ---- Hierarchical node: Foo (F2 owns one parallel child: Baz) ----------
 
-pub enum FooChildren {
-    None,
-    F2(BazNode),
-}
-
-impl NodeInterface for FooChildren {
-    type Input = Input;
-    type Output = Output;
-
-    fn tick(&mut self, input: &Self::Input, output: &mut Self::Output) {
-        if let Self::F2(node) = self {
-            node.tick(input, output);
-        }
-    }
-
-    fn reset(&mut self) {
-        if let Self::F2(node) = self {
-            node.reset();
-        }
+state_machine::children! {
+    pub enum FooChildren {
+        F2 => BazNode,
     }
 }
 
-pub type FooNode = Node<FooSpec, Input, Output, FooChildren>;
+pub type FooNode = Node<FooSpec, FooChildren>;
 
 pub fn build_foo_node() -> FooNode {
     let children = enum_map! {

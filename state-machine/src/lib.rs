@@ -128,26 +128,26 @@ impl<N1: NodeInterface, N2: NodeInterface<Input = N1::Input, Output = N1::Output
 
 // Etc for (N1, N2, N3) and so on — could be generated with a macro
 
-pub struct Node<SMS: StateMachineSpec, I, O, C>
+pub struct Node<SMS: StateMachineSpec, C>
 where
     <SMS as StateMachineSpec>::States: EnumArray<C>,
-    C: NodeInterface<Input = I, Output = O>,
+    C: NodeInterface,
 {
     machine: StateMachine<SMS>,
     children: EnumMap<SMS::States, C>,
-    input_filter: fn(&I) -> Option<SMS::Transitions>,
-    output_mapper: fn(&mut O, MachineSnapshot<SMS::States, SMS::Transitions>),
+    input_filter: fn(&C::Input) -> Option<SMS::Transitions>,
+    output_mapper: fn(&mut C::Output, MachineSnapshot<SMS::States, SMS::Transitions>),
 }
 
-impl<SMS: StateMachineSpec, I, O, C> Node<SMS, I, O, C>
+impl<SMS: StateMachineSpec, C> Node<SMS, C>
 where
     <SMS as StateMachineSpec>::States: EnumArray<C>,
-    C: NodeInterface<Input = I, Output = O>,
+    C: NodeInterface,
 {
     pub fn new(
         children: EnumMap<SMS::States, C>,
-        input_filter: fn(&I) -> Option<SMS::Transitions>,
-        output_mapper: fn(&mut O, MachineSnapshot<SMS::States, SMS::Transitions>),
+        input_filter: fn(&C::Input) -> Option<SMS::Transitions>,
+        output_mapper: fn(&mut C::Output, MachineSnapshot<SMS::States, SMS::Transitions>),
     ) -> Self {
         Self {
             machine: StateMachine::default(),
@@ -158,7 +158,7 @@ where
     }
 }
 
-impl<SMS: StateMachineSpec, I, O> Node<SMS, I, O, NoChildren<I, O>>
+impl<SMS: StateMachineSpec, I, O> Node<SMS, NoChildren<I, O>>
 where
     <SMS as StateMachineSpec>::States: EnumArray<NoChildren<I, O>>,
     O: Default,
@@ -176,14 +176,14 @@ where
     }
 }
 
-impl<SMS: StateMachineSpec, I, O, C> NodeInterface for Node<SMS, I, O, C>
+impl<SMS: StateMachineSpec, C> NodeInterface for Node<SMS, C>
 where
     <SMS as StateMachineSpec>::States: EnumArray<C>,
-    C: NodeInterface<Input = I, Output = O>,
-    O: Default,
+    C: NodeInterface,
+    C::Output: Default,
 {
-    type Input = I;
-    type Output = O;
+    type Input = C::Input;
+    type Output = C::Output;
 
     fn tick(&mut self, input: &Self::Input, output: &mut Self::Output) {
         let curr_state = self.machine.current_state();
@@ -209,7 +209,7 @@ where
     }
 }
 
-pub type LeafNode<SMS, I, O> = Node<SMS, I, O, NoChildren<I, O>>;
+pub type LeafNode<SMS, I, O> = Node<SMS, NoChildren<I, O>>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct NoChildren<I, O>(core::marker::PhantomData<(I, O)>);
@@ -225,4 +225,61 @@ impl<I, O: Default> NodeInterface for NoChildren<I, O> {
 
     fn tick(&mut self, _input: &Self::Input, _output: &mut Self::Output) {}
     fn reset(&mut self) {}
+}
+
+/// Declare a per-state children enum + `NodeInterface` impl for use as the
+/// `C` parameter of [`Node`]. Each variant maps a parent state to the child
+/// node active in that state; an implicit `None` variant handles states with
+/// no children. `Input` and `Output` are inferred from the first listed
+/// child's `NodeInterface` impl, so every child type must share the same
+/// `Input`/`Output`.
+///
+/// ```ignore
+/// state_machine::children! {
+///     pub enum FooChildren {
+///         F2 => BazNode,
+///         F3 => (QuxNode, QuuxNode),   // parallel children via tuple impl
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! children {
+    (
+        $vis:vis enum $name:ident {
+            $first_variant:ident => $first_child:ty
+            $(, $variant:ident => $child:ty )*
+            $(,)?
+        }
+    ) => {
+        $vis enum $name {
+            None,
+            $first_variant($first_child),
+            $( $variant($child), )*
+        }
+
+        impl $crate::NodeInterface for $name {
+            type Input = <$first_child as $crate::NodeInterface>::Input;
+            type Output = <$first_child as $crate::NodeInterface>::Output;
+
+            fn tick(
+                &mut self,
+                input: &Self::Input,
+                output: &mut Self::Output,
+            ) {
+                match self {
+                    Self::None => {}
+                    Self::$first_variant(n) => n.tick(input, output),
+                    $( Self::$variant(n) => n.tick(input, output), )*
+                }
+            }
+
+            fn reset(&mut self) {
+                match self {
+                    Self::None => {}
+                    Self::$first_variant(n) => n.reset(),
+                    $( Self::$variant(n) => n.reset(), )*
+                }
+            }
+        }
+    };
 }
