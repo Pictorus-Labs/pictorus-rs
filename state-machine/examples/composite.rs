@@ -7,6 +7,8 @@
 //! │     └── on F2: Baz  (states: Z1, Z2, Z3)
 //! └── Bar  (states: B1, B2, B3)
 //! ```
+//!
+//! Run `cargo test --example composite` to exercise the semantic test suite.
 
 use enum_map::{Enum, enum_map};
 use state_machine::{LeafNode, MachineSnapshot, Node, NodeInterface, StateMachineSpec};

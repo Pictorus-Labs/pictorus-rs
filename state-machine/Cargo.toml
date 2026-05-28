@@ -11,4 +11,7 @@ categories.workspace = true
 
 [dependencies]
 enum-map = "2.7.3"
+pictorus-traits = { path = "../pictorus-traits" }
 
+[dev-dependencies]
+strum = { version = "0.28.0", default-features = false, features = ["derive"] }
