@@ -11,7 +11,9 @@
 //! ```
 
 use enum_map::{Enum, enum_map};
-use state_machine::{LeafNode, MachineSnapshot, Node, NodeInterface, StateMachineSpec};
+use state_machine::{
+    LeafNode, MachineSnapshot, Node, NodeInterface, StateMachineSpec, TransitionPrioritize,
+};
 
 // ---- Power spec --------------------------------------------------------
 
@@ -97,6 +99,7 @@ impl AudioSpec {
     const fn edge_lookup(s: AudioStates, t: AudioTransitions) -> Option<AudioStates> {
         match (s, t) {
             (AudioStates::Mute, AudioTransitions::Play) => Some(AudioStates::Playing),
+            (AudioStates::Mute, AudioTransitions::Pause) => Some(AudioStates::Mute),
             (AudioStates::Playing, AudioTransitions::Pause) => Some(AudioStates::Mute),
             _ => None,
         }
@@ -117,6 +120,8 @@ pub struct Input {
     pub power: Option<PowerTransitions>,
     pub display: Option<DisplayTransitions>,
     pub audio: Option<AudioTransitions>,
+    pub toggle: bool,
+    pub play: bool,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -141,7 +146,11 @@ pub type AudioNode = LeafNode<AudioSpec, Input, Output>;
 
 pub fn build_audio_node() -> AudioNode {
     LeafNode::new_leaf(
-        |input: &Input| input.audio,
+        |input: &Input| {
+            input
+                .audio
+                .prioritize_val(input.play, AudioTransitions::Play)
+        },
         |output: &mut Output, snapshot| output.audio = snapshot,
     )
 }
@@ -167,7 +176,11 @@ pub fn build_power_node() -> PowerNode {
     };
     PowerNode::new(
         children,
-        |input: &Input| input.power,
+        |input: &Input| {
+            input
+                .power
+                .prioritize_val(input.toggle, PowerTransitions::Toggle)
+        },
         |output: &mut Output, snapshot| output.power = snapshot,
     )
 }
@@ -181,6 +194,7 @@ fn main() {
         power: Some(PowerTransitions::Toggle),
         display: Some(DisplayTransitions::Wake),
         audio: Some(AudioTransitions::Play),
+        ..Default::default()
     });
     assert_eq!(out.power.state, PowerStates::On);
     assert_eq!(out.display.state, DisplayStates::Standby);
@@ -206,4 +220,19 @@ fn main() {
     assert_eq!(out.display.last_transition, None);
     assert_eq!(out.audio.state, AudioStates::Mute);
     assert_eq!(out.audio.last_transition, None);
+
+    // Tick 4: test toggle bool with input.power == None. Per the prioritize_val logic, the toggle should still work.
+    let out = node.step(&Input {
+        toggle: true,
+        ..Default::default()
+    });
+    assert_eq!(out.power.state, PowerStates::On);
+
+    // Tick 4 test that input.play is prioritized over the lower priority pause if it gets passed in on input.audio.
+    let out = node.step(&Input {
+        play: true,
+        audio: Some(AudioTransitions::Pause),
+        ..Default::default()
+    });
+    assert_eq!(out.audio.state, AudioStates::Playing); // Play wins over Pause due to prioritize_val logic
 }

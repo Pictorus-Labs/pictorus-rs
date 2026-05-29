@@ -23,7 +23,7 @@ pub enum FooStates {
     F3,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum FooTransitions {
     ToF2,
     ToF3,
@@ -72,7 +72,7 @@ pub enum BarStates {
     B3,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum BarTransitions {
     Advance,
 }
@@ -108,7 +108,7 @@ pub enum BazStates {
     Z3,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum BazTransitions {
     ToZ2,
     ToZ3,

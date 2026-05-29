@@ -11,7 +11,7 @@ pub trait StateMachineSpec {
     /// An enum representing the states of the state machine. Must implement `Default` to specify the initial state.
     type States: Default + Copy + PartialEq;
     /// An enum representing the transitions of the state machine. Must be `Copy` to allow for easy handling of transitions.
-    type Transitions: Copy;
+    type Transitions: Copy + PartialOrd;
 
     /// A function that defines the edges of the state machine. Given a current state and a transition,
     /// it returns the next state if the transition is valid from the current state, or `None` if the transition is invalid.
@@ -351,4 +351,28 @@ macro_rules! children {
             }
         }
     };
+}
+
+pub trait TransitionPrioritize {
+    type Inner;
+    fn prioritize(self, other: Self) -> Self;
+    fn prioritize_val(self, enabled: bool, other: Self::Inner) -> Self;
+}
+
+impl<T: PartialOrd + Copy> TransitionPrioritize for Option<T> {
+    type Inner = T;
+    fn prioritize(self, other: Self) -> Self {
+        match (self, other) {
+            (Some(a), Some(b)) => Some(if a < b { a } else { b }),
+            (x, None) | (None, x) => x,
+        }
+    }
+
+    fn prioritize_val(self, enabled: bool, other: Self::Inner) -> Self {
+        if enabled {
+            self.prioritize(Some(other))
+        } else {
+            self
+        }
+    }
 }

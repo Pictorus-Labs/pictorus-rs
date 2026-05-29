@@ -15,7 +15,7 @@ pub enum PowerStates {
     On,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromRepr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromRepr, PartialOrd)]
 pub enum PowerTransitions {
     Toggle,
 }
@@ -46,7 +46,7 @@ pub enum DisplayStates {
     Active,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromRepr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromRepr, PartialOrd)]
 pub enum DisplayTransitions {
     Wake,
     Sleep,
@@ -79,7 +79,7 @@ pub enum AudioStates {
     Playing,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromRepr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromRepr, PartialOrd)]
 pub enum AudioTransitions {
     Play,
     Pause,
