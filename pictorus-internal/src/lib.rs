@@ -4,6 +4,7 @@
 //! but rather as a dependency for the generated code.
 #![no_std]
 // TODO: We require alloc right now, but should be able to ditch this soon
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 #[cfg(feature = "std")]

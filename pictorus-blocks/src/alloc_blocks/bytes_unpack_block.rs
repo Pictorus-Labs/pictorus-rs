@@ -29,6 +29,8 @@ impl<const N: usize> Default for BytesUnpackBlock<N> {
 }
 
 pub struct Parameters<N: ArrayLength> {
+    // TODO: I think we can use a [(DataType, ByteOrderSpec); N] once we ditch vectors
+    // for certain parameters. This would remove a dependency on generic-array (which uses alloc).
     pub pack_spec: GenericArray<(DataType, ByteOrderSpec), N>,
     pub stale_age: Duration,
 }

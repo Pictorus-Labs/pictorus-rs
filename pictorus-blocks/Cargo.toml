@@ -35,7 +35,7 @@ chrono = { version = "0.4.40", default-features = false, features = [
   "clock",
 ], optional = true }
 typenum = { version = "1.19.0", features = ["no_std", "const-generics"] }
-generic-array = { version = "1.2.0", features = ["alloc"] }
+generic-array = { version = "1.2.0", default-features = false }
 
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
@@ -49,8 +49,5 @@ byteorder = { version = "1.5.0", features = ["std"] }
 derive-new = { version = "0.7.0", default-features = false }
 
 [features]
-# TODO: `alloc` is a default feature for now to keep platform crates simple and to
-# match the current UI/codegen output. This should eventually be moved to opt-in.
-default = ["alloc"]
-alloc = []
+alloc = ["generic-array/alloc"]
 std = ["alloc", "dep:rustfft", "dep:chrono"]

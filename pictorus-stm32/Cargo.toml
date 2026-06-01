@@ -29,9 +29,15 @@ nb = { version = "1.1.0", optional = true }
 log = "0.4.21"
 
 [features]
-fdcan = ["dep:embedded-can", "dep:nb"]
-can = ["dep:embedded-can", "dep:nb"]
-spi = []
+# Enables protocols that allocate on the heap (i2c, serial, can). Without it, only the alloc-free
+# protocols (clock, pwm, spi, dac, adc, gpio) are compiled. Forwards alloc to the pictorus path
+# deps so they don't get re-enabled via their own defaults.
+alloc = ["pictorus-blocks/alloc", "pictorus-internal/alloc"]
+fdcan = ["alloc", "dep:embedded-can", "dep:nb"]
+can = ["alloc", "dep:embedded-can", "dep:nb"]
+# spi_protocol uses SpiReceiveBlockParams which lives in pictorus-blocks/alloc_blocks.
+# Once SpiReceiveBlock's Parameters struct is moved into core_blocks, "alloc" can be removed.
+spi = ["alloc"]
 dac = []
 adc = []
 interrupt-uart = []

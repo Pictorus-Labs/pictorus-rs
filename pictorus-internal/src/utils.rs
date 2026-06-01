@@ -1,12 +1,19 @@
-use alloc::str;
+#[cfg(feature = "alloc")]
 use alloc::string::String;
 
-use core::{convert::Infallible, time::Duration};
+use core::str;
+use core::time::Duration;
 use num_traits::{AsPrimitive, Float};
 
 use log::debug;
+
+#[cfg(feature = "alloc")]
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "alloc")]
+use core::convert::Infallible;
+
+#[cfg(feature = "alloc")]
 pub struct PictorusVars {
     pub run_path: String,
     pub data_log_rate_hz: f64,
@@ -27,18 +34,21 @@ pub fn string_to_scalar(val: &str) -> Result<f64, ()> {
     val.trim().parse().or(Err(()))
 }
 
+#[cfg(feature = "alloc")]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PictorusError {
     pub err_type: String,
     pub message: String,
 }
 
+#[cfg(feature = "alloc")]
 impl PictorusError {
     pub fn new(err_type: String, message: String) -> Self {
         PictorusError { err_type, message }
     }
 }
 
+#[cfg(feature = "alloc")]
 impl From<Infallible> for PictorusError {
     fn from(_: Infallible) -> Self {
         unreachable!();
