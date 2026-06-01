@@ -364,7 +364,7 @@ pub use std_utils::*;
 #[allow(clippy::approx_constant)]
 mod tests {
     use super::*;
-    use alloc::string::ToString;
+    use alloc::string::{String, ToString};
     use alloc::vec;
     use alloc::vec::Vec;
     use pictorus_traits::Matrix;
