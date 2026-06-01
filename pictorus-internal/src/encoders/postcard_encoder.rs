@@ -16,7 +16,7 @@ impl PostcardEncoderCOBS {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod tests {
     use super::*;
     use alloc::vec;
