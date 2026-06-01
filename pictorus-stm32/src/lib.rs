@@ -1,12 +1,15 @@
 //! This crate contains implementations of the various drivers needed to interact with I/O on STM32-based platforms.
 //! These are typically defined as `InputBlock` or `OutputBlock` interfaces as defined in the `pictorus-traits` crate.
 #![no_std]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 mod clock_protocol;
 pub use clock_protocol::*;
 
+#[cfg(feature = "alloc")]
 mod serial_protocol;
+#[cfg(feature = "alloc")]
 pub use serial_protocol::*;
 
 #[cfg(all(feature = "can", feature = "fdcan"))]
@@ -19,7 +22,9 @@ pub use can_protocol::*;
 mod pwm_protocol;
 pub use pwm_protocol::*;
 
+#[cfg(feature = "alloc")]
 mod i2c_protocol;
+#[cfg(feature = "alloc")]
 pub use i2c_protocol::*;
 
 #[cfg(feature = "dac")]

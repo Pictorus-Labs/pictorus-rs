@@ -1,17 +1,18 @@
-use alloc::str;
-use alloc::string::String;
-
-use core::{convert::Infallible, time::Duration};
+use core::str;
+use core::time::Duration;
 use num_traits::{AsPrimitive, Float};
 
 use log::debug;
+
+#[cfg(feature = "alloc")]
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "alloc")]
 pub struct PictorusVars {
-    pub run_path: String,
+    pub run_path: alloc::string::String,
     pub data_log_rate_hz: f64,
     pub transmit_enabled: bool,
-    pub publish_socket: String,
+    pub publish_socket: alloc::string::String,
 }
 
 // TODO Can we create an error type for these functions? Could we use Option<> instead?
@@ -27,20 +28,23 @@ pub fn string_to_scalar(val: &str) -> Result<f64, ()> {
     val.trim().parse().or(Err(()))
 }
 
+#[cfg(feature = "alloc")]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PictorusError {
-    pub err_type: String,
-    pub message: String,
+    pub err_type: alloc::string::String,
+    pub message: alloc::string::String,
 }
 
+#[cfg(feature = "alloc")]
 impl PictorusError {
-    pub fn new(err_type: String, message: String) -> Self {
+    pub fn new(err_type: alloc::string::String, message: alloc::string::String) -> Self {
         PictorusError { err_type, message }
     }
 }
 
-impl From<Infallible> for PictorusError {
-    fn from(_: Infallible) -> Self {
+#[cfg(feature = "alloc")]
+impl From<core::convert::Infallible> for PictorusError {
+    fn from(_: core::convert::Infallible) -> Self {
         unreachable!();
     }
 }
@@ -360,7 +364,7 @@ pub use std_utils::*;
 #[allow(clippy::approx_constant)]
 mod tests {
     use super::*;
-    use alloc::string::ToString;
+    use alloc::string::{String, ToString};
     use alloc::vec;
     use alloc::vec::Vec;
     use pictorus_traits::Matrix;
