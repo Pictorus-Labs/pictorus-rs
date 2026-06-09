@@ -428,10 +428,6 @@ impl<N: NodeInterface> StateMachineRoot<N> {
         root
     }
 
-    pub unsafe fn create_silent(node: N) -> Self {
-        Self { node }
-    }
-
     pub fn step(
         &mut self,
         input_event: N::InputEvent,
@@ -488,6 +484,9 @@ mod tests {
         ListeningExit,
         NetworkConnect,
         ConnectedEntry,
+        // Exercised by the third test (during + internal transition)
+        InternalAct,
+        IdleDuring,
     }
 
     // ── States, one enum per region ──────────────────────────────────────
@@ -726,26 +725,26 @@ mod tests {
     }
 
     // ── Order-preserving sink (no alloc) ─────────────────────────────────────
-    struct RecordingSink {
-        log: [Option<Out>; 16],
+    struct RecordingSink<O: Copy> {
+        log: [Option<O>; 16],
         len: usize,
     }
-    impl RecordingSink {
+    impl<O: Copy> RecordingSink<O> {
         fn new() -> Self {
             Self {
                 log: [None; 16],
                 len: 0,
             }
         }
-        fn events(&self) -> &[Option<Out>] {
+        fn events(&self) -> &[Option<O>] {
             &self.log[..self.len]
         }
         fn clear(&mut self) {
             self.len = 0;
         }
     }
-    impl EventSink<Out> for RecordingSink {
-        fn emit(&mut self, e: Out) {
+    impl<O: Copy> EventSink<O> for RecordingSink<O> {
+        fn emit(&mut self, e: O) {
             self.log[self.len] = Some(e);
             self.len += 1;
         }
@@ -803,8 +802,9 @@ mod tests {
 
     #[test]
     fn during_fires_even_when_a_descendant_transitions() {
+        let mut sink = RecordingSink::new();
         // Boot into <Standby – (LowPower, Listening)> via the validated sleep step.
-        let mut root_sm = unsafe { StateMachineRoot::create_silent(build()) };
+        let mut root_sm = StateMachineRoot::create(build(), &mut sink);
 
         root_sm.step(
             Ev::Sleep,
@@ -834,5 +834,62 @@ mod tests {
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn during_fires_before_internal_transition_action() {
+        // Internal transition = edge with target None. Confirms that
+        // `during` fires on an internal-transition step, and BEFORE the
+        // internal action.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+        enum Idle {
+            #[default]
+            Idle,
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
+        enum Ev {
+            Tick,
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
+        enum Out {
+            IdleDuring,
+            InternalAct,
+        }
+
+        struct Spec;
+        impl StateMachineSpec for Spec {
+            type State = Idle;
+            type InputEvent = Ev;
+            type InputData = Data;
+            type OutputEvent = Out;
+
+            // Tick → internal transition (None target), emitting InternalAct.
+            const EDGES: EdgeTable<Idle, Ev, Data, Out> = &[(
+                Idle::Idle,
+                &[(Ev::Tick, &[(None, Some(Out::InternalAct), None)])],
+            )];
+
+            fn during(_: Idle) -> Option<Out> {
+                Some(Out::IdleDuring)
+            }
+        }
+
+        let mut sink = RecordingSink::new();
+        let mut sm = StateMachineRoot::create(
+            Node::<Spec, NoChildren<Ev, Data, Out>>::new_leaf(),
+            &mut sink,
+        );
+        sink.clear(); // create emits nothing here, but be explicit
+
+        sm.step(Ev::Tick, &Data { battery_ok: true }, &mut sink);
+
+        // during BEFORE action; no on_enter/on_exit; state unchanged.
+        assert_eq!(
+            sink.events(),
+            &[Some(Out::IdleDuring), Some(Out::InternalAct)],
+        );
+        assert_eq!(sm.node.machine.current, Idle::Idle);
     }
 }
