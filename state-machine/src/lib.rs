@@ -171,7 +171,7 @@ pub trait NodeInterface {
     /// Returns whether this subtree selected a transition (that will now be pending execution)
     fn select(&mut self, event: Self::InputEvent, data: &Self::InputData) -> bool;
     /// Execute the pending transition if there is one, or the `during` event if not
-    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K);
+    fn execute_pending<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K);
     /// Perform the entry actions for this subtree, cascading down to defaults.
     /// This is called when this subtree becomes active due to a transition from its parent.
     fn enter<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K);
@@ -198,9 +198,9 @@ where
     fn select(&mut self, input: Self::InputEvent, data: &Self::InputData) -> bool {
         self.0.select(input, data) | self.1.select(input, data)
     }
-    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
-        self.0.execute(sink);
-        self.1.execute(sink);
+    fn execute_pending<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        self.0.execute_pending(sink);
+        self.1.execute_pending(sink);
     }
     fn enter<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
         self.0.enter(sink);
@@ -215,6 +215,51 @@ where
         self.1.reset();
     }
 }
+
+impl<A, B, C> NodeInterface for (A, B, C)
+where
+    A: NodeInterface,
+    B: NodeInterface<
+            InputEvent = A::InputEvent,
+            InputData = A::InputData,
+            OutputEvent = A::OutputEvent,
+        >,
+    C: NodeInterface<
+            InputEvent = A::InputEvent,
+            InputData = A::InputData,
+            OutputEvent = A::OutputEvent,
+        >,
+{
+    type InputEvent = A::InputEvent;
+    type InputData = A::InputData;
+    type OutputEvent = A::OutputEvent;
+
+    fn select(&mut self, input: Self::InputEvent, data: &Self::InputData) -> bool {
+        self.0.select(input, data) | self.1.select(input, data) | self.2.select(input, data)
+    }
+    fn execute_pending<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        self.0.execute_pending(sink);
+        self.1.execute_pending(sink);
+        self.2.execute_pending(sink);
+    }
+    fn enter<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        self.0.enter(sink);
+        self.1.enter(sink);
+        self.2.enter(sink);
+    }
+    fn exit<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        self.0.exit(sink);
+        self.1.exit(sink);
+        self.2.exit(sink);
+    }
+    fn reset(&mut self) {
+        self.0.reset();
+        self.1.reset();
+        self.2.reset();
+    }
+}
+
+// Etc. for larger tuples if desired, would be a simple macro if needed
 
 /// A struct that implements [`NodeInterface`]
 ///
@@ -294,35 +339,33 @@ where
         false
     }
 
-    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
-        match self.machine.pending.take() {
-            // This level fires: exit source ↓, transition action, enter target ↑.
-            Some(edge) => {
-                let old = self.machine.current;
+    fn execute_pending<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        let pending = self.machine.pending.take();
+        // May be None if pending was none or if it is an internal transition
+        let target_state = pending.as_ref().and_then(|e| e.target);
+        // May be None if pending was none or if the edge has no action
+        let transition_action = pending.as_ref().and_then(|e| e.action);
 
-                if let Some(target_state) = edge.target {
-                    self.children[old].exit(sink); // deeper exit actions first
-                    sink.emit_opt(SMS::on_exit(old)); // then this state's own
-                    self.children[old].reset(); // clean for next activation
+        if let Some(target_state) = target_state {
+            // Need to do a full exit and enter sequence
+            let old = self.machine.current;
 
-                    sink.emit_opt(edge.action); // transition action
+            self.children[old].exit(sink); // deeper exit actions first
+            sink.emit_opt(SMS::on_exit(old)); // then this state's own
+            self.children[old].reset(); // clean for next activation
 
-                    self.machine.current = target_state;
-                    sink.emit_opt(SMS::on_enter(target_state));
-                    self.children[target_state].enter(sink); // cascade defaults ↓
-                } else {
-                    // Internal transition: no state change, but we still fire the action
-                    sink.emit_opt(edge.action);
-                }
-            }
-            // This level persists. `during` fires here — even if a descendant
-            // transitions, because we stay active and are neither entered nor
-            // exited this step.
-            None => {
-                let s = self.machine.current;
-                sink.emit_opt(SMS::during(s));
-                self.children[s].execute(sink);
-            }
+            sink.emit_opt(transition_action); // transition action
+
+            self.machine.current = target_state;
+            sink.emit_opt(SMS::on_enter(target_state));
+            self.children[target_state].enter(sink); // cascade defaults ↓
+        } else {
+            // Internal transition or No transition, the only difference is that `transition_action`
+            // may have been set if it is an internal transition, emit_opt will handle the None case correctly.
+            let s = self.machine.current;
+            sink.emit_opt(SMS::during(s));
+            sink.emit_opt(transition_action);
+            self.children[s].execute_pending(sink);
         }
     }
 
@@ -366,7 +409,7 @@ impl<IE: Copy, ID, Out: Copy> NodeInterface for NoChildren<IE, ID, Out> {
     fn select(&mut self, _: Self::InputEvent, _: &Self::InputData) -> bool {
         false
     }
-    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
+    fn execute_pending<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
     fn enter<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
     fn exit<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
     fn reset(&mut self) {}
@@ -385,7 +428,7 @@ impl<N: NodeInterface> StateMachineRoot<N> {
         root
     }
 
-    pub fn create_silent(node: N) -> Self {
+    pub unsafe fn create_silent(node: N) -> Self {
         Self { node }
     }
 
@@ -396,7 +439,7 @@ impl<N: NodeInterface> StateMachineRoot<N> {
         sink: &mut impl EventSink<N::OutputEvent>,
     ) {
         self.node.select(input_event, input_data);
-        self.node.execute(sink);
+        self.node.execute_pending(sink);
     }
 }
 impl<N: NodeInterface> StateMachineRoot<N>
@@ -411,10 +454,9 @@ where
     ) {
         for (event, should_fire) in input_events {
             if should_fire {
-                self.node.select(event, input_data);
+                self.step(event, input_data, sink);
             }
         }
-        self.node.execute(sink);
     }
 }
 
@@ -645,10 +687,10 @@ mod tests {
                 TopChildren::StandbyKids(t) => t.select(input_event, input_data),
             }
         }
-        fn execute<K: EventSink<Out>>(&mut self, sink: &mut K) {
+        fn execute_pending<K: EventSink<Out>>(&mut self, sink: &mut K) {
             match self {
-                TopChildren::ActiveKids(t) => t.execute(sink),
-                TopChildren::StandbyKids(t) => t.execute(sink),
+                TopChildren::ActiveKids(t) => t.execute_pending(sink),
+                TopChildren::StandbyKids(t) => t.execute_pending(sink),
             }
         }
         fn enter<K: EventSink<Out>>(&mut self, sink: &mut K) {
@@ -762,7 +804,7 @@ mod tests {
     #[test]
     fn during_fires_even_when_a_descendant_transitions() {
         // Boot into <Standby – (LowPower, Listening)> via the validated sleep step.
-        let mut root_sm = StateMachineRoot::create_silent(build());
+        let mut root_sm = unsafe { StateMachineRoot::create_silent(build()) };
 
         root_sm.step(
             Ev::Sleep,
