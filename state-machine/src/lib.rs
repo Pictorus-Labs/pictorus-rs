@@ -62,11 +62,11 @@ impl<E: EnumArray<u32> + Copy> EventSink<E> for Events<E> {
 pub type Guard<D> = fn(&D) -> bool;
 /// A composite type representing a transition edge, consisting of an optional guard, an optional output event, and an optional target state
 /// where None indicates an "internal transition"
-pub type GuardedEdge<S, D, O> = (Option<Guard<D>>, Option<O>, Option<S>);
+pub type GuardedEdge<D, O, S> = (Option<Guard<D>>, Option<O>, Option<S>);
 /// A collection of edges for a specific event, consisting of the event and a slice of guarded edges, ordered by priority
-pub type EventEdges<S, E, D, O> = (E, &'static [GuardedEdge<S, D, O>]);
+pub type EventEdges<E, D, O, S> = (E, &'static [GuardedEdge<D, O, S>]);
 /// A collection of edges for a specific state, consisting of the state and a slice of event edges
-pub type StateEdges<S, E, D, O> = (S, &'static [EventEdges<S, E, D, O>]);
+pub type StateEdges<S, E, D, O> = (S, &'static [EventEdges<E, D, O, S>]);
 /// The entire set of edges for a state machine, represented as a slice of state edges
 pub type EdgeTable<S, E, D, O> = &'static [StateEdges<S, E, D, O>]; // the whole machine
 
