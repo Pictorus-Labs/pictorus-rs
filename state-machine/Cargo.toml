@@ -15,3 +15,8 @@ pictorus-traits = { path = "../pictorus-traits" }
 
 [dev-dependencies]
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
+
+[features]
+default = []
+alloc = []
+event-log = ["alloc"]

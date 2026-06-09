@@ -1,378 +1,796 @@
-#![no_std]
-
-pub mod corelib_wrapper;
+#[cfg(feature = "event-log")]
+extern crate alloc;
 
 use enum_map::{EnumArray, EnumMap, enum_map};
 
-/// This is the core trait that is used to define a state machine.
-/// Specifically it defines the states, transitions, and edges of the state machine.
-/// This is an atomic state machine and does not include any hierarchical or parallel composition semantics.
-pub trait StateMachineSpec {
-    /// An enum representing the states of the state machine. Must implement `Default` to specify the initial state.
-    type States: Default + Copy + PartialEq;
-    /// An enum representing the transitions of the state machine. Must be `Copy` to allow for easy handling of transitions.
-    type Transitions: Copy + PartialOrd;
+/// Output Sink Trait
+///
+/// This defines an interface that can be used to emit output events
+///
+/// Usually the provided [`Events`] struct is sufficient. But the trait allows for customization as well as testing with a mock sink.
+pub trait EventSink<E> {
+    /// Emit an event. This is the only required method
+    fn emit(&mut self, e: E);
+    /// Emit an optional event. This is a convenience method that calls `emit` if the event is `Some`, and does nothing if it is `None`.
+    fn emit_opt(&mut self, e: Option<E>) {
+        if let Some(e) = e {
+            self.emit(e)
+        }
+    }
+}
 
-    /// A function that defines the edges of the state machine. Given a current state and a transition,
-    /// it returns the next state if the transition is valid from the current state, or `None` if the transition is invalid.
-    fn edge_lookup(
-        current_state: Self::States,
-        transition: Self::Transitions,
-    ) -> Option<Self::States>;
+/// The provided default sink implementation: counts of emitted events, plus an optional
+/// log of their order that is enabled via the `event-log` feature (and requires `alloc`).
+pub struct Events<E: EnumArray<u32> + Copy> {
+    pub counts: EnumMap<E, u32>,
+    #[cfg(feature = "event-log")]
+    pub order: alloc::vec::Vec<E>,
+}
+
+impl<E: EnumArray<u32> + Copy> Default for Events<E> {
+    fn default() -> Self {
+        Self {
+            counts: EnumMap::default(),
+            #[cfg(feature = "event-log")]
+            order: alloc::vec::Vec::new(),
+        }
+    }
+}
+
+impl<E: EnumArray<u32> + Copy> EventSink<E> for Events<E> {
+    fn emit(&mut self, e: E) {
+        self.counts[e] += 1;
+        #[cfg(feature = "event-log")]
+        self.order.push(e);
+    }
+}
+
+/// A Guard is a function that takes the machine's InputData and returns a boolean indicating whether a transition is allowed to occur
+pub type Guard<D> = fn(&D) -> bool;
+/// A composite type representing a transition edge, consisting of an optional guard, an optional output event, and an optional target state
+/// where None indicates an "internal transition"
+pub type GuardedEdge<S, D, O> = (Option<Guard<D>>, Option<O>, Option<S>);
+/// A collection of edges for a specific event, consisting of the event and a slice of guarded edges, ordered by priority
+pub type EventEdges<S, E, D, O> = (E, &'static [GuardedEdge<S, D, O>]);
+/// A collection of edges for a specific state, consisting of the state and a slice of event edges
+pub type StateEdges<S, E, D, O> = (S, &'static [EventEdges<S, E, D, O>]);
+/// The entire set of edges for a state machine, represented as a slice of state edges
+pub type EdgeTable<S, E, D, O> = &'static [StateEdges<S, E, D, O>]; // the whole machine
+
+/// A simple struct representing a transition edge, consisting of an optional output event and a target state
+pub struct Edge<S, Out> {
+    pub action: Option<Out>,
+    pub target: Option<S>,
+}
+
+/// Using an [`EdgeTable`], a source state, an event, and the current input data, resolve to the first valid outgoing edge (if any)
+/// according to the transition rules: find the matching state slice, then the matching event slice, then return the first edge whose guard passes (or has no guard).
+pub fn resolve_table<S, E, D, O>(
+    table: EdgeTable<S, E, D, O>,
+    state: S,
+    event: E,
+    data: &D,
+) -> Option<Edge<S, O>>
+where
+    S: Copy + PartialEq,
+    E: Copy + PartialEq,
+    O: Copy,
+{
+    let by_event = table.iter().find(|(s, _)| *s == state)?.1;
+    let edges = by_event.iter().find(|(e, _)| *e == event)?.1;
+    for (guard, action, target) in edges {
+        if guard.map_or(true, |g| g(data)) {
+            return Some(Edge {
+                action: *action,
+                target: *target,
+            });
+        }
+    }
+    None
+}
+
+/// Core definition for a State Machine's structure and behavior
+/// This represents a single atomic state machine, which can later be composed into a tree structure via
+/// the `Node` struct and the `NodeInterface` trait to form parallel regions and hierarchical states.
+pub trait StateMachineSpec {
+    /// An enum representing the states of this machine (specific to this atomic machine)
+    type State: Default + Copy + PartialEq + 'static;
+    /// The enum of input events that can trigger transitions in this machine. This must be
+    /// the same across every atomic machine that will be composed in to a single hierarchical state machine
+    type InputEvent: Copy + PartialEq + 'static;
+    /// The type of the input data that guards can read to make transition decisions. This must be
+    /// the same across every atomic machine that will be composed in to a single hierarchical state machine
+    type InputData: 'static;
+    /// The enum of output events that this machine can emit on transitions and state entry/exit. This must be
+    /// the same across every atomic machine that will be composed in to a single hierarchical state machine
+    type OutputEvent: Copy + 'static;
+
+    /// A static table that represents all inter-state transitions for this machine
+    /// The default implementation of [`resolve`] looks up edges in this table. Custom behavior
+    /// could be implemented by leaving this empty (setting it to `&[]`) and overriding [`resolve`] with a custom function
+    const EDGES: EdgeTable<Self::State, Self::InputEvent, Self::InputData, Self::OutputEvent> = &[];
+
+    /// Given a source state, an event, and the current input data, resolve to the first valid outgoing edge (if any) according
+    /// to the transition rules: find the matching state slice, then the matching event slice, then return the first edge whose
+    ///  guard passes (or has no guard). The default implementation looks up edges in the [`EDGES`] table. Custom behavior can be
+    /// implemented by overriding this function.
+    fn resolve(
+        state: Self::State,
+        event: Self::InputEvent,
+        data: &Self::InputData,
+    ) -> Option<Edge<Self::State, Self::OutputEvent>> {
+        resolve_table(Self::EDGES, state, event, data)
+    }
+
+    /// Given a state, return an optional output event to emit on entry to that state. The default implementation returns `None` for every state.
+    fn on_enter(_state: Self::State) -> Option<Self::OutputEvent> {
+        None
+    }
+
+    /// Given a state, return an optional output event to emit on exit from that state. The default implementation returns `None` for every state.
+    fn on_exit(_state: Self::State) -> Option<Self::OutputEvent> {
+        None
+    }
+
+    /// Given a state, return an optional output event to emit during that state (i.e. on every step where the machine remains in that state).
+    /// The default implementation returns `None` for every state.
+    fn during(_state: Self::State) -> Option<Self::OutputEvent> {
+        None
+    }
+
+    /// Return the default transition for this machine
+    /// This is the transtion that will be taken when this state machine first becomes active. It must specify the target (initial) state, and may
+    /// optionally specify an action to emit on that initial transition. The default implementation returns a default-constructed target state and no action.
+    fn default_transition() -> (Self::State, Option<Self::OutputEvent>) {
+        (Self::State::default(), None)
+    }
 }
 
 /// A simple atomic state machine implementation that uses a `StateMachineSpec` to define its behavior.
-/// It keeps track of the current state and the last transition that was applied.
-pub struct StateMachine<SMS: StateMachineSpec> {
-    current_state: SMS::States,
-    last_transition: Option<SMS::Transitions>,
+/// It keeps track of the current state and possibly a pending transition edge that has been selected but not yet executed.
+pub struct Machine<SMS: StateMachineSpec> {
+    current: SMS::State,
+    pending: Option<Edge<SMS::State, SMS::OutputEvent>>,
 }
 
-impl<SMS: StateMachineSpec> Default for StateMachine<SMS> {
+impl<S: StateMachineSpec> Default for Machine<S> {
     fn default() -> Self {
         Self {
-            current_state: SMS::States::default(),
-            last_transition: None,
+            current: S::State::default(),
+            pending: None,
         }
     }
 }
 
-impl<SMS: StateMachineSpec> StateMachine<SMS> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Attempts to apply a transition to the state machine. If the transition is valid from the current state,
-    /// the state machine updates its current state and last transition, and returns `true`. If the transition is invalid,
-    /// the state machine remains unchanged and returns `false`.
-    pub fn transition(&mut self, transition: SMS::Transitions) -> bool {
-        if let Some(next_state) = SMS::edge_lookup(self.current_state, transition) {
-            self.current_state = next_state;
-            self.last_transition = Some(transition);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Accessor for the current state of the state machine.
-    pub fn current_state(&self) -> SMS::States {
-        self.current_state
-    }
-
-    /// Accessor for the last transition that was applied to the state machine, if any.
-    pub fn last_transition(&self) -> Option<SMS::Transitions> {
-        self.last_transition
-    }
-
-    /// Resets the state machine to its initial state and clears the last transition.
-    pub fn reset(&mut self) {
-        self.current_state = SMS::States::default();
-        self.last_transition = None;
-    }
-
-    pub fn snapshot(&self) -> MachineSnapshot<SMS::States, SMS::Transitions> {
-        MachineSnapshot {
-            state: self.current_state,
-            last_transition: self.last_transition,
-        }
-    }
-}
-
-/// A snapshot of the state machine's current state and last transition, used for communication with child nodes in a hierarchical state machine.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MachineSnapshot<S, T> {
-    // The current state of the state machine.
-    pub state: S,
-    // The last transition that was applied to the state machine, if any.
-    pub last_transition: Option<T>,
-}
-
-impl<S: Default, T> Default for MachineSnapshot<S, T> {
-    fn default() -> Self {
-        Self {
-            state: S::default(),
-            last_transition: None,
-        }
-    }
-}
-
-/// A composable element of a hierarchical/parallel state machine tree.
-///
-/// `tick` reads the flat input bundle, advances internal state, and writes
-/// the active machines' snapshots into `output`. Inactive machines do not
-/// touch `output` — callers initialize it to `Default::default()` so inactive
-/// entries naturally appear as default state with no last transition.
-///
-/// Activation semantics: when a parent transitions into a state with children
-/// this tick, those children are NOT ticked this round. They become eligible
-/// to consume transitions on the following tick. Conversely, children whose
-/// parent state was just exited are `reset()` immediately so their snapshot
-/// reflects their default the same tick.
+/// Defines the interface for a composable element of a hierarchical/parallel state machine tree
 pub trait NodeInterface {
-    /// The type of the input bundle consumed by this node.
-    /// This can and usually will include fields for other nodes (children, siblings, or ancestors)
-    /// so the correct field must be used by the node's `tick` implementation.
-    type Input;
-    /// The type of the output bundle used by this node. This like the [`Input`] type
-    /// can and usually will include fields for other nodes, so the correct field must be used by the node's `tick` implementation.
-    type Output: Default;
+    type InputEvent: Copy;
+    type InputData;
+    type OutputEvent: Copy;
 
-    /// Advance the node's internal state based on the provided input, and write the node's snapshot to the output.
-    /// It must only read from and write to the fields of `input` and `output` that are relevant to this node
-    fn tick(&mut self, input: &Self::Input, output: &mut Self::Output);
-    /// Reset the node's internal state to its default state
+    /// Returns whether this subtree selected a transition (that will now be pending execution)
+    fn select(&mut self, event: Self::InputEvent, data: &Self::InputData) -> bool;
+    /// Execute the pending transition if there is one, or the `during` event if not
+    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K);
+    /// Perform the entry actions for this subtree, cascading down to defaults.
+    /// This is called when this subtree becomes active due to a transition from its parent.
+    fn enter<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K);
+    /// Perform the exit actions for this subtree, cascading up to defaults.
+    /// This is called when this subtree becomes inactive due to a transition to its parent.
+    fn exit<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K);
+    /// Reset the state of this subtree to its initial state.
     fn reset(&mut self);
-
-    /// A convenience method that combines `tick` with default output initialization
-    /// Does not need to be implemented and should only be called at the top Root level of the state machine tree
-    /// All nodes below the Root will have their snapshots written to the output by their parents' `tick` implementations,
-    ///  so they do not need to be ticked directly
-    fn step(&mut self, input: &Self::Input) -> Self::Output {
-        let mut output = Self::Output::default();
-        self.tick(input, &mut output);
-        output
-    }
 }
 
-impl<N1: NodeInterface, N2: NodeInterface<Input = N1::Input, Output = N1::Output>> NodeInterface
-    for (N1, N2)
+impl<A, B> NodeInterface for (A, B)
+where
+    A: NodeInterface,
+    B: NodeInterface<
+            InputEvent = A::InputEvent,
+            InputData = A::InputData,
+            OutputEvent = A::OutputEvent,
+        >,
 {
-    type Input = N1::Input;
-    type Output = N1::Output;
+    type InputEvent = A::InputEvent;
+    type InputData = A::InputData;
+    type OutputEvent = A::OutputEvent;
 
-    fn tick(&mut self, input: &Self::Input, output: &mut Self::Output) {
-        let (ref mut n1, ref mut n2) = *self;
-        let ref mut o = *output;
-
-        n1.tick(input, o);
-        n2.tick(input, o);
+    fn select(&mut self, input: Self::InputEvent, data: &Self::InputData) -> bool {
+        self.0.select(input, data) | self.1.select(input, data)
     }
-
+    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        self.0.execute(sink);
+        self.1.execute(sink);
+    }
+    fn enter<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        self.0.enter(sink);
+        self.1.enter(sink);
+    }
+    fn exit<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        self.0.exit(sink);
+        self.1.exit(sink);
+    }
     fn reset(&mut self) {
-        let (ref mut n1, ref mut n2) = *self;
-        n1.reset();
-        n2.reset();
+        self.0.reset();
+        self.1.reset();
     }
 }
 
-impl<
-    N1: NodeInterface,
-    N2: NodeInterface<Input = N1::Input, Output = N1::Output>,
-    N3: NodeInterface<Input = N1::Input, Output = N1::Output>,
-> NodeInterface for (N1, N2, N3)
-{
-    type Input = N1::Input;
-    type Output = N1::Output;
-
-    fn tick(&mut self, input: &Self::Input, output: &mut Self::Output) {
-        let (ref mut n1, ref mut n2, ref mut n3) = *self;
-        let ref mut o = *output;
-
-        n1.tick(input, o);
-        n2.tick(input, o);
-        n3.tick(input, o);
-    }
-
-    fn reset(&mut self) {
-        let (ref mut n1, ref mut n2, ref mut n3) = *self;
-        n1.reset();
-        n2.reset();
-        n3.reset();
-    }
-}
-
-// Etc for (N1, N2, N3, N4) and so on... could be generated with a macro
-
-/// A node in a hierarchical state machine.
+/// A struct that implements [`NodeInterface`]
 ///
-/// `SMS` is the `StateMachineSpec` that defines the state machine logic for this node, and `C` is an `EnumMap` of child nodes,
-/// where each child corresponds to a state of the state machine.
-///
-/// The `input_filter` function is used to retrieve this node's state machine's transition input from the trait Input type passed in
-/// (which is a flat bundle of inputs for every state machine in the tree). Similarly, the `output_mapper` function is used to write
-/// this node's snapshot to the trait Output type (which is a flat bundle of snapshots for every state machine in the tree).
+/// It contains a [`Machine`] that represents the current state and possibly a pending transition of this node,
+/// as well as a set of child nodes for each state (representing the hierarchical/parallel structure of the state machine tree).
 pub struct Node<SMS: StateMachineSpec, C>
 where
-    <SMS as StateMachineSpec>::States: EnumArray<C>,
-    C: NodeInterface,
+    SMS::State: EnumArray<C>,
+    C: NodeInterface<
+            OutputEvent = SMS::OutputEvent,
+            InputEvent = SMS::InputEvent,
+            InputData = SMS::InputData,
+        >,
 {
-    machine: StateMachine<SMS>,
-    children: EnumMap<SMS::States, C>,
-    input_filter: fn(&C::Input) -> Option<SMS::Transitions>,
-    output_mapper: fn(&mut C::Output, MachineSnapshot<SMS::States, SMS::Transitions>),
+    machine: Machine<SMS>,
+    children: EnumMap<SMS::State, C>,
 }
 
 impl<SMS: StateMachineSpec, C> Node<SMS, C>
 where
-    <SMS as StateMachineSpec>::States: EnumArray<C>,
-    C: NodeInterface,
+    SMS::State: EnumArray<C>,
+    C: NodeInterface<
+            OutputEvent = SMS::OutputEvent,
+            InputEvent = SMS::InputEvent,
+            InputData = SMS::InputData,
+        >,
 {
-    /// Constructs a new `Node` with the given children, input filter, and output mapper.
-    pub fn new(
-        children: EnumMap<SMS::States, C>,
-        input_filter: fn(&C::Input) -> Option<SMS::Transitions>,
-        output_mapper: fn(&mut C::Output, MachineSnapshot<SMS::States, SMS::Transitions>),
-    ) -> Self {
+    /// Create a new `Node` with the given children. The machine will be initialized to its default state.
+    pub fn new(children: EnumMap<SMS::State, C>) -> Self {
         Self {
-            machine: StateMachine::default(),
+            machine: Machine::default(),
             children,
-            input_filter,
-            output_mapper,
         }
     }
 }
 
-impl<SMS: StateMachineSpec, I, O> Node<SMS, NoChildren<I, O>>
+impl<SMS: StateMachineSpec> Node<SMS, NoChildren<SMS::InputEvent, SMS::InputData, SMS::OutputEvent>>
 where
-    <SMS as StateMachineSpec>::States: EnumArray<NoChildren<I, O>>,
-    O: Default,
+    SMS::State: EnumArray<NoChildren<SMS::InputEvent, SMS::InputData, SMS::OutputEvent>>,
 {
-    /// A convenience constructor for leaf nodes that have no children. It automatically fills the `children` field with `NoChildren` variants.
-    pub fn new_leaf(
-        input_filter: fn(&I) -> Option<SMS::Transitions>,
-        output_mapper: fn(&mut O, MachineSnapshot<SMS::States, SMS::Transitions>),
-    ) -> Self {
+    /// Create a new leaf `Node` with no children. The machine will be initialized to its default state.
+    pub fn new_leaf() -> Self {
         Self {
-            machine: StateMachine::default(),
+            machine: Machine::default(),
             children: enum_map! { _ => NoChildren::default() },
-            input_filter,
-            output_mapper,
         }
     }
 }
 
 impl<SMS: StateMachineSpec, C> NodeInterface for Node<SMS, C>
 where
-    <SMS as StateMachineSpec>::States: EnumArray<C>,
-    C: NodeInterface,
-    C::Output: Default,
+    SMS::State: EnumArray<C>,
+    C: NodeInterface<
+            OutputEvent = SMS::OutputEvent,
+            InputEvent = SMS::InputEvent,
+            InputData = SMS::InputData,
+        >,
 {
-    type Input = C::Input;
-    type Output = C::Output;
+    type InputEvent = SMS::InputEvent;
+    type InputData = SMS::InputData;
+    type OutputEvent = SMS::OutputEvent;
 
-    fn tick(&mut self, input: &Self::Input, output: &mut Self::Output) {
-        let curr_state = self.machine.current_state();
-        self.machine.last_transition = None; // Clear the last transition before processing input
-        if let Some(transition) = (self.input_filter)(input) {
-            self.machine.transition(transition);
+    fn select(&mut self, event: Self::InputEvent, data: &Self::InputData) -> bool {
+        let s = self.machine.current;
+
+        // Child-first: a deeper handler preempts this level entirely.
+        if self.children[s].select(event, data) {
+            return true;
         }
-        let snapshot = self.machine.snapshot();
-        (self.output_mapper)(output, snapshot);
 
-        if curr_state == snapshot.state {
-            self.children[snapshot.state].tick(input, output);
-        } else {
-            // State changed, so reset the child of the old state (if any) to reflect the snapshot
-            self.children[curr_state].reset();
+        // Nobody below handled it — try our own outgoing edges.
+        if let Some(edge) = SMS::resolve(s, event, data) {
+            self.machine.pending = Some(edge);
+            return true;
+        }
+
+        false
+    }
+
+    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        match self.machine.pending.take() {
+            // This level fires: exit source ↓, transition action, enter target ↑.
+            Some(edge) => {
+                let old = self.machine.current;
+
+                if let Some(target_state) = edge.target {
+                    self.children[old].exit(sink); // deeper exit actions first
+                    sink.emit_opt(SMS::on_exit(old)); // then this state's own
+                    self.children[old].reset(); // clean for next activation
+
+                    sink.emit_opt(edge.action); // transition action
+
+                    self.machine.current = target_state;
+                    sink.emit_opt(SMS::on_enter(target_state));
+                    self.children[target_state].enter(sink); // cascade defaults ↓
+                } else {
+                    // Internal transition: no state change, but we still fire the action
+                    sink.emit_opt(edge.action);
+                }
+            }
+            // This level persists. `during` fires here — even if a descendant
+            // transitions, because we stay active and are neither entered nor
+            // exited this step.
+            None => {
+                let s = self.machine.current;
+                sink.emit_opt(SMS::during(s));
+                self.children[s].execute(sink);
+            }
         }
     }
 
+    fn enter<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        // Activating from default transition
+        let (default_state, default_action) = SMS::default_transition();
+        sink.emit_opt(default_action);
+        self.machine.current = default_state;
+        sink.emit_opt(SMS::on_enter(default_state));
+        self.children[default_state].enter(sink);
+    }
+
+    fn exit<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+        let s = self.machine.current;
+        self.children[s].exit(sink); // bottom-up
+        sink.emit_opt(SMS::on_exit(s));
+    }
+
     fn reset(&mut self) {
-        self.machine.reset();
-        for child in self.children.values_mut() {
-            child.reset();
+        self.machine = Machine::default();
+        for c in self.children.values_mut() {
+            c.reset();
         }
     }
 }
 
 /// A type alias for a leaf node, which is a `Node` with `NoChildren`. This is a common case and the alias provides a convenient shorthand.
-pub type LeafNode<SMS, I, O> = Node<SMS, NoChildren<I, O>>;
+pub type LeafNode<SMS, IE, ID, O> = Node<SMS, NoChildren<IE, ID, O>>;
 
 /// A struct representing the absence of children for a node. This is used as the `C` parameter of `Node` for leaf nodes.
-#[derive(Debug, Clone, Copy)]
-pub struct NoChildren<I, O>(core::marker::PhantomData<(I, O)>);
-impl<I, O> Default for NoChildren<I, O> {
+pub struct NoChildren<IE: Copy, ID, Out>(core::marker::PhantomData<(IE, ID, Out)>);
+impl<IE: Copy, ID, Out> Default for NoChildren<IE, ID, Out> {
     fn default() -> Self {
         Self(core::marker::PhantomData)
     }
 }
-
-impl<I, O: Default> NodeInterface for NoChildren<I, O> {
-    type Input = I;
-    type Output = O;
-
-    fn tick(&mut self, _input: &Self::Input, _output: &mut Self::Output) {}
+impl<IE: Copy, ID, Out: Copy> NodeInterface for NoChildren<IE, ID, Out> {
+    type InputEvent = IE;
+    type InputData = ID;
+    type OutputEvent = Out;
+    fn select(&mut self, _: Self::InputEvent, _: &Self::InputData) -> bool {
+        false
+    }
+    fn execute<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
+    fn enter<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
+    fn exit<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
     fn reset(&mut self) {}
 }
 
-/// Declare a per-state children enum + `NodeInterface` impl for use as the
-/// `C` parameter of [`Node`]. Each variant maps a parent state to the child
-/// node active in that state; an implicit `None` variant handles states with
-/// no children. `Input` and `Output` are inferred from the first listed
-/// child's `NodeInterface` impl, so every child type must share the same
-/// `Input`/`Output`.
-///
-/// ```ignore
-/// state_machine::children! {
-///     pub enum FooChildren {
-///         F2 => BazNode,
-///         F3 => (QuxNode, QuuxNode),   // parallel children via tuple impl
-///     }
-/// }
-/// ```
-#[macro_export]
-macro_rules! children {
-    (
-        $vis:vis enum $name:ident {
-            $first_variant:ident => $first_child:ty
-            $(, $variant:ident => $child:ty )*
-            $(,)?
-        }
-    ) => {
-        $vis enum $name {
-            None,
-            $first_variant($first_child),
-            $( $variant($child), )*
-        }
-
-        impl $crate::NodeInterface for $name {
-            type Input = <$first_child as $crate::NodeInterface>::Input;
-            type Output = <$first_child as $crate::NodeInterface>::Output;
-
-            fn tick(
-                &mut self,
-                input: &Self::Input,
-                output: &mut Self::Output,
-            ) {
-                match self {
-                    Self::None => {}
-                    Self::$first_variant(n) => n.tick(input, output),
-                    $( Self::$variant(n) => n.tick(input, output), )*
-                }
-            }
-
-            fn reset(&mut self) {
-                match self {
-                    Self::None => {}
-                    Self::$first_variant(n) => n.reset(),
-                    $( Self::$variant(n) => n.reset(), )*
-                }
-            }
-        }
-    };
+/// The primary runtime interface for users of this library: a `StateMachineRoot` is a wrapper around the top-level
+/// `Node` that provides a simple API for stepping the machine with input events and data, and for creating the machine with an initial node and sink.
+pub struct StateMachineRoot<N: NodeInterface> {
+    node: N,
 }
 
-pub trait TransitionPrioritize {
-    type Inner;
-    fn prioritize(self, other: Self) -> Self;
-    fn prioritize_val(self, enabled: bool, other: Self::Inner) -> Self;
+impl<N: NodeInterface> StateMachineRoot<N> {
+    pub fn create(node: N, sink: &mut impl EventSink<N::OutputEvent>) -> Self {
+        let mut root = Self { node };
+        root.node.enter(sink);
+        root
+    }
+
+    pub fn create_silent(node: N) -> Self {
+        Self { node }
+    }
+
+    pub fn step(
+        &mut self,
+        input_event: N::InputEvent,
+        input_data: &N::InputData,
+        sink: &mut impl EventSink<N::OutputEvent>,
+    ) {
+        self.node.select(input_event, input_data);
+        self.node.execute(sink);
+    }
+}
+impl<N: NodeInterface> StateMachineRoot<N>
+where
+    N::InputEvent: EnumArray<bool>,
+{
+    pub fn execute(
+        &mut self,
+        input_events: EnumMap<N::InputEvent, bool>,
+        input_data: &N::InputData,
+        sink: &mut impl EventSink<N::OutputEvent>,
+    ) {
+        for (event, should_fire) in input_events {
+            if should_fire {
+                self.node.select(event, input_data);
+            }
+        }
+        self.node.execute(sink);
+    }
 }
 
-impl<T: PartialOrd + Copy> TransitionPrioritize for Option<T> {
-    type Inner = T;
-    fn prioritize(self, other: Self) -> Self {
-        match (self, other) {
-            (Some(a), Some(b)) => Some(if a < b { a } else { b }),
-            (x, None) | (None, x) => x,
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use enum_map::{Enum, enum_map};
+
+    // ── Output events ────────────────────────────────────────────────────
+    // Every action in the spec walkthrough, named after the action it stands
+    // for. (S1.init / S2.init — the default-transition actions — have no
+    // variant: `enter` does not emit them yet, see the note below.)
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
+    enum Out {
+        A1Init,           // Active::Audio  default transition
+        PlayingExit,      // Active::Audio  on_exit
+        A2Init,           // Active::Screen default transition
+        ShowingVideoExit, // Active::Screen on_exit
+        ActiveExit,       // Active         on_exit
+        TEffect,          // Active → Standby transition action
+        StandbyEntry,     // Standby        on_enter
+        S1Init,           // Standby::Power   default transition
+        LowPowerEntry,    // Standby::Power   on_enter
+        S2Init,           // Standby::Network default transition
+        ListeningEntry,   // Standby::Network on_enter
+        // exercised by the second test (during + descendant transition)
+        StandbyDuring,
+        LowPowerDuring,
+        ListeningExit,
+        NetworkConnect,
+        ConnectedEntry,
+    }
+
+    // ── States, one enum per region ──────────────────────────────────────
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+    enum Top {
+        #[default]
+        Active,
+        Standby,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+    enum Audio {
+        #[default]
+        Playing,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+    enum Screen {
+        #[default]
+        ShowingVideo,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+    enum Power {
+        #[default]
+        LowPower,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+    enum Network {
+        #[default]
+        Listening,
+        Connected,
+    }
+
+    // ── Shared event + data + input bundle ───────────────────────────────
+    #[derive(Clone, Copy, PartialEq)]
+    enum Ev {
+        Sleep,
+        Tick,
+    }
+
+    struct Data {
+        battery_ok: bool,
+    }
+    struct Input {
+        event: Ev,
+        data: Data,
+    }
+
+    // ── Specs ─────────────────────────────────────────────────────────────
+    // The top machine: the only non-trivial transition table in the example.
+    // Note the guard reads Data and the slice order is the transition priority.
+    struct TopSpec;
+    impl StateMachineSpec for TopSpec {
+        type State = Top;
+        type InputEvent = Ev;
+        type InputData = Data;
+        type OutputEvent = Out;
+
+        const EDGES: EdgeTable<Top, Ev, Data, Out> = &[
+            (
+                Top::Active,
+                &[(
+                    Ev::Sleep,
+                    &[
+                        // CheckAlarms-style edge: sleep[batteryOK]/T.effect
+                        (
+                            Some(|d: &Data| d.battery_ok),
+                            Some(Out::TEffect),
+                            Some(Top::Standby),
+                        ),
+                    ],
+                )],
+            ),
+            // Standby has no outgoing edges in this slice of the example.
+        ];
+
+        fn on_exit(s: Top) -> Option<Out> {
+            match s {
+                Top::Active => Some(Out::ActiveExit),
+                _ => None,
+            }
+        }
+        fn on_enter(s: Top) -> Option<Out> {
+            match s {
+                Top::Standby => Some(Out::StandbyEntry),
+                _ => None,
+            }
+        }
+        fn during(s: Top) -> Option<Out> {
+            match s {
+                Top::Standby => Some(Out::StandbyDuring),
+                _ => None,
+            }
         }
     }
 
-    fn prioritize_val(self, enabled: bool, other: Self::Inner) -> Self {
-        if enabled {
-            self.prioritize(Some(other))
-        } else {
-            self
+    struct AudioSpec;
+    impl StateMachineSpec for AudioSpec {
+        type State = Audio;
+        type InputEvent = Ev;
+        type InputData = Data;
+        type OutputEvent = Out;
+        fn on_exit(_: Audio) -> Option<Out> {
+            Some(Out::PlayingExit)
+        }
+        fn default_transition() -> (Self::State, Option<Self::OutputEvent>) {
+            (Audio::Playing, Some(Out::A1Init))
+        }
+    }
+
+    struct ScreenSpec;
+    impl StateMachineSpec for ScreenSpec {
+        type State = Screen;
+        type InputEvent = Ev;
+        type InputData = Data;
+        type OutputEvent = Out;
+        fn on_exit(_: Screen) -> Option<Out> {
+            Some(Out::ShowingVideoExit)
+        }
+        fn default_transition() -> (Self::State, Option<Self::OutputEvent>) {
+            (Screen::ShowingVideo, Some(Out::A2Init))
+        }
+    }
+
+    struct PowerSpec;
+    impl StateMachineSpec for PowerSpec {
+        type State = Power;
+        type InputEvent = Ev;
+        type InputData = Data;
+        type OutputEvent = Out;
+        fn on_enter(_: Power) -> Option<Out> {
+            Some(Out::LowPowerEntry)
+        }
+        fn during(_: Power) -> Option<Out> {
+            Some(Out::LowPowerDuring)
+        }
+        fn default_transition() -> (Self::State, Option<Self::OutputEvent>) {
+            (Power::LowPower, Some(Out::S1Init))
+        }
+    }
+
+    struct NetworkSpec;
+    impl StateMachineSpec for NetworkSpec {
+        type State = Network;
+        type InputEvent = Ev;
+        type InputData = Data;
+        type OutputEvent = Out;
+
+        // A region-internal transition, used to show `during` still fires on an
+        // ancestor whose descendant transitions in the same step.
+        const EDGES: EdgeTable<Network, Ev, Data, Out> = &[(
+            Network::Listening,
+            &[(
+                Ev::Tick,
+                &[(None, Some(Out::NetworkConnect), Some(Network::Connected))],
+            )],
+        )];
+
+        fn on_enter(s: Network) -> Option<Out> {
+            match s {
+                Network::Listening => Some(Out::ListeningEntry),
+                Network::Connected => Some(Out::ConnectedEntry),
+            }
+        }
+        fn on_exit(s: Network) -> Option<Out> {
+            match s {
+                Network::Listening => Some(Out::ListeningExit),
+                _ => None,
+            }
+        }
+        fn default_transition() -> (Self::State, Option<Self::OutputEvent>) {
+            (Network::Listening, Some(Out::S2Init))
+        }
+    }
+
+    // ── Tree shape ────────────────────────────────────────────────────────
+    // Active's regions and Standby's regions are *different* tuple types, so
+    // the per-state children of the top machine can't be one homogeneous `C`.
+    // This enum is the unifying `C` — the small tax the EnumMap<State, C> model
+    // charges for heterogeneous subtrees.
+    type Leaf<S> = LeafNode<S, Ev, Data, Out>;
+
+    enum TopChildren {
+        ActiveKids((Leaf<AudioSpec>, Leaf<ScreenSpec>)), // Audio ∥ Screen
+        StandbyKids((Leaf<PowerSpec>, Leaf<NetworkSpec>)), // Power ∥ Network
+    }
+
+    impl NodeInterface for TopChildren {
+        type InputEvent = Ev;
+        type InputData = Data;
+        type OutputEvent = Out;
+        fn select(&mut self, input_event: Self::InputEvent, input_data: &Self::InputData) -> bool {
+            match self {
+                TopChildren::ActiveKids(t) => t.select(input_event, input_data),
+                TopChildren::StandbyKids(t) => t.select(input_event, input_data),
+            }
+        }
+        fn execute<K: EventSink<Out>>(&mut self, sink: &mut K) {
+            match self {
+                TopChildren::ActiveKids(t) => t.execute(sink),
+                TopChildren::StandbyKids(t) => t.execute(sink),
+            }
+        }
+        fn enter<K: EventSink<Out>>(&mut self, sink: &mut K) {
+            match self {
+                TopChildren::ActiveKids(t) => t.enter(sink),
+                TopChildren::StandbyKids(t) => t.enter(sink),
+            }
+        }
+        fn exit<K: EventSink<Out>>(&mut self, sink: &mut K) {
+            match self {
+                TopChildren::ActiveKids(t) => t.exit(sink),
+                TopChildren::StandbyKids(t) => t.exit(sink),
+            }
+        }
+        fn reset(&mut self) {
+            match self {
+                TopChildren::ActiveKids(t) => t.reset(),
+                TopChildren::StandbyKids(t) => t.reset(),
+            }
+        }
+    }
+
+    type TopNode = Node<TopSpec, TopChildren>;
+
+    fn build() -> TopNode {
+        Node {
+            machine: Machine::default(),
+            children: enum_map! {
+                Top::Active  => TopChildren::ActiveKids((Node::new_leaf(),  Node::new_leaf())),
+                Top::Standby => TopChildren::StandbyKids((Node::new_leaf(), Node::new_leaf())),
+            },
+        }
+    }
+
+    // ── Order-preserving sink (no alloc) ─────────────────────────────────────
+    struct RecordingSink {
+        log: [Option<Out>; 16],
+        len: usize,
+    }
+    impl RecordingSink {
+        fn new() -> Self {
+            Self {
+                log: [None; 16],
+                len: 0,
+            }
+        }
+        fn events(&self) -> &[Option<Out>] {
+            &self.log[..self.len]
+        }
+        fn clear(&mut self) {
+            self.len = 0;
+        }
+    }
+    impl EventSink<Out> for RecordingSink {
+        fn emit(&mut self, e: Out) {
+            self.log[self.len] = Some(e);
+            self.len += 1;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    #[test]
+    fn sleep_walkthrough_matches_spec() {
+        // Initial configuration: <Active – (Playing, ShowingVideo)>, established
+        // by the #[default] of every region — no explicit enter needed.
+        let root = build();
+        let input = Input {
+            event: Ev::Sleep,
+            data: Data { battery_ok: true },
+        };
+
+        let mut sink = RecordingSink::new();
+        let mut root_sm = StateMachineRoot::create(root, &mut sink);
+        assert_eq!(sink.events(), &[Some(Out::A1Init), Some(Out::A2Init)]);
+        sink.clear();
+
+        root_sm.step(input.event, &input.data, &mut sink);
+
+        // Spec order: exit source bottom-up, transition action, enter target
+        // top-down. The two pairs marked "region order" are emitted in tuple
+        // order; the spec leaves intra-level region order undefined, so the
+        // test pins the implementation's deterministic choice.
+        let expected: &[Option<Out>] = &[
+            Some(Out::PlayingExit),      // ┐ region order (Audio before Screen)
+            Some(Out::ShowingVideoExit), // ┘
+            Some(Out::ActiveExit),       // source fully exited
+            Some(Out::TEffect),          // transition action, between exit & enter
+            Some(Out::StandbyEntry),     // target entered, top-down…
+            Some(Out::S1Init),           // …first the Power region's default transition…
+            Some(Out::LowPowerEntry),    // ┐ region order (Power before Network)
+            Some(Out::S2Init),           // …then the Network region's default transition…
+            Some(Out::ListeningEntry),   // ┘ …down to a stable leaf per region
+        ];
+        assert_eq!(sink.events(), expected);
+
+        // Resulting stable configuration: <Standby – (LowPower, Listening)>.
+        assert_eq!(root_sm.node.machine.current, Top::Standby);
+        match &root_sm.node.children[Top::Standby] {
+            TopChildren::StandbyKids((power, network)) => {
+                assert_eq!(power.machine.current, Power::LowPower);
+                assert_eq!(network.machine.current, Network::Listening);
+            }
+            _ => unreachable!(),
+        }
+
+        // Child-first selection: neither region handled `sleep`, so the
+        // composite fired its own edge. (If a region *had* a sleep edge it would
+        // have preempted this — that's the deeper-handler-wins rule.)
+    }
+
+    #[test]
+    fn during_fires_even_when_a_descendant_transitions() {
+        // Boot into <Standby – (LowPower, Listening)> via the validated sleep step.
+        let mut root_sm = StateMachineRoot::create_silent(build());
+
+        root_sm.step(
+            Ev::Sleep,
+            &Data { battery_ok: true },
+            &mut RecordingSink::new(),
+        );
+
+        // A Tick: the Network region transitions Listening → Connected, while
+        // Standby and the Power region merely persist.
+        let mut sink = RecordingSink::new();
+        root_sm.step(Ev::Tick, &Data { battery_ok: true }, &mut sink);
+
+        let expected: &[Option<Out>] = &[
+            Some(Out::StandbyDuring),  // ancestor `during` STILL fires…
+            Some(Out::LowPowerDuring), // …as does the persisting region's
+            // Network region transitions; it does NOT fire `during`:
+            Some(Out::ListeningExit),
+            Some(Out::NetworkConnect),
+            Some(Out::ConnectedEntry),
+        ];
+        assert_eq!(sink.events(), expected);
+
+        match &root_sm.node.children[Top::Standby] {
+            TopChildren::StandbyKids((power, network)) => {
+                assert_eq!(power.machine.current, Power::LowPower); // persisted
+                assert_eq!(network.machine.current, Network::Connected); // moved
+            }
+            _ => unreachable!(),
         }
     }
 }
