@@ -147,53 +147,28 @@ impl StateMachineSpec for NavSpec {
     }
 }
 
-// Nav's per-state children: Hovering is a leaf, Cruising nests the L3 machine.
-// They are different types, so a small unifying enum forwards every call —
-// the same boilerplate `audio_player.rs` uses, here one level deeper.
+// Nav's per-state children: Cruising nests the L3 Speed machine; Hovering (and
+// any other leaf state) falls through to the generated `Leaf` variant. The
+// `children!` macro writes the enum and the whole `NodeInterface` forwarding impl.
 type SpeedNode = LeafNode<SpeedSpec, Ev, Data, Out>;
-
-enum NavChildren {
-    Hovering(NoChildren<Ev, Data, Out>),
-    Cruising(SpeedNode),
+fn build_speed_node() -> SpeedNode {
+    Node::new_leaf()
 }
 
-impl NodeInterface for NavChildren {
-    type InputEvent = Ev;
-    type InputData = Data;
-    type OutputEvent = Out;
-    fn select(&mut self, e: Ev, d: &Data) -> bool {
-        match self {
-            NavChildren::Hovering(c) => c.select(e, d),
-            NavChildren::Cruising(c) => c.select(e, d),
-        }
-    }
-    fn execute_pending<K: EventSink<Out>>(&mut self, sink: &mut K) {
-        match self {
-            NavChildren::Hovering(c) => c.execute_pending(sink),
-            NavChildren::Cruising(c) => c.execute_pending(sink),
-        }
-    }
-    fn enter<K: EventSink<Out>>(&mut self, sink: &mut K) {
-        match self {
-            NavChildren::Hovering(c) => c.enter(sink),
-            NavChildren::Cruising(c) => c.enter(sink),
-        }
-    }
-    fn exit<K: EventSink<Out>>(&mut self, sink: &mut K) {
-        match self {
-            NavChildren::Hovering(c) => c.exit(sink),
-            NavChildren::Cruising(c) => c.exit(sink),
-        }
-    }
-    fn reset(&mut self) {
-        match self {
-            NavChildren::Hovering(c) => c.reset(),
-            NavChildren::Cruising(c) => c.reset(),
-        }
+children! {
+    enum NavChildren {
+        Cruising => SpeedNode,
     }
 }
 
 type NavNode = Node<NavSpec, NavChildren>;
+
+fn build_nav_node() -> NavNode {
+    Node::new(enum_map! {
+        Nav::Cruising => NavChildren::Cruising(build_speed_node()),
+        _ => NavChildren::None,
+    })
+}
 
 // ─── L1: Flight (composite: Airborne owns the L2 Nav machine) ──────────────
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
@@ -235,90 +210,47 @@ impl StateMachineSpec for FlightSpec {
     }
 }
 
-// Flight's per-state children: Grounded is a leaf, Airborne nests the L2 Nav.
-enum FlightChildren {
-    Grounded(NoChildren<Ev, Data, Out>),
-    Airborne(NavNode),
-}
-
-impl NodeInterface for FlightChildren {
-    type InputEvent = Ev;
-    type InputData = Data;
-    type OutputEvent = Out;
-    fn select(&mut self, e: Ev, d: &Data) -> bool {
-        match self {
-            FlightChildren::Grounded(c) => c.select(e, d),
-            FlightChildren::Airborne(c) => c.select(e, d),
-        }
-    }
-    fn execute_pending<K: EventSink<Out>>(&mut self, sink: &mut K) {
-        match self {
-            FlightChildren::Grounded(c) => c.execute_pending(sink),
-            FlightChildren::Airborne(c) => c.execute_pending(sink),
-        }
-    }
-    fn enter<K: EventSink<Out>>(&mut self, sink: &mut K) {
-        match self {
-            FlightChildren::Grounded(c) => c.enter(sink),
-            FlightChildren::Airborne(c) => c.enter(sink),
-        }
-    }
-    fn exit<K: EventSink<Out>>(&mut self, sink: &mut K) {
-        match self {
-            FlightChildren::Grounded(c) => c.exit(sink),
-            FlightChildren::Airborne(c) => c.exit(sink),
-        }
-    }
-    fn reset(&mut self) {
-        match self {
-            FlightChildren::Grounded(c) => c.reset(),
-            FlightChildren::Airborne(c) => c.reset(),
-        }
+// Flight's per-state children: Airborne nests the L2 Nav machine; Grounded
+// falls through to the generated `Leaf` variant.
+children! {
+    enum FlightChildren {
+        Airborne => NavNode,
     }
 }
 
 type FlightNode = Node<FlightSpec, FlightChildren>;
 
 // ─── Assembling the three-level tree ───────────────────────────────────────
-fn build() -> FlightNode {
+fn build_flight_node() -> FlightNode {
     Node::new(enum_map! {
-        Flight::Grounded => FlightChildren::Grounded(NoChildren::default()),
-        // Airborne nests Nav, whose Cruising in turn nests the L3 Speed leaf.
-        Flight::Airborne => FlightChildren::Airborne(Node::new(enum_map! {
-            Nav::Hovering => NavChildren::Hovering(NoChildren::default()),
-            Nav::Cruising => NavChildren::Cruising(Node::new_leaf()),
-        })),
+    // Airborne nests Nav, whose Cruising in turn nests the L3 Speed leaf.
+    Flight::Airborne => FlightChildren::Airborne(build_nav_node()),
+    // Grounded has no nested machine.
+    _ => FlightChildren::None,
     })
-}
-
-// ─── A sink that records emission order so we can print it ─────────────────
-#[derive(Default)]
-struct Trace(Vec<Out>);
-impl EventSink<Out> for Trace {
-    fn emit(&mut self, e: Out) {
-        self.0.push(e);
-    }
-}
-impl Trace {
-    fn drain(&mut self) -> Vec<Out> {
-        std::mem::take(&mut self.0)
-    }
 }
 
 // ─── Inspecting the live configuration across all three levels ─────────────
 fn config(sm: &StateMachineRoot<FlightNode>) -> String {
-    match sm.root().active_child() {
-        FlightChildren::Grounded(_) => "Grounded".to_string(),
-        FlightChildren::Airborne(nav) => match nav.active_child() {
-            NavChildren::Hovering(_) => "Airborne / Hovering".to_string(),
-            NavChildren::Cruising(speed) => {
-                format!("Airborne / Cruising / {:?}", speed.state())
-            }
+    match sm.root().state() {
+        Flight::Grounded => "Grounded".to_string(),
+        Flight::Airborne => match sm.root().active_child() {
+            FlightChildren::Airborne(nav) => match nav.state() {
+                Nav::Hovering => "Airborne / Hovering".to_string(),
+                Nav::Cruising => match nav.active_child() {
+                    NavChildren::Cruising(speed) => match speed.state() {
+                        Speed::Normal => "Airborne / Cruising / Normal".to_string(),
+                        Speed::Boost => "Airborne / Cruising / Boost".to_string(),
+                    },
+                    _ => unreachable!(),
+                },
+            },
+            _ => unreachable!(),
         },
     }
 }
 
-fn show(label: &str, before: &str, emitted: Vec<Out>, after: &str) {
+fn show(label: &str, before: &str, emitted: &[Out], after: &str) {
     println!("\n▶ {label}");
     println!("    config: {before}  ->  {after}");
     println!("    emitted: {emitted:?}");
@@ -329,11 +261,12 @@ fn main() {
     // The top default transition lands in Grounded, a leaf — so the cascade
     // stops there. The L2/L3 subtrees exist but are dormant, so nothing in
     // them is entered yet.
-    let mut trace = Trace::default();
-    let mut sm = StateMachineRoot::create(build(), &mut trace);
+    let mut trace = Events::default();
+    let mut sm = StateMachineRoot::create(build_flight_node(), &mut trace);
     println!("▶ boot (create)");
     println!("    config: <none>  ->  {}", config(&sm));
-    println!("    emitted: {:?}", trace.drain());
+    println!("    emitted: {:?}", &trace.order);
+    trace.clear();
 
     // ── Step 1: Takeoff — activate the L2 subtree ──────────────────────────
     // Grounded exits, Airborne enters, then Airborne's child (the Nav machine)
@@ -343,9 +276,10 @@ fn main() {
     show(
         "step 1 — Takeoff: enter Airborne, then its Nav default cascades to Hovering",
         &before,
-        trace.drain(),
+        &trace.order,
         &config(&sm),
     );
+    trace.clear();
 
     // ── Step 2: Cruise — activate the L3 subtree ───────────────────────────
     // Inside Airborne, the Nav machine moves Hovering -> Cruising. Entering
@@ -356,9 +290,10 @@ fn main() {
     show(
         "step 2 — Cruise: enter Cruising, then its Speed default cascades to Normal",
         &before,
-        trace.drain(),
+        &trace.order,
         &config(&sm),
     );
+    trace.clear();
 
     // ── Step 3: Boost — a transition at the very bottom ────────────────────
     // Only L3 moves (Normal -> Boost). The L1 and L2 ancestors are untouched:
@@ -368,9 +303,10 @@ fn main() {
     show(
         "step 3 — Boost: only L3 (Speed) transitions; ancestors persist",
         &before,
-        trace.drain(),
+        &trace.order,
         &config(&sm),
     );
+    trace.clear();
 
     // ── Step 4: Land — exit all three levels in one step ───────────────────
     // The top-level Airborne -> Grounded edge fires. Before the source state
@@ -382,7 +318,8 @@ fn main() {
     show(
         "step 4 — Land: exit Boost -> Cruising -> Airborne (bottom-up), enter Grounded",
         &before,
-        trace.drain(),
+        &trace.order,
         &config(&sm),
     );
+    trace.clear();
 }

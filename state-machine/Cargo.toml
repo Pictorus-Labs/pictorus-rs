@@ -16,7 +16,20 @@ pictorus-traits = { path = "../pictorus-traits" }
 [dev-dependencies]
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 
+[[example]]
+name = "audio_player"
+path = "examples/audio_player.rs"
+required-features = ["event-log"]
+
+[[example]]
+name = "nested_drone"
+path = "examples/nested_drone.rs"
+required-features = ["event-log"]
+
+
+
 [features]
-default = []
+default = ["event-log"]
+std = ["alloc"]
 alloc = []
 event-log = ["alloc"]

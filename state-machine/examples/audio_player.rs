@@ -39,7 +39,7 @@
 
 use enum_map::{Enum, enum_map};
 
-use state_machine::*;
+use state_machine::{EdgeTable, Events, Node, StateMachineRoot, StateMachineSpec, children};
 
 // ─── Input events ────────────────────────────────────────────────────────
 // The *enum order* is the input-event priority used by `StateMachineRoot::execute`
@@ -426,83 +426,31 @@ impl StateMachineSpec for NetSpec {
 }
 
 // ─── Assembling the tree ───────────────────────────────────────────────────
-// `Active` and `Standby` have *different* region tuple types, and `Off` has no
-// children at all. They must share one `C` type in `EnumMap<Player, C>`, so we
-// hand-roll a unifying enum that just forwards every NodeInterface call. This
-// is the small bit of boilerplate the homogeneous-EnumMap model charges for
-// heterogeneous subtrees.
-type Leaf<S> = LeafNode<S, InputEvent, InputData, OutputEvent>;
+// Here we describe the topology of the state machine: which states are nested inside which, and which regions are orthogonal.
 
-enum PlayerChildren {
-    Active((Leaf<AudioSpec>, Leaf<ScreenSpec>)), // Audio ∥ Screen
-    Standby((Leaf<PowerSpec>, Leaf<NetSpec>)),   // Power ∥ Net
-    Off(NoChildren<InputEvent, InputData, OutputEvent>), // simple state: no children
-}
+/// For convenience, a type alias for a leaf node of any machine in this example that sets the type parameters which will be the same for
+/// every state machine that makes up the larger Root State Machine
+type LeafNode<S> = state_machine::LeafNode<S, InputEvent, InputData, OutputEvent>;
 
-impl NodeInterface for PlayerChildren {
-    type InputEvent = InputEvent;
-    type InputData = InputData;
-    type OutputEvent = OutputEvent;
-    fn select(&mut self, e: InputEvent, d: &InputData) -> bool {
-        match self {
-            PlayerChildren::Active(t) => t.select(e, d),
-            PlayerChildren::Standby(t) => t.select(e, d),
-            PlayerChildren::Off(t) => t.select(e, d),
-        }
-    }
-    fn execute_pending<K: EventSink<OutputEvent>>(&mut self, sink: &mut K) {
-        match self {
-            PlayerChildren::Active(t) => t.execute_pending(sink),
-            PlayerChildren::Standby(t) => t.execute_pending(sink),
-            PlayerChildren::Off(t) => t.execute_pending(sink),
-        }
-    }
-    fn enter<K: EventSink<OutputEvent>>(&mut self, sink: &mut K) {
-        match self {
-            PlayerChildren::Active(t) => t.enter(sink),
-            PlayerChildren::Standby(t) => t.enter(sink),
-            PlayerChildren::Off(t) => t.enter(sink),
-        }
-    }
-    fn exit<K: EventSink<OutputEvent>>(&mut self, sink: &mut K) {
-        match self {
-            PlayerChildren::Active(t) => t.exit(sink),
-            PlayerChildren::Standby(t) => t.exit(sink),
-            PlayerChildren::Off(t) => t.exit(sink),
-        }
-    }
-    fn reset(&mut self) {
-        match self {
-            PlayerChildren::Active(t) => t.reset(),
-            PlayerChildren::Standby(t) => t.reset(),
-            PlayerChildren::Off(t) => t.reset(),
-        }
-    }
-}
+type AudioNode = LeafNode<AudioSpec>;
+type ScreenNode = LeafNode<ScreenSpec>;
+type PowerNode = LeafNode<PowerSpec>;
+type NetNode = LeafNode<NetSpec>;
+
+children! {
+    enum PlayerChildren {
+    Active => (AudioNode, ScreenNode), // Audio ∥ Screen
+    Standby => (PowerNode, NetNode),   // Power ∥ Net
+}}
 
 type PlayerNode = Node<PlayerSpec, PlayerChildren>;
 
 fn build() -> PlayerNode {
     Node::new(enum_map! {
-        Player::Active  => PlayerChildren::Active((Node::new_leaf(), Node::new_leaf())),
-        Player::Standby => PlayerChildren::Standby((Node::new_leaf(), Node::new_leaf())),
-        Player::Off     => PlayerChildren::Off(NoChildren::default()),
+        Player::Active  => PlayerChildren::Active((AudioNode::new_leaf(), ScreenNode::new_leaf())),
+        Player::Standby => PlayerChildren::Standby((PowerNode::new_leaf(), NetNode::new_leaf())),
+        Player::Off     => PlayerChildren::None,
     })
-}
-
-// ─── A sink that records emission order so we can print it ─────────────────
-// TODO: Just use the built in feature flag for this!
-#[derive(Default)]
-struct Trace(Vec<OutputEvent>);
-impl EventSink<OutputEvent> for Trace {
-    fn emit(&mut self, e: OutputEvent) {
-        self.0.push(e);
-    }
-}
-impl Trace {
-    fn drain(&mut self) -> Vec<OutputEvent> {
-        std::mem::take(&mut self.0)
-    }
 }
 
 // ─── Inspecting the live configuration (purely for the printout) ───────────
@@ -520,7 +468,7 @@ fn config(sm: &StateMachineRoot<PlayerNode>) -> String {
     }
 }
 
-fn show(label: &str, before: &str, emitted: Vec<OutputEvent>, after: &str) {
+fn show(label: &str, before: &str, emitted: &[OutputEvent], after: &str) {
     println!("\n▶ {label}");
     println!("    config: {before}  ->  {after}");
     println!("    emitted: {emitted:?}");
@@ -530,15 +478,16 @@ fn main() {
     // ── Boot ────────────────────────────────────────────────────────────
     // `create` runs the top default transition, then cascades default
     // transitions down through both of Active's regions to stable leaves.
-    let mut trace = Trace::default();
-    let mut sm = StateMachineRoot::create(build(), &mut trace);
+    let mut output_events = Events::default();
+    let mut sm = StateMachineRoot::create(build(), &mut output_events);
     println!("▶ boot (create)");
     println!("    config: <none>  ->  {}", config(&sm));
-    println!("    emitted: {:?}", trace.drain());
+    println!("    emitted: {:?}", output_events.order);
     println!(
         "    (top default action, top on_enter, then each region's default \
          action + on_enter, top-down)"
     );
+    output_events.clear();
 
     let healthy = InputData {
         battery: 80,
@@ -556,13 +505,14 @@ fn main() {
     // persisting level, top-down, and the internal action (Heartbeat) is
     // ordered immediately AFTER Active's own `during`.
     let before = config(&sm);
-    sm.step(InputEvent::Tick, &healthy, &mut trace);
+    sm.step(InputEvent::Tick, &healthy, &mut output_events);
     show(
         "step 1 — Tick @80%: priority falls through to the internal heartbeat",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 2: Tick, critically low + unplugged → external transition ─────
     // Now edge 2's guard (batt<20 && !charging) passes and edge 2 fires: an
@@ -573,26 +523,28 @@ fn main() {
     // default cascade). No `during` anywhere — this step *is* an external
     // transition at the top.
     let before = config(&sm);
-    sm.step(InputEvent::Tick, &low, &mut trace);
+    sm.step(InputEvent::Tick, &low, &mut output_events);
     show(
         "step 2 — Tick @10% unplugged: external Active->Standby (exit↑, action, enter↓)",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 3: Tick in Standby, not charging → discarded, but `during` runs ─
     // In Standby, Tick edge 1 (batt==0) fails and edge 2 (charging) fails, so
     // Tick matches NO edge and is "silently discarded" as a transition. The
     // engine still walks the active tree and fires `during` at every level.
     let before = config(&sm);
-    sm.step(InputEvent::Tick, &low, &mut trace);
+    sm.step(InputEvent::Tick, &low, &mut output_events);
     show(
         "step 3 — Tick in Standby, unplugged: no edge matches, yet `during` fires",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 4: Tick in Standby while charging → internal trickle ──────────
     // Same state, different data: edge 2's guard (charging) now passes, firing
@@ -603,13 +555,14 @@ fn main() {
         charging: true,
     };
     let before = config(&sm);
-    sm.step(InputEvent::Tick, &charging, &mut trace);
+    sm.step(InputEvent::Tick, &charging, &mut output_events);
     show(
         "step 4 — Tick in Standby, charging: internal trickle (during + internal action)",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 5: Button in Standby — region transitions, ancestor persists ──
     // Only the Net region has a Button edge (Listening→Connected). Standby and
@@ -617,36 +570,39 @@ fn main() {
     // external transition (on_exit Listening, action, on_enter Connected) and
     // therefore does NOT fire its own `during`.
     let before = config(&sm);
-    sm.step(InputEvent::Button, &low, &mut trace);
+    sm.step(InputEvent::Button, &low, &mut output_events);
     show(
         "step 5 — Button in Standby: Net transitions while Standby/Power persist",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 6: Wake → back to Active (fresh region defaults) ──────────────
     let before = config(&sm);
-    sm.step(InputEvent::Wake, &healthy, &mut trace);
+    sm.step(InputEvent::Wake, &healthy, &mut output_events);
     show(
         "step 6 — Wake: Standby->Active, regions re-enter via their defaults",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 7: Fault while Audio is Playing — absorbed by the child ───────
     // Audio::Playing has a Fault edge (internal AudioRecover). Child-first
     // selection means a deeper handler wins, so the Active→Off Fault edge is
     // never evaluated: the fault is absorbed and we stay in Active.
     let before = config(&sm);
-    sm.step(InputEvent::Fault, &healthy, &mut trace);
+    sm.step(InputEvent::Fault, &healthy, &mut output_events);
     show(
         "step 7 — Fault while Playing: ABSORBED by Audio (deeper handler wins)",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 8: Button — concurrent transitions in two orthogonal regions ──
     // Both Audio (Playing→Paused) and Screen (Bright→Dim) have a Button edge,
@@ -655,26 +611,28 @@ fn main() {
     // the tuple order: Audio before Screen. (This also parks Audio in Paused,
     // which has no Fault handler — setup for the next step.)
     let before = config(&sm);
-    sm.step(InputEvent::Button, &healthy, &mut trace);
+    sm.step(InputEvent::Button, &healthy, &mut output_events);
     show(
         "step 8 — Button: Audio and Screen transition concurrently",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 9: Fault while Audio is Paused — propagates to Active→Off ─────
     // Paused has no Fault edge, and Screen has none either, so no descendant
     // handles Fault. It falls through to the Active→Off edge: hard crash. Off
     // is a trap state with no during and no outgoing edges.
     let before = config(&sm);
-    sm.step(InputEvent::Fault, &healthy, &mut trace);
+    sm.step(InputEvent::Fault, &healthy, &mut output_events);
     show(
         "step 9 — Fault while Paused: propagates up to Active->Off (crash)",
         &before,
-        trace.drain(),
+        &output_events.order,
         &config(&sm),
     );
+    output_events.clear();
 
     // ── Step 10: a fresh machine, driven by `execute` with a multi-event queue ─
     // `StateMachineRoot::execute` steps once per truthy event, in *enum order*
@@ -682,9 +640,9 @@ fn main() {
     // 1) is processed before Tick (index 4). So in ONE call the machine first
     // goes Active→Standby on Sleep, then takes a Standby Tick — two run-to-
     // completion steps in a single timestep.
-    let mut trace = Trace::default();
+    let mut trace = Events::default();
     let mut sm2 = StateMachineRoot::create(build(), &mut trace);
-    trace.drain();
+    trace.clear();
     let queue = enum_map! {
         InputEvent::Fault => false,
         InputEvent::Sleep => true,   // processed first (lower enum index)
@@ -697,9 +655,10 @@ fn main() {
     show(
         "step 10 — execute({Sleep,Tick}) drains the queue in priority order",
         &before,
-        trace.drain(),
+        &trace.order,
         &config(&sm2),
     );
+    trace.clear();
     println!(
         "    (Sleep fired Active->Standby, THEN Tick ran inside Standby — \
          two steps, one execute call)"

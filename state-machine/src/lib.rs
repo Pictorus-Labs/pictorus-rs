@@ -1,4 +1,9 @@
-#[cfg(feature = "event-log")]
+#![no_std]
+
+#[cfg(any(feature = "std", test))]
+extern crate std;
+
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 use enum_map::{EnumArray, EnumMap, enum_map};
@@ -25,6 +30,14 @@ pub struct Events<E: EnumArray<u32> + Copy> {
     pub counts: EnumMap<E, u32>,
     #[cfg(feature = "event-log")]
     pub order: alloc::vec::Vec<E>,
+}
+
+impl<E: EnumArray<u32> + Copy> Events<E> {
+    pub fn clear(&mut self) {
+        self.counts = EnumMap::default();
+        #[cfg(feature = "event-log")]
+        self.order.clear();
+    }
 }
 
 impl<E: EnumArray<u32> + Copy> Default for Events<E> {
@@ -79,7 +92,7 @@ where
     let by_event = table.iter().find(|(s, _)| *s == state)?.1;
     let edges = by_event.iter().find(|(e, _)| *e == event)?.1;
     for (guard, action, target) in edges {
-        if guard.map_or(true, |g| g(data)) {
+        if guard.is_none_or(|g| g(data)) {
             return Some(Edge {
                 action: *action,
                 target: *target,
@@ -139,7 +152,7 @@ pub trait StateMachineSpec {
     }
 
     /// Return the default transition for this machine
-    /// This is the transtion that will be taken when this state machine first becomes active. It must specify the target (initial) state, and may
+    /// This is the transition that will be taken when this state machine first becomes active. It must specify the target (initial) state, and may
     /// optionally specify an action to emit on that initial transition. The default implementation returns a default-constructed target state and no action.
     fn default_transition() -> (Self::State, Option<Self::OutputEvent>) {
         (Self::State::default(), None)
@@ -434,6 +447,96 @@ impl<IE: Copy, ID, Out: Copy> NodeInterface for NoChildren<IE, ID, Out> {
     fn enter<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
     fn exit<K: EventSink<Self::OutputEvent>>(&mut self, _: &mut K) {}
     fn reset(&mut self) {}
+}
+
+/// Define a parent state's per-child enum and its [`NodeInterface`] forwarding impl in one shot.
+///
+/// A composite [`Node`]'s children are held in an `EnumMap<State, C>`, so every state must map to
+/// the *same* type `C`. When some states nest a machine and others don't, `C` has to be a hand-rolled
+/// enum that wraps each distinct subtree and forwards all five `NodeInterface` methods. That impl is
+/// pure boilerplate — this macro writes it for you.
+///
+/// List only the states that nest a child machine, each as `Variant => ChildNodeType`. Every other
+/// (leaf) state is covered by a generated `Leaf` variant holding [`NoChildren`], constructed via the
+/// generated `leaf()` associated function. In the `EnumMap`, map the leaf states with `enum_map!`'s
+/// `_` catch-all:
+///
+/// ```ignore
+/// children! {
+///     pub enum NavChildren {
+///         Cruising => SpeedNode,   // Cruising nests the L3 Speed machine
+///     }                            // Hovering (and any other state) -> Leaf(NoChildren)
+/// }
+///
+/// let nav = Node::<NavSpec, NavChildren>::new(enum_map! {
+///     Nav::Cruising => NavChildren::Cruising(Node::new_leaf()),
+///     _             => NavChildren::leaf(),
+/// });
+/// ```
+///
+/// At least one composite variant is required: its node type supplies the shared
+/// `InputEvent` / `InputData` / `OutputEvent` for the enum and the `Leaf` variant.
+#[macro_export]
+macro_rules! children {
+    (
+        $(#[$meta:meta])*
+        $vis:vis enum $name:ident {
+            $first_variant:ident => $first_node:ty
+            $(, $variant:ident => $node:ty )*
+            $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        $vis enum $name {
+            None,
+            $first_variant($first_node),
+            $( $variant($node), )*
+        }
+
+        impl $crate::NodeInterface for $name {
+            type InputEvent = <$first_node as $crate::NodeInterface>::InputEvent;
+            type InputData = <$first_node as $crate::NodeInterface>::InputData;
+            type OutputEvent = <$first_node as $crate::NodeInterface>::OutputEvent;
+
+            fn select(&mut self, event: Self::InputEvent, data: &Self::InputData) -> bool {
+                match self {
+                    Self::None => false,
+                    Self::$first_variant(c) => c.select(event, data),
+                    $( Self::$variant(c) => c.select(event, data), )*
+
+                }
+            }
+            fn execute_pending<K: $crate::EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+                match self {
+                    Self::None => {},
+                    Self::$first_variant(c) => c.execute_pending(sink),
+                    $( Self::$variant(c) => c.execute_pending(sink), )*
+                }
+            }
+            fn enter<K: $crate::EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+                match self {
+                    Self::None => {},
+                    Self::$first_variant(c) => c.enter(sink),
+                    $( Self::$variant(c) => c.enter(sink), )*
+
+                }
+            }
+            fn exit<K: $crate::EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
+                match self {
+                    Self::None => {},
+                    Self::$first_variant(c) => c.exit(sink),
+                    $( Self::$variant(c) => c.exit(sink), )*
+                }
+            }
+            fn reset(&mut self) {
+                match self {
+                    Self::None => {},
+                    Self::$first_variant(c) => c.reset(),
+                    $( Self::$variant(c) => c.reset(), )*
+                }
+            }
+        }
+    };
 }
 
 /// The primary runtime interface for users of this library: a `StateMachineRoot` is a wrapper around the top-level
@@ -916,5 +1019,126 @@ mod tests {
             &[Some(Out::IdleDuring), Some(Out::InternalAct)],
         );
         assert_eq!(sm.node.machine.current, States::Idle);
+    }
+
+    #[test]
+    fn children_macro_forwards_and_cascades() {
+        // A two-level machine assembled with `children!`: the parent `Busy`
+        // state nests a child `Work` machine, while `Idle` is a leaf handled by
+        // the generated `Leaf` variant. This exercises the generated enum, its
+        // `leaf()` constructor, and every forwarded `NodeInterface` method.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
+        enum Ev {
+            Start,
+            Stop,
+            Next,
+        }
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
+        enum Out {
+            BusyEnter,
+            BusyExit,
+            Step1Enter,
+            Step1Exit,
+            Step2Enter,
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+        enum Work {
+            #[default]
+            Step1,
+            Step2,
+        }
+        struct WorkSpec;
+        impl StateMachineSpec for WorkSpec {
+            type State = Work;
+            type InputEvent = Ev;
+            type InputData = ();
+            type OutputEvent = Out;
+            const EDGES: EdgeTable<Work, Ev, (), Out> = &[(
+                Work::Step1,
+                &[(Ev::Next, &[(None, None, Some(Work::Step2))])],
+            )];
+            fn on_enter(s: Work) -> Option<Out> {
+                match s {
+                    Work::Step1 => Some(Out::Step1Enter),
+                    Work::Step2 => Some(Out::Step2Enter),
+                }
+            }
+            fn on_exit(s: Work) -> Option<Out> {
+                match s {
+                    Work::Step1 => Some(Out::Step1Exit),
+                    Work::Step2 => None,
+                }
+            }
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
+        enum Top {
+            #[default]
+            Idle,
+            Busy,
+        }
+        struct TopSpec;
+        impl StateMachineSpec for TopSpec {
+            type State = Top;
+            type InputEvent = Ev;
+            type InputData = ();
+            type OutputEvent = Out;
+            const EDGES: EdgeTable<Top, Ev, (), Out> = &[
+                (Top::Idle, &[(Ev::Start, &[(None, None, Some(Top::Busy))])]),
+                (Top::Busy, &[(Ev::Stop, &[(None, None, Some(Top::Idle))])]),
+            ];
+            fn on_enter(s: Top) -> Option<Out> {
+                match s {
+                    Top::Busy => Some(Out::BusyEnter),
+                    Top::Idle => None,
+                }
+            }
+            fn on_exit(s: Top) -> Option<Out> {
+                match s {
+                    Top::Busy => Some(Out::BusyExit),
+                    Top::Idle => None,
+                }
+            }
+        }
+
+        type WorkNode = LeafNode<WorkSpec, Ev, (), Out>;
+        children! {
+            enum TopChildren {
+                Busy => WorkNode,
+            }
+        }
+
+        let node = Node::<TopSpec, TopChildren>::new(enum_map! {
+            Top::Busy => TopChildren::Busy(Node::new_leaf()),
+            _ => TopChildren::None,
+        });
+
+        let mut sink = RecordingSink::new();
+        let mut sm = StateMachineRoot::create(node, &mut sink);
+        assert_eq!(sm.node.machine.current, Top::Idle); // boot stops at the leaf
+        sink.clear();
+
+        // Start: enter Busy, then its child machine's default cascades to Step1.
+        sm.step(Ev::Start, &(), &mut sink);
+        assert_eq!(
+            sink.events(),
+            &[Some(Out::BusyEnter), Some(Out::Step1Enter)],
+        );
+        sink.clear();
+
+        // Next: a deeper handler wins — only the child machine transitions.
+        sm.step(Ev::Next, &(), &mut sink);
+        assert_eq!(
+            sink.events(),
+            &[Some(Out::Step1Exit), Some(Out::Step2Enter)]
+        );
+        sink.clear();
+
+        // Stop: tear down bottom-up (child Step2 exit emits nothing here, then
+        // Busy exits), then re-enter the Idle leaf (emits nothing).
+        sm.step(Ev::Stop, &(), &mut sink);
+        assert_eq!(sink.events(), &[Some(Out::BusyExit)]);
+        assert_eq!(sm.node.machine.current, Top::Idle);
     }
 }
