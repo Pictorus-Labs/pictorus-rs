@@ -153,6 +153,12 @@ pub struct Machine<SMS: StateMachineSpec> {
     pending: Option<Edge<SMS::State, SMS::OutputEvent>>,
 }
 
+impl<S: StateMachineSpec> Machine<S> {
+    pub fn current(&self) -> S::State {
+        self.current
+    }
+}
+
 impl<S: StateMachineSpec> Default for Machine<S> {
     fn default() -> Self {
         Self {
@@ -293,6 +299,21 @@ where
             machine: Machine::default(),
             children,
         }
+    }
+    /// The active state of this node's own machine.
+    pub fn state(&self) -> SMS::State {
+        self.machine.current
+    }
+
+    /// The child subtree under the currently active state. Lets a caller that
+    /// knows `C` (e.g. the machine's author) walk into the active branch.
+    pub fn active_child(&self) -> &C {
+        &self.children[self.machine.current]
+    }
+
+    /// The child subtree under an arbitrary state.
+    pub fn child(&self, state: SMS::State) -> &C {
+        &self.children[state]
     }
 }
 
@@ -436,6 +457,10 @@ impl<N: NodeInterface> StateMachineRoot<N> {
     ) {
         self.node.select(input_event, input_data);
         self.node.execute_pending(sink);
+    }
+    /// Read-only access to the root node, for inspection.
+    pub fn root(&self) -> &N {
+        &self.node
     }
 }
 impl<N: NodeInterface> StateMachineRoot<N>
@@ -842,13 +867,13 @@ mod tests {
         // `during` fires on an internal-transition step, and BEFORE the
         // internal action.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
-        enum Idle {
+        enum States {
             #[default]
             Idle,
         }
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
-        enum Ev {
+        enum Events {
             Tick,
         }
 
@@ -860,36 +885,36 @@ mod tests {
 
         struct Spec;
         impl StateMachineSpec for Spec {
-            type State = Idle;
-            type InputEvent = Ev;
+            type State = States;
+            type InputEvent = Events;
             type InputData = Data;
             type OutputEvent = Out;
 
             // Tick → internal transition (None target), emitting InternalAct.
-            const EDGES: EdgeTable<Idle, Ev, Data, Out> = &[(
-                Idle::Idle,
-                &[(Ev::Tick, &[(None, Some(Out::InternalAct), None)])],
+            const EDGES: EdgeTable<States, Events, Data, Out> = &[(
+                States::Idle,
+                &[(Events::Tick, &[(None, Some(Out::InternalAct), None)])],
             )];
 
-            fn during(_: Idle) -> Option<Out> {
+            fn during(_: States) -> Option<Out> {
                 Some(Out::IdleDuring)
             }
         }
 
         let mut sink = RecordingSink::new();
         let mut sm = StateMachineRoot::create(
-            Node::<Spec, NoChildren<Ev, Data, Out>>::new_leaf(),
+            Node::<Spec, NoChildren<Events, Data, Out>>::new_leaf(),
             &mut sink,
         );
         sink.clear(); // create emits nothing here, but be explicit
 
-        sm.step(Ev::Tick, &Data { battery_ok: true }, &mut sink);
+        sm.step(Events::Tick, &Data { battery_ok: true }, &mut sink);
 
         // during BEFORE action; no on_enter/on_exit; state unchanged.
         assert_eq!(
             sink.events(),
             &[Some(Out::IdleDuring), Some(Out::InternalAct)],
         );
-        assert_eq!(sm.node.machine.current, Idle::Idle);
+        assert_eq!(sm.node.machine.current, States::Idle);
     }
 }
