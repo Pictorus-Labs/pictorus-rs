@@ -27,5 +27,5 @@ std-embedded-time = "0.1.0"
 linux-embedded-hal = "0.4.0"
 sysfs-pwm = "0.1.0"
 serialport = "4.3.0"
-socketcan = "3.3.0"
+socketcan = "=3.5.0" # Pinned until this issue is resolved: https://github.com/socketcan-rs/socketcan-rs/issues/100
 libc = "0.2.153"
