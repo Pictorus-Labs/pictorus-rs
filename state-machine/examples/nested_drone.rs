@@ -76,22 +76,36 @@ enum Speed {
 }
 
 struct SpeedSpec;
-impl StateMachineSpec for SpeedSpec {
+impl StateDiagramSpec for SpeedSpec {
     type State = Speed;
     type InputEvent = Ev;
     type InputData = Data;
     type OutputEvent = Out;
 
-    const EDGES: EdgeTable<Speed, Ev, Data, Out> = &[
-        (
-            Speed::Normal,
-            &[(Ev::Boost, &[(None, None, Some(Speed::Boost))])],
-        ),
-        (
-            Speed::Boost,
-            &[(Ev::Slow, &[(None, None, Some(Speed::Normal))])],
-        ),
-    ];
+    const TRANSITIONS: TransitionTable<Speed, Ev, Data, Out> = TransitionTable::new(&[
+        StateTransitions {
+            source: Speed::Normal,
+            events: &[EventTransitions {
+                event: Ev::Boost,
+                transitions: &[Transition {
+                    guard: None,
+                    action: None,
+                    destination: Some(Speed::Boost),
+                }],
+            }],
+        },
+        StateTransitions {
+            source: Speed::Boost,
+            events: &[EventTransitions {
+                event: Ev::Slow,
+                transitions: &[Transition {
+                    guard: None,
+                    action: None,
+                    destination: Some(Speed::Normal),
+                }],
+            }],
+        },
+    ]);
 
     fn on_enter(s: Speed) -> Option<Out> {
         match s {
@@ -116,22 +130,36 @@ enum Nav {
 }
 
 struct NavSpec;
-impl StateMachineSpec for NavSpec {
+impl StateDiagramSpec for NavSpec {
     type State = Nav;
     type InputEvent = Ev;
     type InputData = Data;
     type OutputEvent = Out;
 
-    const EDGES: EdgeTable<Nav, Ev, Data, Out> = &[
-        (
-            Nav::Hovering,
-            &[(Ev::Cruise, &[(None, None, Some(Nav::Cruising))])],
-        ),
-        (
-            Nav::Cruising,
-            &[(Ev::Hover, &[(None, None, Some(Nav::Hovering))])],
-        ),
-    ];
+    const TRANSITIONS: TransitionTable<Nav, Ev, Data, Out> = TransitionTable::new(&[
+        StateTransitions {
+            source: Nav::Hovering,
+            events: &[EventTransitions {
+                event: Ev::Cruise,
+                transitions: &[Transition {
+                    guard: None,
+                    action: None,
+                    destination: Some(Nav::Cruising),
+                }],
+            }],
+        },
+        StateTransitions {
+            source: Nav::Cruising,
+            events: &[EventTransitions {
+                event: Ev::Hover,
+                transitions: &[Transition {
+                    guard: None,
+                    action: None,
+                    destination: Some(Nav::Hovering),
+                }],
+            }],
+        },
+    ]);
 
     fn on_enter(s: Nav) -> Option<Out> {
         match s {
@@ -150,9 +178,9 @@ impl StateMachineSpec for NavSpec {
 // Nav's per-state children: Cruising nests the L3 Speed machine; Hovering (and
 // any other leaf state) falls through to the generated `Leaf` variant. The
 // `children!` macro writes the enum and the whole `NodeInterface` forwarding impl.
-type SpeedNode = LeafNode<SpeedSpec, Ev, Data, Out>;
+type SpeedNode = AllSimpleStateDiagram<SpeedSpec, Ev, Data, Out>;
 fn build_speed_node() -> SpeedNode {
-    Node::new_leaf()
+    StateDiagram::new_all_simple_states()
 }
 
 children! {
@@ -161,10 +189,10 @@ children! {
     }
 }
 
-type NavNode = Node<NavSpec, NavChildren>;
+type NavNode = StateDiagram<NavSpec, NavChildren>;
 
 fn build_nav_node() -> NavNode {
-    Node::new(enum_map! {
+    StateDiagram::new(enum_map! {
         Nav::Cruising => NavChildren::Cruising(build_speed_node()),
         _ => NavChildren::None,
     })
@@ -179,22 +207,36 @@ enum Flight {
 }
 
 struct FlightSpec;
-impl StateMachineSpec for FlightSpec {
+impl StateDiagramSpec for FlightSpec {
     type State = Flight;
     type InputEvent = Ev;
     type InputData = Data;
     type OutputEvent = Out;
 
-    const EDGES: EdgeTable<Flight, Ev, Data, Out> = &[
-        (
-            Flight::Grounded,
-            &[(Ev::Takeoff, &[(None, None, Some(Flight::Airborne))])],
-        ),
-        (
-            Flight::Airborne,
-            &[(Ev::Land, &[(None, None, Some(Flight::Grounded))])],
-        ),
-    ];
+    const TRANSITIONS: TransitionTable<Flight, Ev, Data, Out> = TransitionTable::new(&[
+        StateTransitions {
+            source: Flight::Grounded,
+            events: &[EventTransitions {
+                event: Ev::Takeoff,
+                transitions: &[Transition {
+                    guard: None,
+                    action: None,
+                    destination: Some(Flight::Airborne),
+                }],
+            }],
+        },
+        StateTransitions {
+            source: Flight::Airborne,
+            events: &[EventTransitions {
+                event: Ev::Land,
+                transitions: &[Transition {
+                    guard: None,
+                    action: None,
+                    destination: Some(Flight::Grounded),
+                }],
+            }],
+        },
+    ]);
 
     fn on_enter(s: Flight) -> Option<Out> {
         match s {
@@ -218,11 +260,11 @@ children! {
     }
 }
 
-type FlightNode = Node<FlightSpec, FlightChildren>;
+type FlightNode = StateDiagram<FlightSpec, FlightChildren>;
 
 // ─── Assembling the three-level tree ───────────────────────────────────────
 fn build_flight_node() -> FlightNode {
-    Node::new(enum_map! {
+    StateDiagram::new(enum_map! {
     // Airborne nests Nav, whose Cruising in turn nests the L3 Speed leaf.
     Flight::Airborne => FlightChildren::Airborne(build_nav_node()),
     // Grounded has no nested machine.
@@ -231,7 +273,7 @@ fn build_flight_node() -> FlightNode {
 }
 
 // ─── Inspecting the live configuration across all three levels ─────────────
-fn config(sm: &StateMachineRoot<FlightNode>) -> String {
+fn config(sm: &StateMachine<FlightNode>) -> String {
     match sm.root().state() {
         Flight::Grounded => "Grounded".to_string(),
         Flight::Airborne => match sm.root().active_child() {
@@ -262,7 +304,7 @@ fn main() {
     // stops there. The L2/L3 subtrees exist but are dormant, so nothing in
     // them is entered yet.
     let mut trace = Events::default();
-    let mut sm = StateMachineRoot::create(build_flight_node(), &mut trace);
+    let mut sm = StateMachine::create(build_flight_node(), &mut trace);
     println!("▶ boot (create)");
     println!("    config: <none>  ->  {}", config(&sm));
     println!("    emitted: {:?}", &trace.order);

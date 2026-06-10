@@ -58,54 +58,104 @@ impl<E: EnumArray<u32> + Copy> EventSink<E> for Events<E> {
     }
 }
 
-/// A Guard is a function that takes the machine's InputData and returns a boolean indicating whether a transition is allowed to occur
-pub type Guard<D> = fn(&D) -> bool;
-/// A composite type representing a transition edge, consisting of an optional guard, an optional output event, and an optional target state
-/// where None indicates an "internal transition"
-pub type GuardedEdge<D, O, S> = (Option<Guard<D>>, Option<O>, Option<S>);
-/// A collection of edges for a specific event, consisting of the event and a slice of guarded edges, ordered by priority
-pub type EventEdges<E, D, O, S> = (E, &'static [GuardedEdge<D, O, S>]);
-/// A collection of edges for a specific state, consisting of the state and a slice of event edges
-pub type StateEdges<S, E, D, O> = (S, &'static [EventEdges<E, D, O, S>]);
-/// The entire set of edges for a state machine, represented as a slice of state edges
-pub type EdgeTable<S, E, D, O> = &'static [StateEdges<S, E, D, O>]; // the whole machine
-
-/// A simple struct representing a transition edge, consisting of an optional output event and a target state
-pub struct Edge<S, Out> {
-    pub action: Option<Out>,
-    pub target: Option<S>,
+#[derive(Copy, Clone)]
+pub struct UnguardedTransition<S: Copy, A: Copy> {
+    pub action: Option<A>,
+    pub destination: Option<S>,
 }
 
-/// Using an [`EdgeTable`], a source state, an event, and the current input data, resolve to the first valid outgoing edge (if any)
-/// according to the transition rules: find the matching state slice, then the matching event slice, then return the first edge whose guard passes (or has no guard).
-pub fn resolve_table<S, E, D, O>(
-    table: EdgeTable<S, E, D, O>,
-    state: S,
-    event: E,
-    data: &D,
-) -> Option<Edge<S, O>>
-where
-    S: Copy + PartialEq,
-    E: Copy + PartialEq,
-    O: Copy,
-{
-    let by_event = table.iter().find(|(s, _)| *s == state)?.1;
-    let edges = by_event.iter().find(|(e, _)| *e == event)?.1;
-    for (guard, action, target) in edges {
-        if guard.is_none_or(|g| g(data)) {
-            return Some(Edge {
-                action: *action,
-                target: *target,
-            });
+impl<S: Copy, D: 'static, A: Copy> From<&Transition<S, D, A>> for UnguardedTransition<S, A> {
+    fn from(t: &Transition<S, D, A>) -> Self {
+        Self {
+            action: t.action,
+            destination: t.destination,
         }
     }
-    None
 }
 
-/// Core definition for a State Machine's structure and behavior
-/// This represents a single atomic state machine, which can later be composed into a tree structure via
-/// the `Node` struct and the `NodeInterface` trait to form parallel regions and hierarchical states.
-pub trait StateMachineSpec {
+/// A Guard is a function that takes the machine's InputData and returns a boolean indicating whether a transition is allowed to occur
+pub type Guard<D> = fn(&D) -> bool;
+
+/// A composite type representing a transition, consisting of an optional guard, an optional output event, and an optional target state
+/// where None indicates an "internal transition"
+pub struct Transition<S: Copy, D, A: Copy> {
+    pub guard: Option<Guard<D>>,
+    pub action: Option<A>,
+    pub destination: Option<S>,
+}
+/// A collection of transitions for a specific event, consisting of the event and a slice of transitions, ordered by priority
+pub struct EventTransitions<S: 'static + Copy, E: 'static, D: 'static, A: 'static + Copy> {
+    pub event: E,
+    pub transitions: &'static [Transition<S, D, A>],
+}
+
+impl<S: 'static + Copy, E: 'static + PartialEq, D: 'static, A: 'static + Copy>
+    EventTransitions<S, E, D, A>
+{
+    pub fn iter(&self) -> core::slice::Iter<'_, Transition<S, D, A>> {
+        self.transitions.iter()
+    }
+
+    pub fn get_first_valid_transition(&self, data: &D) -> Option<UnguardedTransition<S, A>> {
+        self.iter()
+            .find(|t| t.guard.is_none_or(|g| g(data)))
+            .map(UnguardedTransition::from)
+    }
+}
+/// A collection of transitions from a specific state, consisting of the state and a slice of event transitions
+pub struct StateTransitions<S: 'static + Copy, E: 'static, D: 'static, A: 'static + Copy> {
+    pub source: S,
+    pub events: &'static [EventTransitions<S, E, D, A>],
+}
+
+impl<S: 'static + Copy, E: 'static + PartialEq, D: 'static, A: 'static + Copy>
+    StateTransitions<S, E, D, A>
+{
+    pub fn iter(&self) -> core::slice::Iter<'_, EventTransitions<S, E, D, A>> {
+        self.events.iter()
+    }
+    pub fn find_event_transitions(&self, event: E) -> Option<&EventTransitions<S, E, D, A>> {
+        self.iter().find(|e| e.event == event)
+    }
+}
+/// The entire set of transitions for a state machine, represented as a slice of [`StateTransitions`]
+pub struct TransitionTable<S: 'static + Copy, E: 'static, D: 'static, A: 'static + Copy>(
+    &'static [StateTransitions<S, E, D, A>],
+);
+impl<S: 'static + PartialEq + Copy, E: 'static + PartialEq, D: 'static, A: 'static + Copy>
+    TransitionTable<S, E, D, A>
+{
+    pub const fn empty() -> Self {
+        Self(&[])
+    }
+
+    pub const fn new(transitions: &'static [StateTransitions<S, E, D, A>]) -> Self {
+        Self(transitions)
+    }
+
+    pub fn iter(&self) -> core::slice::Iter<'_, StateTransitions<S, E, D, A>> {
+        self.0.iter()
+    }
+    pub fn find_source_events(&self, source: S) -> Option<&StateTransitions<S, E, D, A>> {
+        self.iter().find(|s| s.source == source)
+    }
+
+    pub fn resolve_transition(
+        &self,
+        source: S,
+        event: E,
+        data: &D,
+    ) -> Option<UnguardedTransition<S, A>> {
+        self.find_source_events(source)
+            .and_then(|s| s.find_event_transitions(event))
+            .and_then(|e| e.get_first_valid_transition(data))
+    }
+}
+
+/// Core definition for a State Diagram's structure and behavior
+/// This represents a single state diagram which can later be composed into a tree structure via
+/// the [`StateDiagram`] struct and the [`StateDiagramInterface`] trait to form parallel regions and hierarchical states.
+pub trait StateDiagramSpec {
     /// An enum representing the states of this machine (specific to this atomic machine)
     type State: Default + Copy + PartialEq + 'static;
     /// The enum of input events that can trigger transitions in this machine. This must be
@@ -119,20 +169,25 @@ pub trait StateMachineSpec {
     type OutputEvent: Copy + 'static;
 
     /// A static table that represents all inter-state transitions for this machine
-    /// The default implementation of [`resolve`] looks up edges in this table. Custom behavior
+    /// The default implementation of [`resolve`] looks up transitions in this table. Custom behavior
     /// could be implemented by leaving this empty (setting it to `&[]`) and overriding [`resolve`] with a custom function
-    const EDGES: EdgeTable<Self::State, Self::InputEvent, Self::InputData, Self::OutputEvent> = &[];
+    const TRANSITIONS: TransitionTable<
+        Self::State,
+        Self::InputEvent,
+        Self::InputData,
+        Self::OutputEvent,
+    > = TransitionTable::empty();
 
-    /// Given a source state, an event, and the current input data, resolve to the first valid outgoing edge (if any) according
-    /// to the transition rules: find the matching state slice, then the matching event slice, then return the first edge whose
-    ///  guard passes (or has no guard). The default implementation looks up edges in the [`EDGES`] table. Custom behavior can be
+    /// Given a source state, an event, and the current input data, resolve to the first valid outgoing transition (if any) according
+    /// to the transition rules: find the matching state slice, then the matching event slice, then return the first transition whose
+    ///  guard passes (or has no guard). The default implementation looks up transitions in the [`TRANSITIONS`] table. Custom behavior can be
     /// implemented by overriding this function.
     fn resolve(
         state: Self::State,
         event: Self::InputEvent,
         data: &Self::InputData,
-    ) -> Option<Edge<Self::State, Self::OutputEvent>> {
-        resolve_table(Self::EDGES, state, event, data)
+    ) -> Option<UnguardedTransition<Self::State, Self::OutputEvent>> {
+        Self::TRANSITIONS.resolve_transition(state, event, data)
     }
 
     /// Given a state, return an optional output event to emit on entry to that state. The default implementation returns `None` for every state.
@@ -159,30 +214,8 @@ pub trait StateMachineSpec {
     }
 }
 
-/// A simple atomic state machine implementation that uses a `StateMachineSpec` to define its behavior.
-/// It keeps track of the current state and possibly a pending transition edge that has been selected but not yet executed.
-pub struct Machine<SMS: StateMachineSpec> {
-    current: SMS::State,
-    pending: Option<Edge<SMS::State, SMS::OutputEvent>>,
-}
-
-impl<S: StateMachineSpec> Machine<S> {
-    pub fn current(&self) -> S::State {
-        self.current
-    }
-}
-
-impl<S: StateMachineSpec> Default for Machine<S> {
-    fn default() -> Self {
-        Self {
-            current: S::State::default(),
-            pending: None,
-        }
-    }
-}
-
 /// Defines the interface for a composable element of a hierarchical/parallel state machine tree
-pub trait NodeInterface {
+pub trait StateDiagramInterface {
     type InputEvent: Copy;
     type InputData;
     type OutputEvent: Copy;
@@ -201,10 +234,10 @@ pub trait NodeInterface {
     fn reset(&mut self);
 }
 
-impl<A, B> NodeInterface for (A, B)
+impl<A, B> StateDiagramInterface for (A, B)
 where
-    A: NodeInterface,
-    B: NodeInterface<
+    A: StateDiagramInterface,
+    B: StateDiagramInterface<
             InputEvent = A::InputEvent,
             InputData = A::InputData,
             OutputEvent = A::OutputEvent,
@@ -235,15 +268,15 @@ where
     }
 }
 
-impl<A, B, C> NodeInterface for (A, B, C)
+impl<A, B, C> StateDiagramInterface for (A, B, C)
 where
-    A: NodeInterface,
-    B: NodeInterface<
+    A: StateDiagramInterface,
+    B: StateDiagramInterface<
             InputEvent = A::InputEvent,
             InputData = A::InputData,
             OutputEvent = A::OutputEvent,
         >,
-    C: NodeInterface<
+    C: StateDiagramInterface<
             InputEvent = A::InputEvent,
             InputData = A::InputData,
             OutputEvent = A::OutputEvent,
@@ -280,48 +313,50 @@ where
 
 // Etc. for larger tuples if desired, would be a simple macro if needed
 
-/// A struct that implements [`NodeInterface`]
+/// A struct that implements [`StateDiagramInterface`]
 ///
-/// It contains a [`Machine`] that represents the current state and possibly a pending transition of this node,
-/// as well as a set of child nodes for each state (representing the hierarchical/parallel structure of the state machine tree).
-pub struct Node<SMS: StateMachineSpec, C>
+/// It stores the current active state and possibly a pending transition for this diagram.
+/// For every state is stores a subtree of that state's children (in the case that none of the states have children, they will all be the placeholder type `NoChildren`).
+pub struct StateDiagram<SMS: StateDiagramSpec, C>
 where
     SMS::State: EnumArray<C>,
-    C: NodeInterface<
+    C: StateDiagramInterface<
             OutputEvent = SMS::OutputEvent,
             InputEvent = SMS::InputEvent,
             InputData = SMS::InputData,
         >,
 {
-    machine: Machine<SMS>,
+    current: SMS::State,
+    pending: Option<UnguardedTransition<SMS::State, SMS::OutputEvent>>,
     children: EnumMap<SMS::State, C>,
 }
 
-impl<SMS: StateMachineSpec, C> Node<SMS, C>
+impl<SMS: StateDiagramSpec, C> StateDiagram<SMS, C>
 where
     SMS::State: EnumArray<C>,
-    C: NodeInterface<
+    C: StateDiagramInterface<
             OutputEvent = SMS::OutputEvent,
             InputEvent = SMS::InputEvent,
             InputData = SMS::InputData,
         >,
 {
-    /// Create a new `Node` with the given children. The machine will be initialized to its default state.
+    /// Create a new [`StateDiagram`] with the given children. The machine will be initialized to its default state.
     pub fn new(children: EnumMap<SMS::State, C>) -> Self {
         Self {
-            machine: Machine::default(),
+            current: SMS::State::default(),
+            pending: None,
             children,
         }
     }
-    /// The active state of this node's own machine.
+    /// The active state of this diagram.
     pub fn state(&self) -> SMS::State {
-        self.machine.current
+        self.current
     }
 
     /// The child subtree under the currently active state. Lets a caller that
     /// knows `C` (e.g. the machine's author) walk into the active branch.
     pub fn active_child(&self) -> &C {
-        &self.children[self.machine.current]
+        &self.children[self.current]
     }
 
     /// The child subtree under an arbitrary state.
@@ -330,23 +365,25 @@ where
     }
 }
 
-impl<SMS: StateMachineSpec> Node<SMS, NoChildren<SMS::InputEvent, SMS::InputData, SMS::OutputEvent>>
+impl<SMS: StateDiagramSpec>
+    StateDiagram<SMS, NoChildren<SMS::InputEvent, SMS::InputData, SMS::OutputEvent>>
 where
     SMS::State: EnumArray<NoChildren<SMS::InputEvent, SMS::InputData, SMS::OutputEvent>>,
 {
-    /// Create a new leaf `Node` with no children. The machine will be initialized to its default state.
-    pub fn new_leaf() -> Self {
+    /// Create a new [`StateDiagram`] where none of the states have children
+    pub fn new_all_simple_states() -> Self {
         Self {
-            machine: Machine::default(),
+            current: SMS::State::default(),
+            pending: None,
             children: enum_map! { _ => NoChildren::default() },
         }
     }
 }
 
-impl<SMS: StateMachineSpec, C> NodeInterface for Node<SMS, C>
+impl<SMS: StateDiagramSpec, C> StateDiagramInterface for StateDiagram<SMS, C>
 where
     SMS::State: EnumArray<C>,
-    C: NodeInterface<
+    C: StateDiagramInterface<
             OutputEvent = SMS::OutputEvent,
             InputEvent = SMS::InputEvent,
             InputData = SMS::InputData,
@@ -357,7 +394,7 @@ where
     type OutputEvent = SMS::OutputEvent;
 
     fn select(&mut self, event: Self::InputEvent, data: &Self::InputData) -> bool {
-        let s = self.machine.current;
+        let s = self.current;
 
         // Child-first: a deeper handler preempts this level entirely.
         if self.children[s].select(event, data) {
@@ -366,7 +403,7 @@ where
 
         // Nobody below handled it — try our own outgoing edges.
         if let Some(edge) = SMS::resolve(s, event, data) {
-            self.machine.pending = Some(edge);
+            self.pending = Some(edge);
             return true;
         }
 
@@ -374,15 +411,15 @@ where
     }
 
     fn execute_pending<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
-        let pending = self.machine.pending.take();
+        let pending = self.pending.take();
         // May be None if pending was none or if it is an internal transition
-        let target_state = pending.as_ref().and_then(|e| e.target);
+        let target_state = pending.as_ref().and_then(|e| e.destination);
         // May be None if pending was none or if the edge has no action
         let transition_action = pending.as_ref().and_then(|e| e.action);
 
         if let Some(target_state) = target_state {
             // Need to do a full exit and enter sequence
-            let old = self.machine.current;
+            let old = self.current;
 
             self.children[old].exit(sink); // deeper exit actions first
             sink.emit_opt(SMS::on_exit(old)); // then this state's own
@@ -390,13 +427,13 @@ where
 
             sink.emit_opt(transition_action); // transition action
 
-            self.machine.current = target_state;
+            self.current = target_state;
             sink.emit_opt(SMS::on_enter(target_state));
             self.children[target_state].enter(sink); // cascade defaults ↓
         } else {
             // Internal transition or No transition, the only difference is that `transition_action`
             // may have been set if it is an internal transition, emit_opt will handle the None case correctly.
-            let s = self.machine.current;
+            let s = self.current;
             sink.emit_opt(SMS::during(s));
             sink.emit_opt(transition_action);
             self.children[s].execute_pending(sink);
@@ -407,36 +444,37 @@ where
         // Activating from default transition
         let (default_state, default_action) = SMS::default_transition();
         sink.emit_opt(default_action);
-        self.machine.current = default_state;
+        self.current = default_state;
         sink.emit_opt(SMS::on_enter(default_state));
         self.children[default_state].enter(sink);
     }
 
     fn exit<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
-        let s = self.machine.current;
+        let s = self.current;
         self.children[s].exit(sink); // bottom-up
         sink.emit_opt(SMS::on_exit(s));
     }
 
     fn reset(&mut self) {
-        self.machine = Machine::default();
+        self.current = SMS::State::default();
+        self.pending = None;
         for c in self.children.values_mut() {
             c.reset();
         }
     }
 }
 
-/// A type alias for a leaf node, which is a `Node` with `NoChildren`. This is a common case and the alias provides a convenient shorthand.
-pub type LeafNode<SMS, IE, ID, O> = Node<SMS, NoChildren<IE, ID, O>>;
+/// A type alias for a state, which is a `StateDiagram` with `NoChildren`. This is a common case and the alias provides a convenient shorthand.
+pub type AllSimpleStateDiagram<SMS, IE, ID, O> = StateDiagram<SMS, NoChildren<IE, ID, O>>;
 
-/// A struct representing the absence of children for a node. This is used as the `C` parameter of `Node` for leaf nodes.
+/// A struct that when used as the `C` generic param of a [`StateDiagram`] represents the absence of any children
 pub struct NoChildren<IE: Copy, ID, Out>(core::marker::PhantomData<(IE, ID, Out)>);
 impl<IE: Copy, ID, Out> Default for NoChildren<IE, ID, Out> {
     fn default() -> Self {
         Self(core::marker::PhantomData)
     }
 }
-impl<IE: Copy, ID, Out: Copy> NodeInterface for NoChildren<IE, ID, Out> {
+impl<IE: Copy, ID, Out: Copy> StateDiagramInterface for NoChildren<IE, ID, Out> {
     type InputEvent = IE;
     type InputData = ID;
     type OutputEvent = Out;
@@ -449,54 +487,49 @@ impl<IE: Copy, ID, Out: Copy> NodeInterface for NoChildren<IE, ID, Out> {
     fn reset(&mut self) {}
 }
 
-/// Define a parent state's per-child enum and its [`NodeInterface`] forwarding impl in one shot.
+/// Defines an enum that is used by [`StateDiagramInterface`] for assigning children to its composite States.
 ///
-/// A composite [`Node`]'s children are held in an `EnumMap<State, C>`, so every state must map to
-/// the *same* type `C`. When some states nest a machine and others don't, `C` has to be a hand-rolled
-/// enum that wraps each distinct subtree and forwards all five `NodeInterface` methods. That impl is
-/// pure boilerplate — this macro writes it for you.
-///
-/// List only the states that nest a child machine, each as `Variant => ChildNodeType`. Every other
-/// (leaf) state is covered by a generated `Leaf` variant holding [`NoChildren`], constructed via the
-/// generated `leaf()` associated function. In the `EnumMap`, map the leaf states with `enum_map!`'s
-/// `_` catch-all:
+/// Each state's children are held in an `EnumMap<State, C>`, so every state must use
+/// the *same* type `C` to store its children. The macro makes it easy to define that type as an enum where each variant
+/// corresponds to a state that has children, and the variant's data is the type of the children for that state.
+/// States that have no children are not listed in the enum, and are instead represented by a `None` variant that
+/// the macro generates automatically. To invoke the macro, list only the states that nest a child machine, each as
+/// `Variant => ChildType`.
 ///
 /// ```ignore
 /// children! {
 ///     pub enum NavChildren {
-///         Cruising => SpeedNode,   // Cruising nests the L3 Speed machine
-///     }                            // Hovering (and any other state) -> Leaf(NoChildren)
+///         Cruising => SpeedDiagram,   // Cruising nests the L3 Speed machine
+///         Landing => (LandingDiagram, CameraDiagram), // Landing nests the L3 Landing machine and the L4 Camera machine in parallel
+///     }                            // Hovering (and any other state) -> None
 /// }
-///
-/// let nav = Node::<NavSpec, NavChildren>::new(enum_map! {
-///     Nav::Cruising => NavChildren::Cruising(Node::new_leaf()),
-///     _             => NavChildren::leaf(),
 /// });
 /// ```
 ///
-/// At least one composite variant is required: its node type supplies the shared
-/// `InputEvent` / `InputData` / `OutputEvent` for the enum and the `Leaf` variant.
+/// At least one composite variant is required: its type supplies the shared
+/// `InputEvent` / `InputData` / `OutputEvent` for the enum.
+/// If all states are simple (i.e. have no children), the `new_all_simple_states` constructor can be used instead of invoking the macro.
 #[macro_export]
 macro_rules! children {
     (
         $(#[$meta:meta])*
         $vis:vis enum $name:ident {
-            $first_variant:ident => $first_node:ty
-            $(, $variant:ident => $node:ty )*
+            $first_variant:ident => $first_child:ty
+            $(, $variant:ident => $child:ty )*
             $(,)?
         }
     ) => {
         $(#[$meta])*
         $vis enum $name {
             None,
-            $first_variant($first_node),
-            $( $variant($node), )*
+            $first_variant($first_child),
+            $( $variant($child), )*
         }
 
-        impl $crate::NodeInterface for $name {
-            type InputEvent = <$first_node as $crate::NodeInterface>::InputEvent;
-            type InputData = <$first_node as $crate::NodeInterface>::InputData;
-            type OutputEvent = <$first_node as $crate::NodeInterface>::OutputEvent;
+        impl $crate::StateDiagramInterface for $name {
+            type InputEvent = <$first_child as $crate::StateDiagramInterface>::InputEvent;
+            type InputData = <$first_child as $crate::StateDiagramInterface>::InputData;
+            type OutputEvent = <$first_child as $crate::StateDiagramInterface>::OutputEvent;
 
             fn select(&mut self, event: Self::InputEvent, data: &Self::InputData) -> bool {
                 match self {
@@ -539,42 +572,42 @@ macro_rules! children {
     };
 }
 
-/// The primary runtime interface for users of this library: a `StateMachineRoot` is a wrapper around the top-level
-/// `Node` that provides a simple API for stepping the machine with input events and data, and for creating the machine with an initial node and sink.
-pub struct StateMachineRoot<N: NodeInterface> {
-    node: N,
+/// The primary runtime interface for users of this library: a [`StateMachine`] is a wrapper around the top-level
+/// [`StateDiagramInterface`] that provides a simple API for stepping the machine with input events and data, and for creating the machine.
+pub struct StateMachine<S: StateDiagramInterface> {
+    state_diagram: S,
 }
 
-impl<N: NodeInterface> StateMachineRoot<N> {
-    pub fn create(node: N, sink: &mut impl EventSink<N::OutputEvent>) -> Self {
-        let mut root = Self { node };
-        root.node.enter(sink);
+impl<S: StateDiagramInterface> StateMachine<S> {
+    pub fn create(state_diagram: S, sink: &mut impl EventSink<S::OutputEvent>) -> Self {
+        let mut root = Self { state_diagram };
+        root.state_diagram.enter(sink);
         root
     }
 
     pub fn step(
         &mut self,
-        input_event: N::InputEvent,
-        input_data: &N::InputData,
-        sink: &mut impl EventSink<N::OutputEvent>,
+        input_event: S::InputEvent,
+        input_data: &S::InputData,
+        sink: &mut impl EventSink<S::OutputEvent>,
     ) {
-        self.node.select(input_event, input_data);
-        self.node.execute_pending(sink);
+        self.state_diagram.select(input_event, input_data);
+        self.state_diagram.execute_pending(sink);
     }
-    /// Read-only access to the root node, for inspection.
-    pub fn root(&self) -> &N {
-        &self.node
+    /// Read-only access to the root state_diagram, for inspection.
+    pub fn root(&self) -> &S {
+        &self.state_diagram
     }
 }
-impl<N: NodeInterface> StateMachineRoot<N>
+impl<S: StateDiagramInterface> StateMachine<S>
 where
-    N::InputEvent: EnumArray<bool>,
+    S::InputEvent: EnumArray<bool>,
 {
     pub fn execute(
         &mut self,
-        input_events: EnumMap<N::InputEvent, bool>,
-        input_data: &N::InputData,
-        sink: &mut impl EventSink<N::OutputEvent>,
+        input_events: EnumMap<S::InputEvent, bool>,
+        input_data: &S::InputData,
+        sink: &mut impl EventSink<S::OutputEvent>,
     ) {
         for (event, should_fire) in input_events {
             if should_fire {
@@ -669,29 +702,32 @@ mod tests {
     // The top machine: the only non-trivial transition table in the example.
     // Note the guard reads Data and the slice order is the transition priority.
     struct TopSpec;
-    impl StateMachineSpec for TopSpec {
+    impl StateDiagramSpec for TopSpec {
         type State = Top;
         type InputEvent = Ev;
         type InputData = Data;
         type OutputEvent = Out;
 
-        const EDGES: EdgeTable<Top, Ev, Data, Out> = &[
-            (
-                Top::Active,
-                &[(
-                    Ev::Sleep,
-                    &[
-                        // CheckAlarms-style edge: sleep[batteryOK]/T.effect
-                        (
-                            Some(|d: &Data| d.battery_ok),
-                            Some(Out::TEffect),
-                            Some(Top::Standby),
-                        ),
-                    ],
-                )],
-            ),
-            // Standby has no outgoing edges in this slice of the example.
-        ];
+        const TRANSITIONS: TransitionTable<Top, Ev, Data, Out> = TransitionTable::new(&[
+            StateTransitions {
+                source: Top::Active,
+                events: &[
+                    EventTransitions {
+                        event: Ev::Sleep,
+                        transitions: &[
+                            Transition {
+                                guard: Some(|d: &Data| d.battery_ok),
+                                action: Some(Out::TEffect),
+                                destination: Some(Top::Standby),
+                            },
+                            // Could have more edges here with different guards and/or no guards, which would be tried in order after this one.
+                        ],
+                    },
+                    // Could have more events here with their own slices of edges.
+                ],
+            },
+            // Standby has no outgoing edges in this slice of the example. So it is simply left out
+        ]);
 
         fn on_exit(s: Top) -> Option<Out> {
             match s {
@@ -714,7 +750,7 @@ mod tests {
     }
 
     struct AudioSpec;
-    impl StateMachineSpec for AudioSpec {
+    impl StateDiagramSpec for AudioSpec {
         type State = Audio;
         type InputEvent = Ev;
         type InputData = Data;
@@ -728,7 +764,7 @@ mod tests {
     }
 
     struct ScreenSpec;
-    impl StateMachineSpec for ScreenSpec {
+    impl StateDiagramSpec for ScreenSpec {
         type State = Screen;
         type InputEvent = Ev;
         type InputData = Data;
@@ -742,7 +778,7 @@ mod tests {
     }
 
     struct PowerSpec;
-    impl StateMachineSpec for PowerSpec {
+    impl StateDiagramSpec for PowerSpec {
         type State = Power;
         type InputEvent = Ev;
         type InputData = Data;
@@ -759,7 +795,7 @@ mod tests {
     }
 
     struct NetworkSpec;
-    impl StateMachineSpec for NetworkSpec {
+    impl StateDiagramSpec for NetworkSpec {
         type State = Network;
         type InputEvent = Ev;
         type InputData = Data;
@@ -767,13 +803,18 @@ mod tests {
 
         // A region-internal transition, used to show `during` still fires on an
         // ancestor whose descendant transitions in the same step.
-        const EDGES: EdgeTable<Network, Ev, Data, Out> = &[(
-            Network::Listening,
-            &[(
-                Ev::Tick,
-                &[(None, Some(Out::NetworkConnect), Some(Network::Connected))],
-            )],
-        )];
+        const TRANSITIONS: TransitionTable<Network, Ev, Data, Out> =
+            TransitionTable::new(&[StateTransitions {
+                source: Network::Listening,
+                events: &[EventTransitions {
+                    event: Ev::Tick,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(Out::NetworkConnect),
+                        destination: Some(Network::Connected),
+                    }],
+                }],
+            }]);
 
         fn on_enter(s: Network) -> Option<Out> {
             match s {
@@ -797,14 +838,23 @@ mod tests {
     // the per-state children of the top machine can't be one homogeneous `C`.
     // This enum is the unifying `C` — the small tax the EnumMap<State, C> model
     // charges for heterogeneous subtrees.
-    type Leaf<S> = LeafNode<S, Ev, Data, Out>;
 
     enum TopChildren {
-        ActiveKids((Leaf<AudioSpec>, Leaf<ScreenSpec>)), // Audio ∥ Screen
-        StandbyKids((Leaf<PowerSpec>, Leaf<NetworkSpec>)), // Power ∥ Network
+        ActiveKids(
+            (
+                AllSimpleStateDiagram<AudioSpec, Ev, Data, Out>,
+                AllSimpleStateDiagram<ScreenSpec, Ev, Data, Out>,
+            ),
+        ), // Audio ∥ Screen
+        StandbyKids(
+            (
+                AllSimpleStateDiagram<PowerSpec, Ev, Data, Out>,
+                AllSimpleStateDiagram<NetworkSpec, Ev, Data, Out>,
+            ),
+        ), // Power ∥ Network
     }
 
-    impl NodeInterface for TopChildren {
+    impl StateDiagramInterface for TopChildren {
         type InputEvent = Ev;
         type InputData = Data;
         type OutputEvent = Out;
@@ -840,14 +890,15 @@ mod tests {
         }
     }
 
-    type TopNode = Node<TopSpec, TopChildren>;
+    type TopDiagram = StateDiagram<TopSpec, TopChildren>;
 
-    fn build() -> TopNode {
-        Node {
-            machine: Machine::default(),
+    fn build() -> TopDiagram {
+        StateDiagram {
+            current: Top::default(),
+            pending: None,
             children: enum_map! {
-                Top::Active  => TopChildren::ActiveKids((Node::new_leaf(),  Node::new_leaf())),
-                Top::Standby => TopChildren::StandbyKids((Node::new_leaf(), Node::new_leaf())),
+                Top::Active  => TopChildren::ActiveKids((StateDiagram::new_all_simple_states(),  StateDiagram::new_all_simple_states())),
+                Top::Standby => TopChildren::StandbyKids((StateDiagram::new_all_simple_states(), StateDiagram::new_all_simple_states())),
             },
         }
     }
@@ -890,7 +941,7 @@ mod tests {
         };
 
         let mut sink = RecordingSink::new();
-        let mut root_sm = StateMachineRoot::create(root, &mut sink);
+        let mut root_sm = StateMachine::create(root, &mut sink);
         assert_eq!(sink.events(), &[Some(Out::A1Init), Some(Out::A2Init)]);
         sink.clear();
 
@@ -909,16 +960,16 @@ mod tests {
             Some(Out::S1Init),           // …first the Power region's default transition…
             Some(Out::LowPowerEntry),    // ┐ region order (Power before Network)
             Some(Out::S2Init),           // …then the Network region's default transition…
-            Some(Out::ListeningEntry),   // ┘ …down to a stable leaf per region
+            Some(Out::ListeningEntry),   // ┘ …down to a simple state per region
         ];
         assert_eq!(sink.events(), expected);
 
         // Resulting stable configuration: <Standby – (LowPower, Listening)>.
-        assert_eq!(root_sm.node.machine.current, Top::Standby);
-        match &root_sm.node.children[Top::Standby] {
+        assert_eq!(root_sm.state_diagram.current, Top::Standby);
+        match &root_sm.state_diagram.children[Top::Standby] {
             TopChildren::StandbyKids((power, network)) => {
-                assert_eq!(power.machine.current, Power::LowPower);
-                assert_eq!(network.machine.current, Network::Listening);
+                assert_eq!(power.current, Power::LowPower);
+                assert_eq!(network.current, Network::Listening);
             }
             _ => unreachable!(),
         }
@@ -932,7 +983,7 @@ mod tests {
     fn during_fires_even_when_a_descendant_transitions() {
         let mut sink = RecordingSink::new();
         // Boot into <Standby – (LowPower, Listening)> via the validated sleep step.
-        let mut root_sm = StateMachineRoot::create(build(), &mut sink);
+        let mut root_sm = StateMachine::create(build(), &mut sink);
 
         root_sm.step(
             Ev::Sleep,
@@ -955,10 +1006,10 @@ mod tests {
         ];
         assert_eq!(sink.events(), expected);
 
-        match &root_sm.node.children[Top::Standby] {
+        match &root_sm.state_diagram.children[Top::Standby] {
             TopChildren::StandbyKids((power, network)) => {
-                assert_eq!(power.machine.current, Power::LowPower); // persisted
-                assert_eq!(network.machine.current, Network::Connected); // moved
+                assert_eq!(power.current, Power::LowPower); // persisted
+                assert_eq!(network.current, Network::Connected); // moved
             }
             _ => unreachable!(),
         }
@@ -987,17 +1038,25 @@ mod tests {
         }
 
         struct Spec;
-        impl StateMachineSpec for Spec {
+        impl StateDiagramSpec for Spec {
             type State = States;
             type InputEvent = Events;
             type InputData = Data;
             type OutputEvent = Out;
 
             // Tick → internal transition (None target), emitting InternalAct.
-            const EDGES: EdgeTable<States, Events, Data, Out> = &[(
-                States::Idle,
-                &[(Events::Tick, &[(None, Some(Out::InternalAct), None)])],
-            )];
+            const TRANSITIONS: TransitionTable<States, Events, Data, Out> =
+                TransitionTable::new(&[StateTransitions {
+                    source: States::Idle,
+                    events: &[EventTransitions {
+                        event: Events::Tick,
+                        transitions: &[Transition {
+                            guard: None,
+                            action: Some(Out::InternalAct),
+                            destination: None, // internal transition
+                        }],
+                    }],
+                }]);
 
             fn during(_: States) -> Option<Out> {
                 Some(Out::IdleDuring)
@@ -1005,8 +1064,8 @@ mod tests {
         }
 
         let mut sink = RecordingSink::new();
-        let mut sm = StateMachineRoot::create(
-            Node::<Spec, NoChildren<Events, Data, Out>>::new_leaf(),
+        let mut sm = StateMachine::create(
+            StateDiagram::<Spec, NoChildren<Events, Data, Out>>::new_all_simple_states(),
             &mut sink,
         );
         sink.clear(); // create emits nothing here, but be explicit
@@ -1018,15 +1077,14 @@ mod tests {
             sink.events(),
             &[Some(Out::IdleDuring), Some(Out::InternalAct)],
         );
-        assert_eq!(sm.node.machine.current, States::Idle);
+        assert_eq!(sm.state_diagram.current, States::Idle);
     }
 
     #[test]
     fn children_macro_forwards_and_cascades() {
         // A two-level machine assembled with `children!`: the parent `Busy`
-        // state nests a child `Work` machine, while `Idle` is a leaf handled by
-        // the generated `Leaf` variant. This exercises the generated enum, its
-        // `leaf()` constructor, and every forwarded `NodeInterface` method.
+        // state nests a child `Work` machine, while `Idle` has no children.
+        // This exercises the generated enum and every forwarded `StateDiagramInterface` method.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
         enum Ev {
             Start,
@@ -1049,15 +1107,24 @@ mod tests {
             Step2,
         }
         struct WorkSpec;
-        impl StateMachineSpec for WorkSpec {
+        impl StateDiagramSpec for WorkSpec {
             type State = Work;
             type InputEvent = Ev;
             type InputData = ();
             type OutputEvent = Out;
-            const EDGES: EdgeTable<Work, Ev, (), Out> = &[(
-                Work::Step1,
-                &[(Ev::Next, &[(None, None, Some(Work::Step2))])],
-            )];
+            const TRANSITIONS: TransitionTable<Work, Ev, (), Out> =
+                TransitionTable::new(&[StateTransitions {
+                    source: Work::Step1,
+                    events: &[EventTransitions {
+                        event: Ev::Next,
+                        transitions: &[Transition {
+                            guard: None,
+                            action: None,
+                            destination: Some(Work::Step2),
+                        }],
+                    }],
+                }]);
+
             fn on_enter(s: Work) -> Option<Out> {
                 match s {
                     Work::Step1 => Some(Out::Step1Enter),
@@ -1079,15 +1146,35 @@ mod tests {
             Busy,
         }
         struct TopSpec;
-        impl StateMachineSpec for TopSpec {
+        impl StateDiagramSpec for TopSpec {
             type State = Top;
             type InputEvent = Ev;
             type InputData = ();
             type OutputEvent = Out;
-            const EDGES: EdgeTable<Top, Ev, (), Out> = &[
-                (Top::Idle, &[(Ev::Start, &[(None, None, Some(Top::Busy))])]),
-                (Top::Busy, &[(Ev::Stop, &[(None, None, Some(Top::Idle))])]),
-            ];
+            const TRANSITIONS: TransitionTable<Top, Ev, (), Out> = TransitionTable::new(&[
+                StateTransitions {
+                    source: Top::Idle,
+                    events: &[EventTransitions {
+                        event: Ev::Start,
+                        transitions: &[Transition {
+                            guard: None,
+                            action: None,
+                            destination: Some(Top::Busy),
+                        }],
+                    }],
+                },
+                StateTransitions {
+                    source: Top::Busy,
+                    events: &[EventTransitions {
+                        event: Ev::Stop,
+                        transitions: &[Transition {
+                            guard: None,
+                            action: None,
+                            destination: Some(Top::Idle),
+                        }],
+                    }],
+                },
+            ]);
             fn on_enter(s: Top) -> Option<Out> {
                 match s {
                     Top::Busy => Some(Out::BusyEnter),
@@ -1102,21 +1189,21 @@ mod tests {
             }
         }
 
-        type WorkNode = LeafNode<WorkSpec, Ev, (), Out>;
+        type WorkStateDiagram = AllSimpleStateDiagram<WorkSpec, Ev, (), Out>;
         children! {
             enum TopChildren {
-                Busy => WorkNode,
+                Busy => WorkStateDiagram,
             }
         }
 
-        let node = Node::<TopSpec, TopChildren>::new(enum_map! {
-            Top::Busy => TopChildren::Busy(Node::new_leaf()),
+        let diagram = StateDiagram::<TopSpec, TopChildren>::new(enum_map! {
+            Top::Busy => TopChildren::Busy(StateDiagram::new_all_simple_states()),
             _ => TopChildren::None,
         });
 
         let mut sink = RecordingSink::new();
-        let mut sm = StateMachineRoot::create(node, &mut sink);
-        assert_eq!(sm.node.machine.current, Top::Idle); // boot stops at the leaf
+        let mut sm = StateMachine::create(diagram, &mut sink);
+        assert_eq!(sm.state_diagram.current, Top::Idle); // boot stops at the top-level default, does not cascade into Busy
         sink.clear();
 
         // Start: enter Busy, then its child machine's default cascades to Step1.
@@ -1136,9 +1223,9 @@ mod tests {
         sink.clear();
 
         // Stop: tear down bottom-up (child Step2 exit emits nothing here, then
-        // Busy exits), then re-enter the Idle leaf (emits nothing).
+        // Busy exits), then re-enter the Idle State (emits nothing).
         sm.step(Ev::Stop, &(), &mut sink);
         assert_eq!(sink.events(), &[Some(Out::BusyExit)]);
-        assert_eq!(sm.node.machine.current, Top::Idle);
+        assert_eq!(sm.state_diagram.current, Top::Idle);
     }
 }

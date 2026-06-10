@@ -39,7 +39,10 @@
 
 use enum_map::{Enum, enum_map};
 
-use state_machine::{EdgeTable, Events, Node, StateMachineRoot, StateMachineSpec, children};
+use state_machine::{
+    EventTransitions, Events, StateDiagram, StateDiagramSpec, StateMachine, StateTransitions,
+    Transition, TransitionTable, children,
+};
 
 // ─── Input events ────────────────────────────────────────────────────────
 // The *enum order* is the input-event priority used by `StateMachineRoot::execute`
@@ -124,81 +127,96 @@ enum Player {
 // wins; the final unguarded edge is an *internal* transition (target = None)
 // that acts as the catch-all "nothing special happened this tick".
 struct PlayerSpec;
-impl StateMachineSpec for PlayerSpec {
+impl StateDiagramSpec for PlayerSpec {
     type State = Player;
     type InputEvent = InputEvent;
     type InputData = InputData;
     type OutputEvent = OutputEvent;
 
-    const EDGES: EdgeTable<Player, InputEvent, InputData, OutputEvent> = &[
-        (
-            Player::Active,
-            &[
-                (
-                    InputEvent::Sleep,
-                    &[(
-                        Some(|c: &InputData| c.battery > 0),
-                        Some(OutputEvent::GoStandby),
-                        Some(Player::Standby),
-                    )],
-                ),
-                (
-                    InputEvent::Fault,
-                    &[(None, Some(OutputEvent::Crashed), Some(Player::Off))],
-                ),
-                (
-                    InputEvent::Tick,
-                    &[
-                        // priority 1 — critical: empty battery overrides everything
-                        (
-                            Some(|c: &InputData| c.battery == 0),
-                            Some(OutputEvent::BatteryDead),
-                            Some(Player::Off),
-                        ),
-                        // priority 2 — low and unplugged: drop to Standby
-                        (
-                            Some(|c: &InputData| c.battery < 20 && !c.charging),
-                            Some(OutputEvent::AutoSleep),
-                            Some(Player::Standby),
-                        ),
-                        // priority 3 — catch-all internal tick (no target => internal)
-                        (None, Some(OutputEvent::Heartbeat), None),
+    const TRANSITIONS: TransitionTable<
+        Self::State,
+        Self::InputEvent,
+        Self::InputData,
+        Self::OutputEvent,
+    > = TransitionTable::new(&[
+        StateTransitions {
+            source: Player::Active,
+            events: &[
+                EventTransitions {
+                    event: InputEvent::Sleep,
+                    transitions: &[Transition {
+                        guard: Some(|c: &InputData| c.battery > 0),
+                        action: Some(OutputEvent::GoStandby),
+                        destination: Some(Player::Standby),
+                    }],
+                },
+                EventTransitions {
+                    event: InputEvent::Fault,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::Crashed),
+                        destination: Some(Player::Off),
+                    }],
+                },
+                EventTransitions {
+                    event: InputEvent::Tick,
+                    transitions: &[
+                        Transition {
+                            guard: Some(|c: &InputData| c.battery == 0),
+                            action: Some(OutputEvent::BatteryDead),
+                            destination: Some(Player::Off),
+                        },
+                        Transition {
+                            guard: Some(|c: &InputData| c.battery < 20 && !c.charging),
+                            action: Some(OutputEvent::AutoSleep),
+                            destination: Some(Player::Standby),
+                        },
+                        Transition {
+                            guard: None,
+                            action: Some(OutputEvent::Heartbeat),
+                            destination: None, // internal transition — no state change
+                        },
                     ],
-                ),
+                },
             ],
-        ),
-        (
-            Player::Standby,
-            &[
-                (
-                    InputEvent::Wake,
-                    &[(None, Some(OutputEvent::Waking), Some(Player::Active))],
-                ),
-                (
-                    InputEvent::Fault,
-                    &[(None, Some(OutputEvent::Crashed), Some(Player::Off))],
-                ),
-                (
-                    InputEvent::Tick,
-                    &[
-                        (
-                            Some(|c: &InputData| c.battery == 0),
-                            Some(OutputEvent::BatteryDead),
-                            Some(Player::Off),
-                        ),
-                        // internal trickle-charge tick, only while charging
-                        (
-                            Some(|c: &InputData| c.charging),
-                            Some(OutputEvent::Trickle),
-                            None,
-                        ),
-                        // (if neither guard holds, Tick matches no edge => discarded)
+        },
+        StateTransitions {
+            source: Player::Standby,
+            events: &[
+                EventTransitions {
+                    event: InputEvent::Wake,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::Waking),
+                        destination: Some(Player::Active),
+                    }],
+                },
+                EventTransitions {
+                    event: InputEvent::Fault,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::Crashed),
+                        destination: Some(Player::Off),
+                    }],
+                },
+                EventTransitions {
+                    event: InputEvent::Tick,
+                    transitions: &[
+                        Transition {
+                            guard: Some(|c: &InputData| c.battery == 0),
+                            action: Some(OutputEvent::BatteryDead),
+                            destination: Some(Player::Off),
+                        },
+                        Transition {
+                            guard: Some(|c: &InputData| c.charging),
+                            action: Some(OutputEvent::Trickle),
+                            destination: None, // internal transition
+                        },
                     ],
-                ),
+                },
             ],
-        ),
-        // Player::Off has no outgoing edges: it is a trap state.
-    ];
+        },
+    ]);
 
     fn on_enter(s: Player) -> Option<OutputEvent> {
         match s {
@@ -235,40 +253,53 @@ enum Audio {
 }
 
 struct AudioSpec;
-impl StateMachineSpec for AudioSpec {
+impl StateDiagramSpec for AudioSpec {
     type State = Audio;
     type InputEvent = InputEvent;
     type InputData = InputData;
     type OutputEvent = OutputEvent;
 
-    const EDGES: EdgeTable<Audio, InputEvent, InputData, OutputEvent> = &[
-        (
-            Audio::Playing,
-            &[
-                (
-                    InputEvent::Button,
-                    &[(None, Some(OutputEvent::Pause), Some(Audio::Paused))],
-                ),
-                // Internal: while Playing, the Audio region ABSORBS a Fault
-                // (e.g. transient decoder hiccup) instead of letting it bubble
-                // up to the Active→Off edge. Because a deeper handler wins, the
-                // top-level Fault transition is never even evaluated.
-                (
-                    InputEvent::Fault,
-                    &[(None, Some(OutputEvent::AudioRecover), None)],
-                ),
-            ],
-        ),
-        (
-            // Paused has NO Fault edge — so a Fault while Paused is NOT absorbed
-            // here and propagates up to the Active→Off transition.
-            Audio::Paused,
-            &[(
-                InputEvent::Button,
-                &[(None, Some(OutputEvent::Resume), Some(Audio::Playing))],
-            )],
-        ),
-    ];
+    const TRANSITIONS: TransitionTable<Audio, InputEvent, InputData, OutputEvent> =
+        TransitionTable::new(&[
+            StateTransitions {
+                source: Audio::Playing,
+                events: &[
+                    EventTransitions {
+                        event: InputEvent::Button,
+                        transitions: &[Transition {
+                            guard: None,
+                            action: Some(OutputEvent::Pause),
+                            destination: Some(Audio::Paused),
+                        }],
+                    },
+                    EventTransitions {
+                        // Internal: while Playing, the Audio region ABSORBS a Fault
+                        // (e.g. transient decoder hiccup) instead of letting it bubble
+                        // up to the Active→Off edge. Because a deeper handler wins, the
+                        // top-level Fault transition is never even evaluated.
+                        event: InputEvent::Fault,
+                        transitions: &[Transition {
+                            guard: None,
+                            action: Some(OutputEvent::AudioRecover),
+                            destination: None, // internal transition — absorbs the fault
+                        }],
+                    },
+                ],
+            },
+            StateTransitions {
+                // Paused has NO Fault edge — so a Fault while Paused is NOT absorbed
+                // here and propagates up to the Active→Off transition.
+                source: Audio::Paused,
+                events: &[EventTransitions {
+                    event: InputEvent::Button,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::Resume),
+                        destination: Some(Audio::Playing),
+                    }],
+                }],
+            },
+        ]);
 
     fn on_enter(s: Audio) -> Option<OutputEvent> {
         match s {
@@ -301,28 +332,37 @@ enum Screen {
     Dim,
 }
 struct ScreenSpec;
-impl StateMachineSpec for ScreenSpec {
+impl StateDiagramSpec for ScreenSpec {
     type State = Screen;
     type InputEvent = InputEvent;
     type InputData = InputData;
     type OutputEvent = OutputEvent;
 
-    const EDGES: EdgeTable<Screen, InputEvent, InputData, OutputEvent> = &[
-        (
-            Screen::Bright,
-            &[(
-                InputEvent::Button,
-                &[(None, Some(OutputEvent::DimScreen), Some(Screen::Dim))],
-            )],
-        ),
-        (
-            Screen::Dim,
-            &[(
-                InputEvent::Button,
-                &[(None, Some(OutputEvent::BrightScreen), Some(Screen::Bright))],
-            )],
-        ),
-    ];
+    const TRANSITIONS: TransitionTable<Screen, InputEvent, InputData, OutputEvent> =
+        TransitionTable::new(&[
+            StateTransitions {
+                source: Screen::Bright,
+                events: &[EventTransitions {
+                    event: InputEvent::Button,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::DimScreen),
+                        destination: Some(Screen::Dim),
+                    }],
+                }],
+            },
+            StateTransitions {
+                source: Screen::Dim,
+                events: &[EventTransitions {
+                    event: InputEvent::Button,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::BrightScreen),
+                        destination: Some(Screen::Bright),
+                    }],
+                }],
+            },
+        ]);
 
     fn on_enter(s: Screen) -> Option<OutputEvent> {
         match s {
@@ -355,7 +395,7 @@ enum Power {
 }
 
 struct PowerSpec;
-impl StateMachineSpec for PowerSpec {
+impl StateDiagramSpec for PowerSpec {
     type State = Power;
     type InputEvent = InputEvent;
     type InputData = InputData;
@@ -379,28 +419,37 @@ enum Net {
 }
 
 struct NetSpec;
-impl StateMachineSpec for NetSpec {
+impl StateDiagramSpec for NetSpec {
     type State = Net;
     type InputEvent = InputEvent;
     type InputData = InputData;
     type OutputEvent = OutputEvent;
 
-    const EDGES: EdgeTable<Net, InputEvent, InputData, OutputEvent> = &[
-        (
-            Net::Listening,
-            &[(
-                InputEvent::Button,
-                &[(None, Some(OutputEvent::NetConnect), Some(Net::Connected))],
-            )],
-        ),
-        (
-            Net::Connected,
-            &[(
-                InputEvent::Button,
-                &[(None, Some(OutputEvent::NetDisconnect), Some(Net::Listening))],
-            )],
-        ),
-    ];
+    const TRANSITIONS: TransitionTable<Net, InputEvent, InputData, OutputEvent> =
+        TransitionTable::new(&[
+            StateTransitions {
+                source: Net::Listening,
+                events: &[EventTransitions {
+                    event: InputEvent::Button,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::NetConnect),
+                        destination: Some(Net::Connected),
+                    }],
+                }],
+            },
+            StateTransitions {
+                source: Net::Connected,
+                events: &[EventTransitions {
+                    event: InputEvent::Button,
+                    transitions: &[Transition {
+                        guard: None,
+                        action: Some(OutputEvent::NetDisconnect),
+                        destination: Some(Net::Listening),
+                    }],
+                }],
+            },
+        ]);
 
     fn on_enter(s: Net) -> Option<OutputEvent> {
         match s {
@@ -430,7 +479,7 @@ impl StateMachineSpec for NetSpec {
 
 /// For convenience, a type alias for a leaf node of any machine in this example that sets the type parameters which will be the same for
 /// every state machine that makes up the larger Root State Machine
-type LeafNode<S> = state_machine::LeafNode<S, InputEvent, InputData, OutputEvent>;
+type LeafNode<S> = state_machine::AllSimpleStateDiagram<S, InputEvent, InputData, OutputEvent>;
 
 type AudioNode = LeafNode<AudioSpec>;
 type ScreenNode = LeafNode<ScreenSpec>;
@@ -443,18 +492,18 @@ children! {
     Standby => (PowerNode, NetNode),   // Power ∥ Net
 }}
 
-type PlayerNode = Node<PlayerSpec, PlayerChildren>;
+type PlayerNode = StateDiagram<PlayerSpec, PlayerChildren>;
 
 fn build() -> PlayerNode {
-    Node::new(enum_map! {
-        Player::Active  => PlayerChildren::Active((AudioNode::new_leaf(), ScreenNode::new_leaf())),
-        Player::Standby => PlayerChildren::Standby((PowerNode::new_leaf(), NetNode::new_leaf())),
+    StateDiagram::new(enum_map! {
+        Player::Active  => PlayerChildren::Active((AudioNode::new_all_simple_states(), ScreenNode::new_all_simple_states())),
+        Player::Standby => PlayerChildren::Standby((PowerNode::new_all_simple_states(), NetNode::new_all_simple_states())),
         Player::Off     => PlayerChildren::None,
     })
 }
 
 // ─── Inspecting the live configuration (purely for the printout) ───────────
-fn config(sm: &StateMachineRoot<PlayerNode>) -> String {
+fn config(sm: &StateMachine<PlayerNode>) -> String {
     let top = sm.root().state();
     match (&top, &sm.root().active_child()) {
         (Player::Active, PlayerChildren::Active((a, s))) => {
@@ -479,7 +528,7 @@ fn main() {
     // `create` runs the top default transition, then cascades default
     // transitions down through both of Active's regions to stable leaves.
     let mut output_events = Events::default();
-    let mut sm = StateMachineRoot::create(build(), &mut output_events);
+    let mut sm = StateMachine::create(build(), &mut output_events);
     println!("▶ boot (create)");
     println!("    config: <none>  ->  {}", config(&sm));
     println!("    emitted: {:?}", output_events.order);
@@ -641,7 +690,7 @@ fn main() {
     // goes Active→Standby on Sleep, then takes a Standby Tick — two run-to-
     // completion steps in a single timestep.
     let mut trace = Events::default();
-    let mut sm2 = StateMachineRoot::create(build(), &mut trace);
+    let mut sm2 = StateMachine::create(build(), &mut trace);
     trace.clear();
     let queue = enum_map! {
         InputEvent::Fault => false,
@@ -668,7 +717,7 @@ fn main() {
     // `Events<Out>` (the provided default sink) keeps a per-event count, which
     // is exactly what a block-diagram output port reports.
     let mut counts = Events::<OutputEvent>::default();
-    let mut sm3 = StateMachineRoot::create(build(), &mut counts);
+    let mut sm3 = StateMachine::create(build(), &mut counts);
     for _ in 0..3 {
         sm3.step(InputEvent::Tick, &healthy, &mut counts);
     }
