@@ -147,7 +147,7 @@ impl StateDiagramSpec for PlayerSpec {
                     transitions: &[Transition {
                         guard: Some(|c: &InputData| c.battery > 0),
                         action: Some(OutputEvent::GoStandby),
-                        destination: Some(Player::Standby),
+                        target: Some(Player::Standby),
                     }],
                 },
                 EventTransitions {
@@ -155,7 +155,7 @@ impl StateDiagramSpec for PlayerSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::Crashed),
-                        destination: Some(Player::Off),
+                        target: Some(Player::Off),
                     }],
                 },
                 EventTransitions {
@@ -164,17 +164,17 @@ impl StateDiagramSpec for PlayerSpec {
                         Transition {
                             guard: Some(|c: &InputData| c.battery == 0),
                             action: Some(OutputEvent::BatteryDead),
-                            destination: Some(Player::Off),
+                            target: Some(Player::Off),
                         },
                         Transition {
                             guard: Some(|c: &InputData| c.battery < 20 && !c.charging),
                             action: Some(OutputEvent::AutoSleep),
-                            destination: Some(Player::Standby),
+                            target: Some(Player::Standby),
                         },
                         Transition {
                             guard: None,
                             action: Some(OutputEvent::Heartbeat),
-                            destination: None, // internal transition — no state change
+                            target: None, // internal transition — no state change
                         },
                     ],
                 },
@@ -188,7 +188,7 @@ impl StateDiagramSpec for PlayerSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::Waking),
-                        destination: Some(Player::Active),
+                        target: Some(Player::Active),
                     }],
                 },
                 EventTransitions {
@@ -196,7 +196,7 @@ impl StateDiagramSpec for PlayerSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::Crashed),
-                        destination: Some(Player::Off),
+                        target: Some(Player::Off),
                     }],
                 },
                 EventTransitions {
@@ -205,12 +205,12 @@ impl StateDiagramSpec for PlayerSpec {
                         Transition {
                             guard: Some(|c: &InputData| c.battery == 0),
                             action: Some(OutputEvent::BatteryDead),
-                            destination: Some(Player::Off),
+                            target: Some(Player::Off),
                         },
                         Transition {
                             guard: Some(|c: &InputData| c.charging),
                             action: Some(OutputEvent::Trickle),
-                            destination: None, // internal transition
+                            target: None, // internal transition
                         },
                     ],
                 },
@@ -269,7 +269,7 @@ impl StateDiagramSpec for AudioSpec {
                         transitions: &[Transition {
                             guard: None,
                             action: Some(OutputEvent::Pause),
-                            destination: Some(Audio::Paused),
+                            target: Some(Audio::Paused),
                         }],
                     },
                     EventTransitions {
@@ -281,7 +281,7 @@ impl StateDiagramSpec for AudioSpec {
                         transitions: &[Transition {
                             guard: None,
                             action: Some(OutputEvent::AudioRecover),
-                            destination: None, // internal transition — absorbs the fault
+                            target: None, // internal transition — absorbs the fault
                         }],
                     },
                 ],
@@ -295,7 +295,7 @@ impl StateDiagramSpec for AudioSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::Resume),
-                        destination: Some(Audio::Playing),
+                        target: Some(Audio::Playing),
                     }],
                 }],
             },
@@ -347,7 +347,7 @@ impl StateDiagramSpec for ScreenSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::DimScreen),
-                        destination: Some(Screen::Dim),
+                        target: Some(Screen::Dim),
                     }],
                 }],
             },
@@ -358,7 +358,7 @@ impl StateDiagramSpec for ScreenSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::BrightScreen),
-                        destination: Some(Screen::Bright),
+                        target: Some(Screen::Bright),
                     }],
                 }],
             },
@@ -434,7 +434,7 @@ impl StateDiagramSpec for NetSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::NetConnect),
-                        destination: Some(Net::Connected),
+                        target: Some(Net::Connected),
                     }],
                 }],
             },
@@ -445,7 +445,7 @@ impl StateDiagramSpec for NetSpec {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(OutputEvent::NetDisconnect),
-                        destination: Some(Net::Listening),
+                        target: Some(Net::Listening),
                     }],
                 }],
             },
@@ -477,14 +477,15 @@ impl StateDiagramSpec for NetSpec {
 // ─── Assembling the tree ───────────────────────────────────────────────────
 // Here we describe the topology of the state machine: which states are nested inside which, and which regions are orthogonal.
 
-/// For convenience, a type alias for a leaf node of any machine in this example that sets the type parameters which will be the same for
-/// every state machine that makes up the larger Root State Machine
-type LeafNode<S> = state_machine::AllSimpleStateDiagram<S, InputEvent, InputData, OutputEvent>;
+/// For convenience, a type alias for any state diagram with all simple states in this example that sets the type parameters which will be the same for
+/// every state diagram that makes up the State Machine
+type AllSimpleStateDiagram<S> =
+    state_machine::AllSimpleStateDiagram<S, InputEvent, InputData, OutputEvent>;
 
-type AudioNode = LeafNode<AudioSpec>;
-type ScreenNode = LeafNode<ScreenSpec>;
-type PowerNode = LeafNode<PowerSpec>;
-type NetNode = LeafNode<NetSpec>;
+type AudioNode = AllSimpleStateDiagram<AudioSpec>;
+type ScreenNode = AllSimpleStateDiagram<ScreenSpec>;
+type PowerNode = AllSimpleStateDiagram<PowerSpec>;
+type NetNode = AllSimpleStateDiagram<NetSpec>;
 
 children! {
     enum PlayerChildren {

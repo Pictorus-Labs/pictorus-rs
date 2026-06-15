@@ -3,7 +3,7 @@
 //! Run with:  `cargo run --example nested_drone`
 //!
 //! Where `audio_player.rs` is wide (orthogonal regions, guards, priorities),
-//! this example is *deep*. It is a single chain of three nested machines and
+//! this example is *deep*. It is a single chain of three nested state diagrams and
 //! nothing else, so the only thing on display is what happens to the
 //! enter / exit cascade as the tree gets taller.
 //!
@@ -11,15 +11,15 @@
 //!
 //! ```text
 //! Flight (L1)
-//! ├─ Grounded                         (leaf / simple state)
+//! ├─ Grounded                         (simple state)
 //! └─ Airborne  ── Nav (L2)            (composite)
-//!     ├─ Hovering                     (leaf / simple state)
+//!     ├─ Hovering                     (simple state)
 //!     └─ Cruising  ── Speed (L3)      (composite)
-//!         ├─ Normal                   (leaf)
-//!         └─ Boost                    (leaf)
+//!         ├─ Normal                   (simple state)
+//!         └─ Boost                    (simple state)
 //! ```
 //!
-//! So the deepest active configuration is three machines tall:
+//! So the deepest active configuration is three diagrams deep:
 //! `Flight=Airborne / Nav=Cruising / Speed=Boost`.
 //!
 //! What to watch:
@@ -67,7 +67,7 @@ enum Out {
     BoostExit,
 }
 
-// ─── L3: Speed (a leaf machine, lives under Cruising) ──────────────────────
+// ─── L3: Speed (a diagram with all simple states, lives under Cruising) ──────────────────────
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
 enum Speed {
     #[default]
@@ -90,7 +90,7 @@ impl StateDiagramSpec for SpeedSpec {
                 transitions: &[Transition {
                     guard: None,
                     action: None,
-                    destination: Some(Speed::Boost),
+                    target: Some(Speed::Boost),
                 }],
             }],
         },
@@ -101,7 +101,7 @@ impl StateDiagramSpec for SpeedSpec {
                 transitions: &[Transition {
                     guard: None,
                     action: None,
-                    destination: Some(Speed::Normal),
+                    target: Some(Speed::Normal),
                 }],
             }],
         },
@@ -121,7 +121,7 @@ impl StateDiagramSpec for SpeedSpec {
     }
 }
 
-// ─── L2: Nav (composite: Cruising owns the L3 Speed machine) ───────────────
+// ─── L2: Nav (composite: Cruising owns the L3 Speed diagram) ───────────────
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
 enum Nav {
     #[default]
@@ -144,7 +144,7 @@ impl StateDiagramSpec for NavSpec {
                 transitions: &[Transition {
                     guard: None,
                     action: None,
-                    destination: Some(Nav::Cruising),
+                    target: Some(Nav::Cruising),
                 }],
             }],
         },
@@ -155,7 +155,7 @@ impl StateDiagramSpec for NavSpec {
                 transitions: &[Transition {
                     guard: None,
                     action: None,
-                    destination: Some(Nav::Hovering),
+                    target: Some(Nav::Hovering),
                 }],
             }],
         },
@@ -175,8 +175,8 @@ impl StateDiagramSpec for NavSpec {
     }
 }
 
-// Nav's per-state children: Cruising nests the L3 Speed machine; Hovering (and
-// any other leaf state) falls through to the generated `Leaf` variant. The
+// Nav's per-state children: Cruising nests the L3 Speed diagram; Hovering (and
+// any other simple state) falls through to the generated `None` variant. The
 // `children!` macro writes the enum and the whole `NodeInterface` forwarding impl.
 type SpeedNode = AllSimpleStateDiagram<SpeedSpec, Ev, Data, Out>;
 fn build_speed_node() -> SpeedNode {
@@ -198,7 +198,7 @@ fn build_nav_node() -> NavNode {
     })
 }
 
-// ─── L1: Flight (composite: Airborne owns the L2 Nav machine) ──────────────
+// ─── L1: Flight (composite: Airborne owns the L2 Nav diagram) ──────────────
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum, Default)]
 enum Flight {
     #[default]
@@ -221,7 +221,7 @@ impl StateDiagramSpec for FlightSpec {
                 transitions: &[Transition {
                     guard: None,
                     action: None,
-                    destination: Some(Flight::Airborne),
+                    target: Some(Flight::Airborne),
                 }],
             }],
         },
@@ -232,7 +232,7 @@ impl StateDiagramSpec for FlightSpec {
                 transitions: &[Transition {
                     guard: None,
                     action: None,
-                    destination: Some(Flight::Grounded),
+                    target: Some(Flight::Grounded),
                 }],
             }],
         },
@@ -252,8 +252,8 @@ impl StateDiagramSpec for FlightSpec {
     }
 }
 
-// Flight's per-state children: Airborne nests the L2 Nav machine; Grounded
-// falls through to the generated `Leaf` variant.
+// Flight's per-state children: Airborne nests the L2 Nav diagram; Grounded
+// falls through to the generated `None` variant.
 children! {
     enum FlightChildren {
         Airborne => NavNode,
@@ -265,9 +265,9 @@ type FlightNode = StateDiagram<FlightSpec, FlightChildren>;
 // ─── Assembling the three-level tree ───────────────────────────────────────
 fn build_flight_node() -> FlightNode {
     StateDiagram::new(enum_map! {
-    // Airborne nests Nav, whose Cruising in turn nests the L3 Speed leaf.
+    // Airborne nests Nav, whose Cruising in turn nests the L3 Speed diagram.
     Flight::Airborne => FlightChildren::Airborne(build_nav_node()),
-    // Grounded has no nested machine.
+    // Grounded has no nested diagram.
     _ => FlightChildren::None,
     })
 }
@@ -300,7 +300,7 @@ fn show(label: &str, before: &str, emitted: &[Out], after: &str) {
 
 fn main() {
     // ── Boot ──────────────────────────────────────────────────────────────
-    // The top default transition lands in Grounded, a leaf — so the cascade
+    // The top default transition lands in Grounded, a simple state — so the cascade
     // stops there. The L2/L3 subtrees exist but are dormant, so nothing in
     // them is entered yet.
     let mut trace = Events::default();
@@ -311,7 +311,7 @@ fn main() {
     trace.clear();
 
     // ── Step 1: Takeoff — activate the L2 subtree ──────────────────────────
-    // Grounded exits, Airborne enters, then Airborne's child (the Nav machine)
+    // Grounded exits, Airborne enters, then Airborne's child (the Nav diagram)
     // runs its OWN default transition into Hovering as it comes alive.
     let before = config(&sm);
     sm.step(Ev::Takeoff, &(), &mut trace);
@@ -324,8 +324,8 @@ fn main() {
     trace.clear();
 
     // ── Step 2: Cruise — activate the L3 subtree ───────────────────────────
-    // Inside Airborne, the Nav machine moves Hovering -> Cruising. Entering
-    // Cruising activates the L3 Speed machine, which runs its default into
+    // Inside Airborne, the Nav diagram moves Hovering -> Cruising. Entering
+    // Cruising activates the L3 Speed diagram, which runs its default into
     // Normal. L1 (Airborne) just persists.
     let before = config(&sm);
     sm.step(Ev::Cruise, &(), &mut trace);

@@ -61,14 +61,14 @@ impl<E: EnumArray<u32> + Copy> EventSink<E> for Events<E> {
 #[derive(Copy, Clone)]
 pub struct UnguardedTransition<S: Copy, A: Copy> {
     pub action: Option<A>,
-    pub destination: Option<S>,
+    pub target: Option<S>,
 }
 
 impl<S: Copy, D: 'static, A: Copy> From<&Transition<S, D, A>> for UnguardedTransition<S, A> {
     fn from(t: &Transition<S, D, A>) -> Self {
         Self {
             action: t.action,
-            destination: t.destination,
+            target: t.target,
         }
     }
 }
@@ -81,7 +81,7 @@ pub type Guard<D> = fn(&D) -> bool;
 pub struct Transition<S: Copy, D, A: Copy> {
     pub guard: Option<Guard<D>>,
     pub action: Option<A>,
-    pub destination: Option<S>,
+    pub target: Option<S>,
 }
 /// A collection of transitions for a specific event, consisting of the event and a slice of transitions, ordered by priority
 pub struct EventTransitions<S: 'static + Copy, E: 'static, D: 'static, A: 'static + Copy> {
@@ -413,7 +413,7 @@ where
     fn execute_pending<K: EventSink<Self::OutputEvent>>(&mut self, sink: &mut K) {
         let pending = self.pending.take();
         // May be None if pending was none or if it is an internal transition
-        let target_state = pending.as_ref().and_then(|e| e.destination);
+        let target_state = pending.as_ref().and_then(|e| e.target);
         // May be None if pending was none or if the edge has no action
         let transition_action = pending.as_ref().and_then(|e| e.action);
 
@@ -718,7 +718,7 @@ mod tests {
                             Transition {
                                 guard: Some(|d: &Data| d.battery_ok),
                                 action: Some(Out::TEffect),
-                                destination: Some(Top::Standby),
+                                target: Some(Top::Standby),
                             },
                             // Could have more edges here with different guards and/or no guards, which would be tried in order after this one.
                         ],
@@ -811,7 +811,7 @@ mod tests {
                     transitions: &[Transition {
                         guard: None,
                         action: Some(Out::NetworkConnect),
-                        destination: Some(Network::Connected),
+                        target: Some(Network::Connected),
                     }],
                 }],
             }]);
@@ -1053,7 +1053,7 @@ mod tests {
                         transitions: &[Transition {
                             guard: None,
                             action: Some(Out::InternalAct),
-                            destination: None, // internal transition
+                            target: None, // internal transition
                         }],
                     }],
                 }]);
@@ -1120,7 +1120,7 @@ mod tests {
                         transitions: &[Transition {
                             guard: None,
                             action: None,
-                            destination: Some(Work::Step2),
+                            target: Some(Work::Step2),
                         }],
                     }],
                 }]);
@@ -1159,7 +1159,7 @@ mod tests {
                         transitions: &[Transition {
                             guard: None,
                             action: None,
-                            destination: Some(Top::Busy),
+                            target: Some(Top::Busy),
                         }],
                     }],
                 },
@@ -1170,7 +1170,7 @@ mod tests {
                         transitions: &[Transition {
                             guard: None,
                             action: None,
-                            destination: Some(Top::Idle),
+                            target: Some(Top::Idle),
                         }],
                     }],
                 },
