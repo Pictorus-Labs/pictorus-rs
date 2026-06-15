@@ -9,6 +9,7 @@ members = [
   "pictorus-renesas",
   "pictorus-px4",
   "px4-msgs-sys",
+  "state-machine",
 ]
 # Exclude platform-specific crates from the default crates
 default-members = [
