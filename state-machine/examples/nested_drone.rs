@@ -149,7 +149,7 @@ impl StateDiagramSpec for NavSpec {
             }],
         },
         StateTransitions {
-            source: Nav::Cruising,
+            source: Self::State::Cruising,
             events: &[EventTransitions {
                 event: Ev::Hover,
                 transitions: &[Transition {
