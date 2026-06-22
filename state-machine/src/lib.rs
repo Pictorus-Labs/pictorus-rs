@@ -6,7 +6,7 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-pub mod corelib_wrapper;
+pub mod process_block_adapter;
 
 use enum_map::{EnumArray, EnumMap, enum_map};
 
