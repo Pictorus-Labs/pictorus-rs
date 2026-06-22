@@ -6,6 +6,8 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+pub mod corelib_wrapper;
+
 use enum_map::{EnumArray, EnumMap, enum_map};
 
 /// Output Sink Trait
