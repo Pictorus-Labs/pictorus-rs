@@ -1,29 +1,56 @@
 //! This module provides a struct and set of traits that allow state machines to be used as a [`pictorus_traits::ProcessBlock`] in a Pictorus diagram.
 //! It is a bridge between the generic state machine abstractions and the Pictorus diagram abstractions.
 //!
-//! To use it you need to implement the [`FloatSignalInput`] and [`FloatSignalOutput`] traits for your state diagram interface.
-//! and then you can use the [`StateMachineBlock`] struct to wrap your state machine and use it as a process block in a Pictorus diagram.
+//! To use it you implement the [`FloatSignalConverter`] trait on a local marker type, declaring the
+//! diagram it adapts and how to translate float signals to/from that diagram's input and output.
+//! You can then use the [`StateMachineBlock`] struct to wrap your state machine and use it as a process
+//! block in a Pictorus diagram.
+//!
+//! The conversion is anchored on a caller-defined marker type (rather than on the state diagram itself)
+//! so that downstream crates can implement it without running into orphan-rule violations: the diagram
+//! types (e.g. [`crate::StateDiagram`]) and this trait both live in this crate, so an impl keyed on the
+//! diagram would be a foreign-trait-for-foreign-type impl. A local marker type sidesteps that.
 
 use crate::{Events, StateDiagramInterface, StateMachine};
 use enum_map::{EnumArray, EnumMap};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
-pub trait FloatSignalInput: StateDiagramInterface
+/// Convenient alias for the input-event type of a converter's diagram.
+type DiagramInputEvent<C> =
+    <<C as FloatSignalConverter>::Diagram as StateDiagramInterface>::InputEvent;
+/// Convenient alias for the input-data type of a converter's diagram.
+type DiagramInputData<C> =
+    <<C as FloatSignalConverter>::Diagram as StateDiagramInterface>::InputData;
+/// Convenient alias for the output-event type of a converter's diagram.
+type DiagramOutputEvent<C> =
+    <<C as FloatSignalConverter>::Diagram as StateDiagramInterface>::OutputEvent;
+
+/// Translates between Pictorus float signals and a state diagram's inputs and outputs.
+///
+/// Implement this on a local marker type in your own crate. Because the implementing type is local,
+/// the impl is allowed even though both [`FloatSignalConverter`] and the diagram type are defined here.
+pub trait FloatSignalConverter
 where
-    Self::InputEvent: EnumArray<bool> + Copy,
+    DiagramInputEvent<Self>: EnumArray<bool>,
+    DiagramOutputEvent<Self>: EnumArray<u32>,
 {
+    /// The state diagram interface this converter adapts.
+    type Diagram: StateDiagramInterface;
+    /// The float signal fed into the diagram as input.
     type SourceSignal: Pass;
+    /// The float signal produced from the diagram's emitted events.
+    type TargetSignal: Copy + Pass + Default;
+
+    /// Convert an incoming float signal into the diagram's input data and per-event activation map.
     fn input_from_float_signal(
         signals: PassBy<'_, Self::SourceSignal>,
-    ) -> (Self::InputData, EnumMap<Self::InputEvent, bool>);
-}
+    ) -> (
+        DiagramInputData<Self>,
+        EnumMap<DiagramInputEvent<Self>, bool>,
+    );
 
-pub trait FloatSignalOutput: StateDiagramInterface
-where
-    Self::OutputEvent: EnumArray<u32> + Copy,
-{
-    type TargetSignal: Copy + Pass + Default;
-    fn output_to_float_signal(output: &Events<Self::OutputEvent>) -> Self::TargetSignal;
+    /// Convert the diagram's emitted events into an outgoing float signal.
+    fn output_to_float_signal(output: &Events<DiagramOutputEvent<Self>>) -> Self::TargetSignal;
 }
 
 pub struct Parameter {}
@@ -40,17 +67,17 @@ impl Parameter {
     }
 }
 
-pub struct StateMachineBlock<SD: StateDiagramInterface + FloatSignalInput + FloatSignalOutput>
+pub struct StateMachineBlock<SD: StateDiagramInterface, C: FloatSignalConverter<Diagram = SD>>
 where
     SD::OutputEvent: EnumArray<u32> + Copy,
     SD::InputEvent: EnumArray<bool> + Copy,
 {
     state_machine: StateMachine<SD>,
     events: Events<SD::OutputEvent>,
-    buffer: SD::TargetSignal,
+    buffer: C::TargetSignal,
 }
 
-impl<SD: StateDiagramInterface + FloatSignalInput + FloatSignalOutput> StateMachineBlock<SD>
+impl<SD: StateDiagramInterface, C: FloatSignalConverter<Diagram = SD>> StateMachineBlock<SD, C>
 where
     SD::OutputEvent: EnumArray<u32> + Copy,
     SD::InputEvent: EnumArray<bool> + Copy,
@@ -58,7 +85,7 @@ where
     pub fn new(state_diagram_interface: SD) -> Self {
         let mut events = Events::default();
         let state_machine = StateMachine::create(state_diagram_interface, &mut events);
-        let buffer = SD::output_to_float_signal(&events);
+        let buffer = C::output_to_float_signal(&events);
         Self {
             state_machine,
             events,
@@ -67,8 +94,8 @@ where
     }
 }
 
-impl<SD: StateDiagramInterface + FloatSignalInput + FloatSignalOutput> Default
-    for StateMachineBlock<SD>
+impl<SD: StateDiagramInterface, C: FloatSignalConverter<Diagram = SD>> Default
+    for StateMachineBlock<SD, C>
 where
     SD::OutputEvent: EnumArray<u32> + Copy,
     SD::InputEvent: EnumArray<bool> + Copy,
@@ -82,14 +109,14 @@ where
     }
 }
 
-impl<SD: StateDiagramInterface + FloatSignalInput + FloatSignalOutput> ProcessBlock
-    for StateMachineBlock<SD>
+impl<SD: StateDiagramInterface, C: FloatSignalConverter<Diagram = SD>> ProcessBlock
+    for StateMachineBlock<SD, C>
 where
     SD::OutputEvent: EnumArray<u32> + Copy,
     SD::InputEvent: EnumArray<bool> + Copy,
 {
-    type Inputs = SD::SourceSignal;
-    type Output = SD::TargetSignal;
+    type Inputs = C::SourceSignal;
+    type Output = C::TargetSignal;
     type Parameters = Parameter;
 
     fn process<'b>(
@@ -99,10 +126,10 @@ where
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.events.clear();
-        let (input_data, input_event) = SD::input_from_float_signal(inputs);
+        let (input_data, input_event) = C::input_from_float_signal(inputs);
         self.state_machine
             .execute(input_event, &input_data, &mut self.events);
-        self.buffer = SD::output_to_float_signal(&self.events);
+        self.buffer = C::output_to_float_signal(&self.events);
         self.buffer.as_by()
     }
 
@@ -139,7 +166,7 @@ mod tests {
 
     #[derive(Copy, Clone)]
     struct InputData {
-        value: f32,
+        value: f64,
     }
 
     #[derive(Copy, Clone, Enum)]
@@ -192,11 +219,18 @@ mod tests {
         FooDiagram::new_all_simple_states()
     }
 
-    impl FloatSignalInput for FooDiagram {
-        type SourceSignal = [f32; 3];
+    struct FooConverter;
+    impl FloatSignalConverter for FooConverter {
+        type Diagram = FooDiagram;
+        type SourceSignal = [f64; 3];
+        type TargetSignal = [f64; 2];
+
         fn input_from_float_signal(
             signals: PassBy<'_, Self::SourceSignal>,
-        ) -> (Self::InputData, EnumMap<Self::InputEvent, bool>) {
+        ) -> (
+            DiagramInputData<Self>,
+            EnumMap<DiagramInputEvent<Self>, bool>,
+        ) {
             let signals = *signals;
             let input_data = InputData { value: signals[0] };
             let mut input_event = EnumMap::default();
@@ -204,11 +238,8 @@ mod tests {
             input_event[InputEvent::Event2] = signals[2] > 0.0;
             (input_data, input_event)
         }
-    }
 
-    impl FloatSignalOutput for FooDiagram {
-        type TargetSignal = [f32; 2];
-        fn output_to_float_signal(output: &Events<Self::OutputEvent>) -> Self::TargetSignal {
+        fn output_to_float_signal(output: &Events<DiagramOutputEvent<Self>>) -> Self::TargetSignal {
             let mut signals = [0.0; 2];
             if output.counts[OutputEvent::EventA] > 0 {
                 signals[0] = 1.0;
@@ -254,7 +285,7 @@ mod tests {
     #[test]
     fn test_state_machine_block() {
         let foo_diagram = build_foo_diagram();
-        let mut sm_block = StateMachineBlock::new(foo_diagram);
+        let mut sm_block = StateMachineBlock::<_, FooConverter>::new(foo_diagram);
         let parameters = Parameter::new();
         let context = StubContext::default();
         assert_eq!(sm_block.buffer(), &[0.0, 1.0]); // default transition should emit EventB
