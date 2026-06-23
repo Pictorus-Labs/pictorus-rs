@@ -1,7 +1,7 @@
 //! This module provides a struct and set of traits that allow state machines to be used as a [`pictorus_traits::ProcessBlock`] in a Pictorus diagram.
 //! It is a bridge between the generic state machine abstractions and the Pictorus diagram abstractions.
 //!
-//! To use it you implement the [`FloatSignalConverter`] trait on a local marker type, declaring the
+//! To use it, implement the [`FloatSignalConverter`] trait on a local marker type, declaring the
 //! diagram it adapts and how to translate float signals to/from that diagram's input and output.
 //! You can then use the [`StateMachineBlock`] struct to wrap your state machine and use it as a process
 //! block in a Pictorus diagram.
@@ -16,13 +16,13 @@ use enum_map::{EnumArray, EnumMap};
 use pictorus_traits::{Pass, PassBy, ProcessBlock};
 
 /// Convenient alias for the input-event type of a converter's diagram.
-type DiagramInputEvent<C> =
+pub type DiagramInputEvent<C> =
     <<C as FloatSignalConverter>::Diagram as StateDiagramInterface>::InputEvent;
 /// Convenient alias for the input-data type of a converter's diagram.
-type DiagramInputData<C> =
+pub type DiagramInputData<C> =
     <<C as FloatSignalConverter>::Diagram as StateDiagramInterface>::InputData;
 /// Convenient alias for the output-event type of a converter's diagram.
-type DiagramOutputEvent<C> =
+pub type DiagramOutputEvent<C> =
     <<C as FloatSignalConverter>::Diagram as StateDiagramInterface>::OutputEvent;
 
 /// Translates between Pictorus float signals and a state diagram's inputs and outputs.
@@ -31,8 +31,8 @@ type DiagramOutputEvent<C> =
 /// the impl is allowed even though both [`FloatSignalConverter`] and the diagram type are defined here.
 pub trait FloatSignalConverter
 where
-    DiagramInputEvent<Self>: EnumArray<bool>,
-    DiagramOutputEvent<Self>: EnumArray<u32>,
+    DiagramInputEvent<Self>: EnumArray<bool> + Copy,
+    DiagramOutputEvent<Self>: EnumArray<u32> + Copy,
 {
     /// The state diagram interface this converter adapts.
     type Diagram: StateDiagramInterface;
@@ -232,10 +232,11 @@ mod tests {
             EnumMap<DiagramInputEvent<Self>, bool>,
         ) {
             let signals = *signals;
-            let input_data = InputData { value: signals[0] };
+
             let mut input_event = EnumMap::default();
-            input_event[InputEvent::Event1] = signals[1] > 0.0;
-            input_event[InputEvent::Event2] = signals[2] > 0.0;
+            input_event[InputEvent::Event1] = signals[0] > 0.0;
+            input_event[InputEvent::Event2] = signals[1] > 0.0;
+            let input_data = InputData { value: signals[2] };
             (input_data, input_event)
         }
 
@@ -289,10 +290,10 @@ mod tests {
         let parameters = Parameter::new();
         let context = StubContext::default();
         assert_eq!(sm_block.buffer(), &[0.0, 1.0]); // default transition should emit EventB
-        let input = [0.0, 1.0, 0.0];
+        let input = [1.0, 0.0, 0.0];
         let output = sm_block.process(&parameters, &context, input.as_by());
         assert_eq!(output, &[0.0, 0.0]); // No events fire because the guard for Event1 is not satisfied
-        let input = [42.0, 1.0, 0.0];
+        let input = [1.0, 0.0, 42.0];
         let output = sm_block.process(&parameters, &context, input.as_by());
         assert_eq!(output, &[1.0, 0.0]); // EventA should be emitted due to Event1 being true
     }
