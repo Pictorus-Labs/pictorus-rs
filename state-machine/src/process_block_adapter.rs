@@ -67,12 +67,51 @@ impl Parameter {
     }
 }
 
+/// This is an internal enum we use for lazy initialization of the state machine
+#[derive(Default)]
+enum StateMachineStorage<SD: StateDiagramInterface> {
+    Uninitialized(SD),
+    Initialized(StateMachine<SD>),
+    #[default]
+    /// This should only ever exist momentarily during the transition from Uninitialized to Initialized after the call
+    /// to `core::mem::take` in `get_initialized()`. It should not be used outside of that context or could
+    /// cause a panic
+    None,
+}
+
+impl<SD: StateDiagramInterface> StateMachineStorage<SD>
+where
+    SD::OutputEvent: EnumArray<u32> + Copy,
+{
+    /// This function is used by the [`StateMachineBlock`] to initialize the state machine on the first call to `process()`
+    /// Once already initialized, it is a no-op and returns the already-initialized state machine.
+    /// This allows the first execution of the state machine to capture the initial transition(s) and any events that may be emitted during that transition.
+    fn get_initialized(&mut self, events: &mut Events<SD::OutputEvent>) -> &mut StateMachine<SD> {
+        if matches!(self, StateMachineStorage::Uninitialized(_)) {
+            // We need to extract by value the diagram from the Uninitialized variant (i.e. `self`)
+            // `core::mem::take` is used to replace `self` with a default value (None) and return the original internal value (the diagram)
+            // Then we can use that diagram to create the StateMachine and replace `self` with the Initialized variant.
+            // we use the `matches!` macro along with the `let ... else {unreachable!()}` because the borrow checker wont allow us to move out of `*self` inside a `match` statement
+            let StateMachineStorage::Uninitialized(diagram) = core::mem::take(self) else {
+                unreachable!()
+            };
+            *self = StateMachineStorage::Initialized(StateMachine::create(diagram, events));
+        }
+
+        match self {
+            StateMachineStorage::Initialized(sm) => sm,
+            StateMachineStorage::Uninitialized(_) => unreachable!(),
+            StateMachineStorage::None => panic!("StateMachineStorage is None"),
+        }
+    }
+}
+
 pub struct StateMachineBlock<SD: StateDiagramInterface, C: FloatSignalConverter<Diagram = SD>>
 where
     SD::OutputEvent: EnumArray<u32> + Copy,
     SD::InputEvent: EnumArray<bool> + Copy,
 {
-    state_machine: StateMachine<SD>,
+    state_machine: StateMachineStorage<SD>,
     events: Events<SD::OutputEvent>,
     buffer: C::TargetSignal,
 }
@@ -83,8 +122,8 @@ where
     SD::InputEvent: EnumArray<bool> + Copy,
 {
     pub fn new(state_diagram_interface: SD) -> Self {
-        let mut events = Events::default();
-        let state_machine = StateMachine::create(state_diagram_interface, &mut events);
+        let events = Events::default();
+        let state_machine = StateMachineStorage::Uninitialized(state_diagram_interface);
         let buffer = C::output_to_float_signal(&events);
         Self {
             state_machine,
@@ -127,8 +166,8 @@ where
     ) -> PassBy<'b, Self::Output> {
         self.events.clear();
         let (input_data, input_event) = C::input_from_float_signal(inputs);
-        self.state_machine
-            .execute(input_event, &input_data, &mut self.events);
+        let sm = self.state_machine.get_initialized(&mut self.events);
+        sm.execute(input_event, &input_data, &mut self.events);
         self.buffer = C::output_to_float_signal(&self.events);
         self.buffer.as_by()
     }
@@ -289,10 +328,10 @@ mod tests {
         let mut sm_block = StateMachineBlock::<_, FooConverter>::new(foo_diagram);
         let parameters = Parameter::new();
         let context = StubContext::default();
-        assert_eq!(sm_block.buffer(), &[0.0, 1.0]); // default transition should emit EventB
+        assert_eq!(sm_block.buffer(), &[0.0, 0.0]); // No events have fired yet, so the buffer should be all zeros
         let input = [1.0, 0.0, 0.0];
         let output = sm_block.process(&parameters, &context, input.as_by());
-        assert_eq!(output, &[0.0, 0.0]); // No events fire because the guard for Event1 is not satisfied
+        assert_eq!(output, &[0.0, 1.0]); // We expect EventB to fire due to initialization,  No events fire besides that because the guard for Event1 is not satisfied
         let input = [1.0, 0.0, 42.0];
         let output = sm_block.process(&parameters, &context, input.as_by());
         assert_eq!(output, &[1.0, 0.0]); // EventA should be emitted due to Event1 being true
