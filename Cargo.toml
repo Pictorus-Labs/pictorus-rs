@@ -25,3 +25,6 @@ homepage = "https://www.pictor.us/"
 repository = "https://github.com/Pictorus-Labs/pictorus-rs"
 keywords = ["embedded", "modeling", "simulation", "fmi"]
 categories = ["embedded", "hardware-support", "no-std"]
+
+[patch.crates-io]
+fmu-runner = { git = "https://github.com/Pictorus-Labs/fmu-runner-rs", branch = "main" }
