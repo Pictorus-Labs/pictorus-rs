@@ -67,11 +67,15 @@ impl Parameter {
     }
 }
 
+/// This is an internal enum we use for lazy initialization of the state machine
 #[derive(Default)]
 enum StateMachineStorage<SD: StateDiagramInterface> {
     Uninitialized(SD),
     Initialized(StateMachine<SD>),
     #[default]
+    /// This should only ever exist momentarily during the transition from Uninitialized to Initialized after the call
+    /// to `core::mem::take` in `get_initialized()`. It should not be used outside of that context or could
+    /// cause a panic
     None,
 }
 
@@ -79,8 +83,15 @@ impl<SD: StateDiagramInterface> StateMachineStorage<SD>
 where
     SD::OutputEvent: EnumArray<u32> + Copy,
 {
+    /// This function is used by the [`StateMachineBlock`] to initialize the state machine on the first call to `process()`
+    /// Once already initialized, it is a no-op and returns the already-initialized state machine.
+    /// This allows the first execution of the state machine to capture the initial transition(s) and any events that may be emitted during that transition.
     fn get_initialized(&mut self, events: &mut Events<SD::OutputEvent>) -> &mut StateMachine<SD> {
         if matches!(self, StateMachineStorage::Uninitialized(_)) {
+            // We need to extract by value the diagram from the Uninitialized variant (i.e. `self`)
+            // `core::mem::take` is used to replace `self` with a default value (None) and return the original internal value (the diagram)
+            // Then we can use that diagram to create the StateMachine and replace `self` with the Initialized variant.
+            // we use the `matches!` macro along with the `let ... else {unreachable!()}` because the borrow checker wont allow us to move out of `*self` inside a `match` statement
             let StateMachineStorage::Uninitialized(diagram) = core::mem::take(self) else {
                 unreachable!()
             };
