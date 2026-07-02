@@ -27,4 +27,4 @@ keywords = ["embedded", "modeling", "simulation", "fmi"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [patch.crates-io]
-fmu-runner = { git = "https://github.com/jscatena88/fmu-runner-rs", branch = "main" }
+fmu-runner = { git = "https://github.com/Pictorus-Labs/fmu-runner-rs", branch = "main" }
