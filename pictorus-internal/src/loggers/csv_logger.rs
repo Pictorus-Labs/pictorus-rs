@@ -1,6 +1,7 @@
 use chrono::Utc;
 use core::time::Duration;
 use log::info;
+use std::boxed::Box;
 use std::io::{BufWriter, Write};
 use std::{fs::File, string::String};
 
@@ -14,7 +15,7 @@ use super::Logger;
 pub struct CsvLogger {
     last_csv_log_time: Option<Duration>,
     pub csv_log_period: Duration,
-    pub writer: BufWriter<File>,
+    pub writer: Box<dyn Write>,
     pub output_path: std::path::PathBuf,
     pub app_start_epoch: Duration,
     /// Reusable buffer for formatting CSV samples to avoid repeated allocations.
@@ -23,19 +24,20 @@ pub struct CsvLogger {
 
 impl CsvLogger {
     pub fn new(csv_log_period: Duration, output_path: std::path::PathBuf) -> Self {
-        let mut file_obj = File::create("/dev/null").unwrap();
-        if !csv_log_period.is_zero() {
+        let writer = if !csv_log_period.is_zero() {
             info!("DataLogger CSV output period: {csv_log_period:?}");
             info!("Streaming data output to file: {}", output_path.display());
-            file_obj = File::create(std::path::PathBuf::from(&output_path)).unwrap();
+            let file_obj = File::create(&output_path).unwrap();
+            Box::new(BufWriter::with_capacity(65536, file_obj)) as Box<dyn Write>
         } else {
             info!("Not streaming output to file, logging rate set to zero.");
-        }
+            Box::new(std::io::sink()) as Box<dyn Write>
+        };
 
         CsvLogger {
             last_csv_log_time: None,
             csv_log_period,
-            writer: BufWriter::with_capacity(65536, file_obj),
+            writer,
             output_path,
             app_start_epoch: Duration::from_micros(
                 Utc::now()

@@ -4,7 +4,7 @@ use serde::Serialize;
 pub mod csv_logger;
 
 #[cfg(feature = "std")]
-pub mod linux_logger;
+pub mod std_logger;
 
 #[cfg(feature = "std")]
 pub mod udp_logger;
