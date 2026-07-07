@@ -1,6 +1,6 @@
-//! This crate contains implementations of the various drivers needed to interact with I/O
-//! on Linux-based platforms (i.e. Raspberry Pi). These are typically defined as `InputBlock`
-//! or `OutputBlock` interfaces as defined in the `pictorus-traits` crate.
+//! This crate contains std library based implementations of Pictorus I/O drivers.
+//! These are typically defined as `InputBlock` or `OutputBlock` interfaces as defined
+//! in the `pictorus-traits` crate.
 pub mod clock_protocol;
 pub use clock_protocol::*;
 
