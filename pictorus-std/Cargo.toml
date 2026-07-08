@@ -1,7 +1,7 @@
 [package]
-name = "pictorus-linux"
+name = "pictorus-std"
 edition = "2024"
-description = "Linux implementations of Pictorus traits."
+description = "Std library based implementations of Pictorus traits."
 version = "0.0.0"
 license.workspace = true
 homepage.workspace = true
@@ -15,15 +15,11 @@ pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
 pictorus-internal = { path = "../pictorus-internal", version = "0.0.0", features = [
   "std",
 ] }
-pictorus-std = { path = "../pictorus-std", version = "0.0.0" }
 embedded-hal = "1.0.0"
 embedded-hal-02 = { package = "embedded-hal", version = "0.2.6", features = [
   "unproven",
 ] }
-embedded-can = "0.4.1"
-nb = "1.1.0"
+embedded-io = { version = "0.6.1", features = ["std"] }
 log = "0.4.21"
-linux-embedded-hal = "0.4.0"
-sysfs-pwm = "0.1.0"
-socketcan = "3.6.0"
-libc = "0.2.153"
+std-embedded-time = "0.1.0"
+serialport = "4.3.0"

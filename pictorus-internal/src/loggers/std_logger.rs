@@ -4,28 +4,28 @@ use std::path::PathBuf;
 
 use super::{csv_logger::CsvLogger, udp_logger::UdpLogger};
 
-/// LinuxLogger for Linux systems that logs data via UDP telemetry using
+/// StdLogger for Linux/Windows/MacOS systems that logs data via UDP telemetry using
 /// the device manager as well as a CSV file.
-pub struct LinuxLogger {
+pub struct StdLogger {
     udp_logger: UdpLogger,
     csv_logger: CsvLogger,
 }
 
-impl LinuxLogger {
+impl StdLogger {
     pub fn new(
         udp_log_period: Duration,
         udp_socket: &str,
         csv_log_period: Duration,
         csv_output_path: PathBuf,
     ) -> Self {
-        LinuxLogger {
+        StdLogger {
             udp_logger: UdpLogger::new(udp_log_period, udp_socket),
             csv_logger: CsvLogger::new(csv_log_period, csv_output_path),
         }
     }
 }
 
-impl Logger for LinuxLogger {
+impl Logger for StdLogger {
     fn should_log(&mut self, app_time: Duration) -> bool {
         self.udp_logger.should_log(app_time) || self.csv_logger.should_log(app_time)
     }
