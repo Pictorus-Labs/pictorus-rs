@@ -64,7 +64,7 @@ where
             parameters.end_delimiter.as_slice(),
         ]
         .concat();
-        debug!("Transmitting value: {:?}", &write_val);
+        debug!("Transmitting value: {:?}", write_val);
         self.buffer = write_val;
         &self.buffer
     }
