@@ -1,16 +1,15 @@
 use embedded_hal::digital::{InputPin, OutputPin};
 use pictorus_traits::{InputBlock, OutputBlock};
-use ra4m2_hal::gpio::{Input, Output, PullDown, PushPull};
 
-pub struct RenesasInputPin<const N: u8>(ra4m2_hal::gpio::port4::Pin<Input<PullDown>, N>);
+pub struct RenesasInputPin<P: InputPin>(P);
 
-impl<const N: u8> RenesasInputPin<N> {
-    pub fn new(inner: ra4m2_hal::gpio::port4::Pin<Input<PullDown>, N>) -> Self {
+impl<P: InputPin> RenesasInputPin<P> {
+    pub fn new(inner: P) -> Self {
         RenesasInputPin(inner)
     }
 }
 
-impl<const N: u8> InputBlock for RenesasInputPin<N> {
+impl<P: InputPin> InputBlock for RenesasInputPin<P> {
     type Output = f64;
     type Parameters = pictorus_blocks::GpioInputBlockParams;
 
@@ -23,15 +22,15 @@ impl<const N: u8> InputBlock for RenesasInputPin<N> {
     }
 }
 
-pub struct RenesasOutputPin<const N: u8>(ra4m2_hal::gpio::port4::Pin<Output<PushPull>, N>);
+pub struct RenesasOutputPin<P: OutputPin>(P);
 
-impl<const N: u8> RenesasOutputPin<N> {
-    pub fn new(inner: ra4m2_hal::gpio::port4::Pin<Output<PushPull>, N>) -> Self {
+impl<P: OutputPin> RenesasOutputPin<P> {
+    pub fn new(inner: P) -> Self {
         RenesasOutputPin(inner)
     }
 }
 
-impl<const N: u8> OutputBlock for RenesasOutputPin<N> {
+impl<P: OutputPin> OutputBlock for RenesasOutputPin<P> {
     type Inputs = bool;
     type Parameters = pictorus_blocks::GpioOutputBlockParams;
 
