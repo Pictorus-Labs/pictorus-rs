@@ -138,10 +138,10 @@ impl SerialReceiveBlock {
         let end_idx;
 
         // Use anything in the overflow buffer plus new data
-        debug!("Received value: {:?}", &self.buffer);
+        debug!("Received value: {:?}", self.buffer);
         debug!(
             "Start delimiter: {:?}, End delimiter: {:?}",
-            &parameters.start_delimiter, &parameters.end_delimiter
+            parameters.start_delimiter, parameters.end_delimiter
         );
 
         if !parameters.start_delimiter.0.is_empty() {
