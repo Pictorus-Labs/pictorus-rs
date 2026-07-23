@@ -130,11 +130,6 @@ where
     }
 }
 
-// TODO: This is currently only implemented for f64 types. The IntegralBlock
-// and DerivativeBlock are implemented using very different approaches: integral
-// block uses a trait-based approach, and derivative block uses macros. I think if we
-// consolidated our approach for these 3 blocks we could make this simpler and more generic.
-// Ideally we could just have a blanket impl for <const ND_SAMPLES: usize, T: ComponentOps>.
 impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> HasIc for PidBlock<T, R, ND_SAMPLES>
 where
     DerivativeBlock<T, ND_SAMPLES>:
