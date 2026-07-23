@@ -63,10 +63,27 @@ impl AppendBytes for f64 {
         let mut scratch = [0u8; 16]; // 16 bytes is the size of i128 which is the largest output spec we support
         let n = match data_spec.1 {
             ByteOrderSpec::BigEndian => {
-                try_pack_data::<byteorder::BigEndian>(&mut scratch, *self, data_spec.0)
+                try_pack_data::<f64, byteorder::BigEndian>(&mut scratch, *self, data_spec.0)
             }
             ByteOrderSpec::LittleEndian => {
-                try_pack_data::<byteorder::LittleEndian>(&mut scratch, *self, data_spec.0)
+                try_pack_data::<f64, byteorder::LittleEndian>(&mut scratch, *self, data_spec.0)
+            }
+        }
+        .expect("Scratch should always be big enough, which is the only way to produce an error");
+        buffer.extend_from_slice(scratch[..n].as_ref());
+        n
+    }
+}
+
+impl AppendBytes for f32 {
+    fn append_bytes(&self, data_spec: (DataType, ByteOrderSpec), buffer: &mut Vec<u8>) -> usize {
+        let mut scratch = [0u8; 16]; // 16 bytes is the size of i128 which is the largest output spec we support
+        let n = match data_spec.1 {
+            ByteOrderSpec::BigEndian => {
+                try_pack_data::<f32, byteorder::BigEndian>(&mut scratch, *self, data_spec.0)
+            }
+            ByteOrderSpec::LittleEndian => {
+                try_pack_data::<f32, byteorder::LittleEndian>(&mut scratch, *self, data_spec.0)
             }
         }
         .expect("Scratch should always be big enough, which is the only way to produce an error");
@@ -215,6 +232,24 @@ mod tests {
         let params = Parameters::new(&["I8:BigEndian"]);
         let mut block = BytesPackBlock::<f64>::default();
         let inputs = 255.0;
+
+        let expected = {
+            let mut expected = Vec::new();
+            expected.write_i8(inputs as i8).unwrap();
+            expected
+        };
+
+        let output = block.process(&params, &context, inputs);
+        assert_eq!(output, expected.as_slice());
+        assert_eq!(block.buffer(), expected.as_slice());
+    }
+
+    #[test]
+    fn test_bytes_pack_block_1_input_f32() {
+        let context = StubContext::default();
+        let params = Parameters::new(&["I8:BigEndian"]);
+        let mut block = BytesPackBlock::<f32>::default();
+        let inputs = 255.0f32;
 
         let expected = {
             let mut expected = Vec::new();

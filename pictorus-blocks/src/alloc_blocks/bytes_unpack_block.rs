@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use crate::{
     stale_tracker::{duration_from_ms_f64, StaleTracker},
-    traits::Scalar,
+    traits::Float,
 };
 use generic_array::{ArrayLength, GenericArray};
 use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
@@ -12,17 +12,17 @@ use pictorus_traits::{ByteSliceSignal, PassBy, ProcessBlock};
 
 /// Unpacks a byte slice into a specified number of outputs based on the provided data types and byte order.
 ///
-/// The output is `[f64; N]` where the last element is a `1.0`/`0.0` validity flag — true while
-/// the most recent successful unpack is still within the configured `stale_age`.
-pub struct BytesUnpackBlock<const N: usize> {
-    buffer: [f64; N],
+/// The output is `[O; N]` (`O` defaults for `f64` unless otherwise set) where the last element is a `1.0`/`0.0`
+/// validity flag — true while the most recent successful unpack is still within the configured `stale_age`.
+pub struct BytesUnpackBlock<const N: usize, O: Unpack = f64> {
+    buffer: [O; N],
     stale_check: StaleTracker,
 }
 
-impl<const N: usize> Default for BytesUnpackBlock<N> {
+impl<const N: usize, O: Unpack> Default for BytesUnpackBlock<N, O> {
     fn default() -> Self {
         BytesUnpackBlock {
-            buffer: [0.0; N],
+            buffer: [O::zero(); N],
             stale_check: StaleTracker::default(),
         }
     }
@@ -35,7 +35,7 @@ pub struct Parameters<N: ArrayLength> {
     pub stale_age: Duration,
 }
 
-impl<const N: usize> ProcessBlock for BytesUnpackBlock<N>
+impl<const N: usize, O: Unpack> ProcessBlock for BytesUnpackBlock<N, O>
 where
     // To be able to have parameters be of size N-1 we use typenum to express that at the type level
     Const<N>: ToUInt,                   // Ensure N can be converted to a typenum UInt
@@ -45,7 +45,7 @@ where
     type Parameters = Parameters<Sub1<U<N>>>;
 
     type Inputs = ByteSliceSignal;
-    type Output = [f64; N];
+    type Output = [O; N];
 
     fn process<'b>(
         &'b mut self,
@@ -53,14 +53,14 @@ where
         context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let mut new_buffer = [0.0; N];
+        let mut new_buffer = [O::zero(); N];
         // Use Unpack::unpack N-1 times to fill the buffer; if it fails at any point,
         // keep the old buffer values. The data at N-1 is the `is_valid` flag.
         let mut inputs = inputs;
         let mut unpack_success = true;
         for (i, elem) in new_buffer.iter_mut().enumerate().take(N - 1) {
             let (val, advanced_data) =
-                f64::unpack(inputs, parameters.pack_spec[i].0, parameters.pack_spec[i].1);
+                O::unpack(inputs, parameters.pack_spec[i].0, parameters.pack_spec[i].1);
             if let Some(val) = val {
                 *elem = val;
             } else {
@@ -77,9 +77,9 @@ where
             .stale_check
             .is_valid(context.time(), parameters.stale_age)
         {
-            1.0
+            O::one()
         } else {
-            0.0
+            O::zero()
         };
         &self.buffer
     }
@@ -102,7 +102,7 @@ impl<N: ArrayLength> Parameters<N> {
     }
 }
 
-pub trait Unpack: Scalar {
+pub trait Unpack: Float {
     fn unpack(data: &[u8], data_type: DataType, byte_order: ByteOrderSpec)
         -> (Option<Self>, &[u8]);
 }
@@ -114,9 +114,35 @@ impl Unpack for f64 {
         byte_order: ByteOrderSpec,
     ) -> (Option<Self>, &[u8]) {
         let val = match byte_order {
-            ByteOrderSpec::BigEndian => try_unpack_data::<byteorder::BigEndian>(data, data_type),
+            ByteOrderSpec::BigEndian => {
+                try_unpack_data::<f64, byteorder::BigEndian>(data, data_type)
+            }
             ByteOrderSpec::LittleEndian => {
-                try_unpack_data::<byteorder::LittleEndian>(data, data_type)
+                try_unpack_data::<f64, byteorder::LittleEndian>(data, data_type)
+            }
+        }
+        .ok();
+        let advanced_data = if val.is_some() {
+            &data[data_type.byte_size()..]
+        } else {
+            data
+        };
+        (val, advanced_data)
+    }
+}
+
+impl Unpack for f32 {
+    fn unpack(
+        data: &[u8],
+        data_type: DataType,
+        byte_order: ByteOrderSpec,
+    ) -> (Option<Self>, &[u8]) {
+        let val = match byte_order {
+            ByteOrderSpec::BigEndian => {
+                try_unpack_data::<f32, byteorder::BigEndian>(data, data_type)
+            }
+            ByteOrderSpec::LittleEndian => {
+                try_unpack_data::<f32, byteorder::LittleEndian>(data, data_type)
             }
         }
         .ok();
@@ -175,6 +201,11 @@ mod tests {
         let test_data = (-23.0, 43.0);
         let expected = [-23.0, 43.0, 1.0];
         let packed = pack_block.process(&pack_parameters, &context, test_data);
+        let expected_packed: [u8; 2] = [
+            0b11101001, // -23 as i8
+            0b00101011,
+        ];
+        assert_eq!(&packed[..2], expected_packed.as_slice());
         let unpacked = block.process(&parameters, &context, packed);
         assert_eq!(unpacked, expected.as_slice());
 
@@ -294,5 +325,31 @@ mod tests {
         assert_relative_eq!(unpacked[10], 2.2250739e-308_f64);
         assert_relative_eq!(unpacked[11], -2147483648.0_f64);
         assert_relative_eq!(unpacked[12], 1.0_f64, epsilon = 0.001);
+    }
+
+    #[test]
+    fn test_bytes_unpack_3_output_f32() {
+        let mut context = StubContext::default();
+        let mut pack_block = BytesPackBlock::<(f32, f32)>::default();
+        let mut block = BytesUnpackBlock::<3, f32>::default();
+        let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];
+        let pack_parameters = PackParameters::new(spec_strings);
+        let parameters = Parameters::new(spec_strings, 1000.0);
+
+        // Test happy path
+        let test_data = (-23.0, 43.0);
+        let expected = [-23.0, 43.0, 1.0];
+        let packed = pack_block.process(&pack_parameters, &context, test_data);
+        let unpacked = block.process(&parameters, &context, packed);
+        assert_eq!(unpacked, expected.as_slice());
+
+        // Test not-stale yet but invalid data
+        let unpacked: &[f32; 3] = block.process(&parameters, &context, &[]);
+        assert_eq!(unpacked, expected.as_slice());
+
+        // Now it is stale
+        context.time += Duration::from_secs_f64(1.1);
+        let unpacked = block.process(&parameters, &context, &[]);
+        assert_eq!(unpacked, [-23.0, 43.0, 0.0].as_slice());
     }
 }

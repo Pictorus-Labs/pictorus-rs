@@ -1,13 +1,14 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::time::Duration;
+use num_traits::AsPrimitive;
 
 use miniserde::json::{self, Array, Number, Object, Value};
 use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::{
     stale_tracker::{duration_from_ms_f64, StaleTracker},
-    traits::DefaultStorage,
+    traits::{DefaultStorage, Float},
 };
 
 /// Block-output data shape, parsed from the user-supplied select-data spec strings.
@@ -122,7 +123,12 @@ pub trait Deserialize: DefaultStorage {
     }
 }
 
-impl Deserialize for f64 {
+impl<T: Float> Deserialize for T
+where
+    i64: AsPrimitive<T>,
+    f64: AsPrimitive<T>,
+    u64: AsPrimitive<T>,
+{
     fn from_json_value(data: &Value) -> Result<Self::Storage, ()> {
         match data {
             Value::Number(n) => Ok(parse_number(n)),
@@ -140,10 +146,15 @@ impl Deserialize for ByteSliceSignal {
     }
 }
 
-fn parse_num_array<const NROWS: usize, const NCOLS: usize>(
+fn parse_num_array<const NROWS: usize, const NCOLS: usize, T: Float>(
     data: &Array,
-    res: &mut Matrix<NROWS, NCOLS, f64>,
-) -> Result<(), ()> {
+    res: &mut Matrix<NROWS, NCOLS, T>,
+) -> Result<(), ()>
+where
+    i64: AsPrimitive<T>,
+    f64: AsPrimitive<T>,
+    u64: AsPrimitive<T>,
+{
     // If ROWS * COLS is equal to the total number of elements in the matrix
     // then we can fill the matrix column-wise
     if data.len() != NROWS * NCOLS {
@@ -161,10 +172,15 @@ fn parse_num_array<const NROWS: usize, const NCOLS: usize>(
     Ok(())
 }
 
-fn parse_nested_array<const NROWS: usize, const NCOLS: usize>(
+fn parse_nested_array<const NROWS: usize, const NCOLS: usize, T: Float>(
     data: &Array,
-    res: &mut Matrix<NROWS, NCOLS, f64>,
-) -> Result<(), ()> {
+    res: &mut Matrix<NROWS, NCOLS, T>,
+) -> Result<(), ()>
+where
+    i64: AsPrimitive<T>,
+    f64: AsPrimitive<T>,
+    u64: AsPrimitive<T>,
+{
     let rows = data.len();
     if rows != NROWS {
         return Err(());
@@ -191,7 +207,12 @@ fn parse_nested_array<const NROWS: usize, const NCOLS: usize>(
     Ok(())
 }
 
-impl<const NROWS: usize, const NCOLS: usize> Deserialize for Matrix<NROWS, NCOLS, f64> {
+impl<const NROWS: usize, const NCOLS: usize, T: Float> Deserialize for Matrix<NROWS, NCOLS, T>
+where
+    i64: AsPrimitive<T>,
+    f64: AsPrimitive<T>,
+    u64: AsPrimitive<T>,
+{
     fn from_json_value(data: &Value) -> Result<Self::Storage, ()> {
         let mut res = Self::Storage::default();
         let val = match data {
@@ -229,11 +250,16 @@ pub trait Apply: Pass {
     fn set_valid(storage: &mut Self::Storage, valid: bool);
 }
 
-fn parse_number(num_val: &Number) -> f64 {
+fn parse_number<O: Float>(num_val: &Number) -> O
+where
+    i64: AsPrimitive<O>,
+    u64: AsPrimitive<O>,
+    f64: AsPrimitive<O>,
+{
     match num_val {
-        Number::F64(v) => *v,
-        Number::I64(v) => *v as f64,
-        Number::U64(v) => *v as f64,
+        Number::F64(v) => (*v).as_(),
+        Number::I64(v) => (*v).as_(),
+        Number::U64(v) => (*v).as_(),
     }
 }
 
@@ -966,5 +992,30 @@ mod tests {
 
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
+    }
+
+    #[test]
+    fn test_load_f32_scalar() {
+        let ctxt = StubContext::default();
+        let input = br#"{"foo": 1.0}"#;
+        let params = Parameters::new(&["Scalar:foo".into()], 1000.0);
+        let mut block = JsonLoadBlock::<f32>::default();
+        let res = block.process(&params, &ctxt, input);
+        assert_eq!(res, (1.0_f32, true));
+        assert_eq!(block.buffer(), (1.0_f32, true));
+    }
+
+    #[test]
+    fn test_load_f32_matrix() {
+        let ctxt = StubContext::default();
+        let input = br#"[[1.0, 2.0], [3.0, 4.0]]"#;
+        let params = Parameters::new(&[], 1000.0);
+        let mut block = JsonLoadBlock::<Matrix<2, 2, f32>>::default();
+        let res = block.process(&params, &ctxt, input);
+        let expected = &Matrix {
+            data: [[1.0_f32, 3.0_f32], [2.0_f32, 4.0_f32]],
+        };
+        assert_eq!(res, (expected, true));
+        assert_eq!(block.buffer(), (expected, true));
     }
 }

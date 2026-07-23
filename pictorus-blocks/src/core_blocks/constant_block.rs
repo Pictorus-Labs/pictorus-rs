@@ -1,4 +1,5 @@
-use pictorus_traits::{GeneratorBlock, Matrix, Pass, PassBy, Scalar};
+use crate::traits::Scalar;
+use pictorus_traits::{GeneratorBlock, Matrix, Pass, PassBy};
 
 pub struct Parameters<T> {
     pub constant: T,
@@ -58,8 +59,8 @@ pub trait Apply: Pass + Sized {
     ) -> PassBy<'s, Self::Output>;
 }
 
-impl Apply for f64 {
-    type Output = f64;
+impl<T: Scalar> Apply for T {
+    type Output = T;
 
     fn apply<'s>(
         store: &'s mut Self::Output,
@@ -143,5 +144,35 @@ mod tests {
         assert_eq!(block.buffer().data[1][0], 2.0);
         assert_eq!(block.buffer().data[0][1], 3.0);
         assert_eq!(block.buffer().data[1][1], 4.0);
+    }
+
+    #[test]
+    fn test_constant_scalar_f32() {
+        let mut block = ConstantBlock::<f32>::default();
+        let parameters = Parameters::new(3.0_f32);
+        let context = StubContext::default();
+
+        let output = block.generate(&parameters, &context);
+        assert_eq!(output, 3.0_f32);
+        assert_eq!(block.buffer(), output);
+    }
+
+    #[test]
+    fn test_constant_matrix_f32() {
+        let mut block = ConstantBlock::<Matrix<2, 2, f32>>::default();
+        let parameters = Parameters::new(Matrix {
+            data: [[1.0_f32, 3.0_f32], [2.0_f32, 4.0_f32]],
+        });
+        let context = StubContext::default();
+
+        let output = block.generate(&parameters, &context);
+        assert_eq!(output.data[0][0], 1.0_f32);
+        assert_eq!(output.data[1][0], 2.0_f32);
+        assert_eq!(output.data[0][1], 3.0_f32);
+        assert_eq!(output.data[1][1], 4.0_f32);
+        assert_eq!(block.buffer().data[0][0], 1.0_f32);
+        assert_eq!(block.buffer().data[1][0], 2.0_f32);
+        assert_eq!(block.buffer().data[0][1], 3.0_f32);
+        assert_eq!(block.buffer().data[1][1], 4.0_f32);
     }
 }

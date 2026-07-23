@@ -194,60 +194,92 @@ pub fn parse_string_to_read_delimiter(data: &str) -> (Vec<u8>, Vec<usize>) {
 pub const BUFF_SIZE_BYTES: usize = 1024;
 
 use byteorder::ByteOrder;
+use num_traits::AsPrimitive;
 
-pub fn try_unpack_data<Endian: ByteOrder>(
+use crate::traits::Float;
+
+pub fn try_unpack_data<T: Float, Endian: ByteOrder>(
     buf: &[u8],
     data_type: DataType,
-) -> Result<f64, ByteDataError> {
+) -> Result<T, ByteDataError>
+where
+    u8: AsPrimitive<T>,
+    i8: AsPrimitive<T>,
+    u16: AsPrimitive<T>,
+    i16: AsPrimitive<T>,
+    u32: AsPrimitive<T>,
+    i32: AsPrimitive<T>,
+    u64: AsPrimitive<T>,
+    i64: AsPrimitive<T>,
+    u128: AsPrimitive<T>,
+    i128: AsPrimitive<T>,
+    f32: AsPrimitive<T>,
+    f64: AsPrimitive<T>,
+{
     if buf.len() < data_type.byte_size() {
         return Err(ByteDataError::UnpackError);
     }
     let val = match data_type {
-        DataType::U8 => buf[0] as f64,
-        DataType::I8 => buf[0] as i8 as f64,
-        DataType::U16 => Endian::read_u16(buf) as f64,
-        DataType::I16 => Endian::read_i16(buf) as f64,
-        DataType::U24 => Endian::read_u24(buf) as f64,
-        DataType::I24 => Endian::read_i24(buf) as f64,
-        DataType::U32 => Endian::read_u32(buf) as f64,
-        DataType::I32 => Endian::read_i32(buf) as f64,
-        DataType::U48 => Endian::read_u48(buf) as f64,
-        DataType::I48 => Endian::read_i48(buf) as f64,
-        DataType::U64 => Endian::read_u64(buf) as f64,
-        DataType::I64 => Endian::read_i64(buf) as f64,
-        DataType::U128 => Endian::read_u128(buf) as f64,
-        DataType::I128 => Endian::read_i128(buf) as f64,
-        DataType::F32 => Endian::read_f32(buf) as f64,
-        DataType::F64 => Endian::read_f64(buf),
+        DataType::U8 => buf[0].as_(),
+        DataType::I8 => AsPrimitive::<i8>::as_(buf[0]).as_(),
+        DataType::U16 => Endian::read_u16(buf).as_(),
+        DataType::I16 => Endian::read_i16(buf).as_(),
+        DataType::U24 => Endian::read_u24(buf).as_(),
+        DataType::I24 => Endian::read_i24(buf).as_(),
+        DataType::U32 => Endian::read_u32(buf).as_(),
+        DataType::I32 => Endian::read_i32(buf).as_(),
+        DataType::U48 => Endian::read_u48(buf).as_(),
+        DataType::I48 => Endian::read_i48(buf).as_(),
+        DataType::U64 => Endian::read_u64(buf).as_(),
+        DataType::I64 => Endian::read_i64(buf).as_(),
+        DataType::U128 => Endian::read_u128(buf).as_(),
+        DataType::I128 => Endian::read_i128(buf).as_(),
+        DataType::F32 => Endian::read_f32(buf).as_(),
+        DataType::F64 => Endian::read_f64(buf).as_(),
     };
     Ok(val)
 }
 
-pub fn try_pack_data<Endian: ByteOrder>(
+pub fn try_pack_data<T, Endian: ByteOrder>(
     buf: &mut [u8],
-    value: f64,
+    value: T,
     data_type: DataType,
-) -> Result<usize, ByteDataError> {
+) -> Result<usize, ByteDataError>
+where
+    T: Float
+        + AsPrimitive<u8>
+        + AsPrimitive<i8>
+        + AsPrimitive<u16>
+        + AsPrimitive<i16>
+        + AsPrimitive<u32>
+        + AsPrimitive<i32>
+        + AsPrimitive<u64>
+        + AsPrimitive<i64>
+        + AsPrimitive<u128>
+        + AsPrimitive<i128>
+        + AsPrimitive<f32>
+        + AsPrimitive<f64>,
+{
     if buf.len() < data_type.byte_size() {
         return Err(ByteDataError::PackError);
     }
     match data_type {
-        DataType::U8 => buf[0] = value as u8,
-        DataType::I8 => buf[0] = value as i8 as u8,
-        DataType::U16 => Endian::write_u16(buf, value as u16),
-        DataType::I16 => Endian::write_i16(buf, value as i16),
-        DataType::U24 => Endian::write_u24(buf, value as u32),
-        DataType::I24 => Endian::write_i24(buf, value as i32),
-        DataType::U32 => Endian::write_u32(buf, value as u32),
-        DataType::I32 => Endian::write_i32(buf, value as i32),
-        DataType::U48 => Endian::write_u48(buf, value as u64),
-        DataType::I48 => Endian::write_i48(buf, value as i64),
-        DataType::U64 => Endian::write_u64(buf, value as u64),
-        DataType::I64 => Endian::write_i64(buf, value as i64),
-        DataType::U128 => Endian::write_u128(buf, value as u128),
-        DataType::I128 => Endian::write_i128(buf, value as i128),
-        DataType::F32 => Endian::write_f32(buf, value as f32),
-        DataType::F64 => Endian::write_f64(buf, value),
+        DataType::U8 => buf[0] = value.as_(),
+        DataType::I8 => buf[0] = AsPrimitive::<i8>::as_(value).as_(),
+        DataType::U16 => Endian::write_u16(buf, value.as_()),
+        DataType::I16 => Endian::write_i16(buf, value.as_()),
+        DataType::U24 => Endian::write_u24(buf, value.as_()),
+        DataType::I24 => Endian::write_i24(buf, value.as_()),
+        DataType::U32 => Endian::write_u32(buf, value.as_()),
+        DataType::I32 => Endian::write_i32(buf, value.as_()),
+        DataType::U48 => Endian::write_u48(buf, value.as_()),
+        DataType::I48 => Endian::write_i48(buf, value.as_()),
+        DataType::U64 => Endian::write_u64(buf, value.as_()),
+        DataType::I64 => Endian::write_i64(buf, value.as_()),
+        DataType::U128 => Endian::write_u128(buf, value.as_()),
+        DataType::I128 => Endian::write_i128(buf, value.as_()),
+        DataType::F32 => Endian::write_f32(buf, value.as_()),
+        DataType::F64 => Endian::write_f64(buf, value.as_()),
     };
     Ok(data_type.byte_size())
 }
@@ -382,13 +414,25 @@ mod tests {
     }
 
     #[test]
-    fn test_try_unpack_data_and_try_pack_data() {
+    fn test_try_unpack_data_and_try_pack_data_f64() {
         let input: f64 = 1234.5678;
         let dt = DataType::F64;
         let mut packed_data = vec![0; dt.byte_size()];
 
-        try_pack_data::<BigEndian>(&mut packed_data, input, dt).unwrap();
-        let unpacked_data = try_unpack_data::<BigEndian>(&packed_data, dt).unwrap();
+        try_pack_data::<f64, BigEndian>(&mut packed_data, input, dt).unwrap();
+        let unpacked_data = try_unpack_data::<f64, BigEndian>(&packed_data, dt).unwrap();
+
+        assert_eq!(input, unpacked_data);
+    }
+
+    #[test]
+    fn test_try_unpack_data_and_try_pack_data_f32() {
+        let input: f32 = 1234.5678;
+        let dt = DataType::F64;
+        let mut packed_data = vec![0; dt.byte_size()];
+
+        try_pack_data::<f32, BigEndian>(&mut packed_data, input, dt).unwrap();
+        let unpacked_data = try_unpack_data::<f32, BigEndian>(&packed_data, dt).unwrap();
 
         assert_eq!(input, unpacked_data);
     }

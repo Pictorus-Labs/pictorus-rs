@@ -1,37 +1,51 @@
 use chrono::{DateTime, Datelike, Local, Timelike};
+use num_traits::AsPrimitive;
 use pictorus_traits::{GeneratorBlock, PassBy};
+
+use crate::traits::Float;
 
 /// This block can be used in `std` environments to get the current system time.
 /// The time output can be in different formats, such as epoch time, second, minute, hour, day of the month, day of the year, month, or year.
-pub struct SystemTimeBlock {
-    output: f64,
+pub struct SystemTimeBlock<O: Float = f64> {
+    output: O,
     start_time: DateTime<Local>,
 }
 
-impl Default for SystemTimeBlock {
+impl<O: Float> Default for SystemTimeBlock<O> {
     fn default() -> Self {
         Self {
-            output: 0.0,
+            output: O::zero(),
             start_time: Local::now(),
         }
     }
 }
 
-fn get_output_value(time: DateTime<Local>, method: SystemTimeEnum) -> f64 {
+fn get_output_value<O: Float>(time: DateTime<Local>, method: SystemTimeEnum) -> O
+where
+    i64: AsPrimitive<O>,
+    i32: AsPrimitive<O>,
+    u32: AsPrimitive<O>,
+{
+    // As casts are technically lossy but should be ok for the ranges of values we expect here
     match method {
-        SystemTimeEnum::Epoch => time.timestamp() as f64,
-        SystemTimeEnum::Second => time.second().into(),
-        SystemTimeEnum::Minute => time.minute().into(),
-        SystemTimeEnum::Hour => time.hour().into(),
-        SystemTimeEnum::DayLunar => time.day().into(),
-        SystemTimeEnum::DayOrdinal => time.ordinal().into(),
-        SystemTimeEnum::Month => time.month().into(),
-        SystemTimeEnum::Year => time.year().into(),
+        SystemTimeEnum::Epoch => time.timestamp().as_(),
+        SystemTimeEnum::Second => time.second().as_(),
+        SystemTimeEnum::Minute => time.minute().as_(),
+        SystemTimeEnum::Hour => time.hour().as_(),
+        SystemTimeEnum::DayLunar => time.day().as_(),
+        SystemTimeEnum::DayOrdinal => time.ordinal().as_(),
+        SystemTimeEnum::Month => time.month().as_(),
+        SystemTimeEnum::Year => time.year().as_(),
     }
 }
 
-impl GeneratorBlock for SystemTimeBlock {
-    type Output = f64;
+impl<O: Float> GeneratorBlock for SystemTimeBlock<O>
+where
+    i64: AsPrimitive<O>,
+    i32: AsPrimitive<O>,
+    u32: AsPrimitive<O>,
+{
+    type Output = O;
     type Parameters = Parameters;
 
     fn generate(
@@ -88,14 +102,48 @@ mod tests {
     #[test]
     fn test_get_output_value() {
         let time = Local::now();
-        let epoch = get_output_value(time, SystemTimeEnum::Epoch);
-        let second = get_output_value(time, SystemTimeEnum::Second);
-        let minute = get_output_value(time, SystemTimeEnum::Minute);
-        let hour = get_output_value(time, SystemTimeEnum::Hour);
-        let day_lunar = get_output_value(time, SystemTimeEnum::DayLunar);
-        let day_ordinal = get_output_value(time, SystemTimeEnum::DayOrdinal);
-        let month = get_output_value(time, SystemTimeEnum::Month);
-        let year = get_output_value(time, SystemTimeEnum::Year);
+        let epoch: f32 = get_output_value(time, SystemTimeEnum::Epoch);
+        assert!(epoch.is_finite());
+        let second: f32 = get_output_value(time, SystemTimeEnum::Second);
+        assert!(second.is_finite());
+        let minute: f32 = get_output_value(time, SystemTimeEnum::Minute);
+        assert!(minute.is_finite());
+        let hour: f32 = get_output_value(time, SystemTimeEnum::Hour);
+        assert!(hour.is_finite());
+        let day_lunar: f32 = get_output_value(time, SystemTimeEnum::DayLunar);
+        assert!(day_lunar.is_finite());
+        let day_ordinal: f32 = get_output_value(time, SystemTimeEnum::DayOrdinal);
+        assert!(day_ordinal.is_finite());
+        let month: f32 = get_output_value(time, SystemTimeEnum::Month);
+        assert!(month.is_finite());
+        let year: f32 = get_output_value(time, SystemTimeEnum::Year);
+        assert!(year.is_finite());
+
+        assert_eq!(epoch, time.timestamp() as f32);
+        assert_eq!(second, time.second() as f32);
+        assert_eq!(minute, time.minute() as f32);
+        assert_eq!(hour, time.hour() as f32);
+        assert_eq!(day_lunar, time.day() as f32);
+        assert_eq!(day_ordinal, time.ordinal() as f32);
+        assert_eq!(month, time.month() as f32);
+        assert_eq!(year, time.year() as f32);
+
+        let epoch: f64 = get_output_value(time, SystemTimeEnum::Epoch);
+        assert!(epoch.is_finite());
+        let second: f64 = get_output_value(time, SystemTimeEnum::Second);
+        assert!(second.is_finite());
+        let minute: f64 = get_output_value(time, SystemTimeEnum::Minute);
+        assert!(minute.is_finite());
+        let hour: f64 = get_output_value(time, SystemTimeEnum::Hour);
+        assert!(hour.is_finite());
+        let day_lunar: f64 = get_output_value(time, SystemTimeEnum::DayLunar);
+        assert!(day_lunar.is_finite());
+        let day_ordinal: f64 = get_output_value(time, SystemTimeEnum::DayOrdinal);
+        assert!(day_ordinal.is_finite());
+        let month: f64 = get_output_value(time, SystemTimeEnum::Month);
+        assert!(month.is_finite());
+        let year: f64 = get_output_value(time, SystemTimeEnum::Year);
+        assert!(year.is_finite());
 
         assert_eq!(epoch, time.timestamp() as f64);
         assert_eq!(second, time.second() as f64);
@@ -109,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_system_time_default_buffer_no_panic() {
-        let block = SystemTimeBlock::default();
+        let block: SystemTimeBlock = SystemTimeBlock::default();
         assert_eq!(block.buffer(), 0.0);
     }
 

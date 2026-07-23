@@ -27,11 +27,13 @@ impl Parameters {
 /// or a matrix of scalars. However they are interpreted as bools or matrices of bools, where true or
 /// false is determined by whether the value is non-zero or zero respectively. See the [`Scalar::is_truthy`]
 /// function for more details.
-pub struct CounterBlock<T: Apply> {
+pub struct CounterBlock<T: Apply<O>, O: Scalar + num_traits::Zero + num_traits::One = f64> {
     counter: T::Counter,
 }
 
-impl<T: Apply> ProcessBlock for CounterBlock<T> {
+impl<T: Apply<O>, O: Scalar + num_traits::Zero + num_traits::One> ProcessBlock
+    for CounterBlock<T, O>
+{
     type Inputs = T;
     type Output = T::Counter;
     type Parameters = Parameters;
@@ -50,41 +52,46 @@ impl<T: Apply> ProcessBlock for CounterBlock<T> {
     }
 }
 
-impl<T: Apply> Default for CounterBlock<T> {
+impl<T: Apply<O>, O: Scalar + num_traits::Zero + num_traits::One> Default for CounterBlock<T, O> {
     fn default() -> Self {
         let counter = T::Counter::default();
         Self { counter }
     }
 }
 
-pub trait Apply: Pass {
+pub trait Apply<O>: Pass {
     type Counter: Default + Pass;
     fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter>;
 }
 
-impl<I: Scalar, R: Scalar> Apply for (I, R) {
-    type Counter = f64;
+impl<I: Scalar, O: Scalar + num_traits::Zero + num_traits::One, R: Scalar> Apply<O> for (I, R) {
+    type Counter = O;
     fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter> {
         if input.1.is_truthy() {
-            *count = 0.0;
+            *count = O::zero();
         } else if input.0.is_truthy() {
-            *count += 1.0;
+            *count = *count + O::one();
         }
         count.as_by()
     }
 }
 
-impl<I: Scalar, R: Scalar, const NROWS: usize, const NCOLS: usize> Apply
-    for (Matrix<NROWS, NCOLS, I>, R)
+impl<
+        O: Scalar + num_traits::Zero + num_traits::One,
+        I: Scalar,
+        R: Scalar,
+        const NROWS: usize,
+        const NCOLS: usize,
+    > Apply<O> for (Matrix<NROWS, NCOLS, I>, R)
 {
-    type Counter = Matrix<NROWS, NCOLS, f64>;
+    type Counter = Matrix<NROWS, NCOLS, O>;
     fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter> {
         for i in 0..NROWS {
             for j in 0..NCOLS {
                 if input.1.is_truthy() {
-                    count.data[j][i] = 0.0;
+                    count.data[j][i] = O::zero();
                 } else if input.0.data[j][i].is_truthy() {
-                    count.data[j][i] += 1.0;
+                    count.data[j][i] = count.data[j][i] + O::one();
                 }
             }
         }
@@ -92,17 +99,22 @@ impl<I: Scalar, R: Scalar, const NROWS: usize, const NCOLS: usize> Apply
     }
 }
 
-impl<I: Scalar, R: Scalar, const NROWS: usize, const NCOLS: usize> Apply
-    for (Matrix<NROWS, NCOLS, I>, Matrix<NROWS, NCOLS, R>)
+impl<
+        I: Scalar,
+        O: Scalar + num_traits::Zero + num_traits::One,
+        R: Scalar,
+        const NROWS: usize,
+        const NCOLS: usize,
+    > Apply<O> for (Matrix<NROWS, NCOLS, I>, Matrix<NROWS, NCOLS, R>)
 {
-    type Counter = Matrix<NROWS, NCOLS, f64>;
+    type Counter = Matrix<NROWS, NCOLS, O>;
     fn apply<'a>(count: &'a mut Self::Counter, input: PassBy<Self>) -> PassBy<'a, Self::Counter> {
         for i in 0..NROWS {
             for j in 0..NCOLS {
                 if input.1.data[j][i].is_truthy() {
-                    count.data[j][i] = 0.0;
+                    count.data[j][i] = O::zero();
                 } else if input.0.data[j][i].is_truthy() {
-                    count.data[j][i] += 1.0;
+                    count.data[j][i] = count.data[j][i] + O::one();
                 }
             }
         }
@@ -118,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_counter_default_buffer_no_panic() {
-        let block = CounterBlock::<(Matrix<1, 1, bool>, Matrix<1, 1, bool>)>::default();
+        let block = CounterBlock::<(Matrix<1, 1, f64>, Matrix<1, 1, bool>), f64>::default();
         assert_eq!(block.buffer(), &Matrix::<1, 1, f64>::zeroed());
     }
 
@@ -149,7 +161,7 @@ mod tests {
     #[test]
     fn test_counter_block_1x2_f64() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<(Matrix<1, 2, bool>, Matrix<1, 2, bool>)>::default();
+        let mut block = CounterBlock::<(Matrix<1, 2, bool>, Matrix<1, 2, bool>), f64>::default();
         let c = StubContext::default();
 
         let mut increment = Matrix::<1, 2, bool>::zeroed();
@@ -175,7 +187,7 @@ mod tests {
     #[test]
     fn test_counter_block_2x2_f64() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, bool>)>::default();
+        let mut block = CounterBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, bool>), f64>::default();
         let c = StubContext::default();
 
         let mut increment = Matrix::<2, 2, f64>::zeroed();
@@ -226,7 +238,7 @@ mod tests {
     #[test]
     fn test_counter_block_2x2_single_reset_f64() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<(Matrix<2, 2, f64>, bool)>::default();
+        let mut block = CounterBlock::<(Matrix<2, 2, f64>, bool), f64>::default();
         let c = StubContext::default();
 
         let mut increment = Matrix::<2, 2, f64>::zeroed();
@@ -273,7 +285,7 @@ mod tests {
     #[test]
     fn test_counter_block_2x2_u8() {
         let p = Parameters::new();
-        let mut block = CounterBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, bool>)>::default();
+        let mut block = CounterBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, bool>), f32>::default();
         let c = StubContext::default();
 
         let mut increment = Matrix::<2, 2, u8>::zeroed();

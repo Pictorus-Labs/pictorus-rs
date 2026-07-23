@@ -1,4 +1,6 @@
-use pictorus_traits::{PassBy, ProcessBlock, Scalar};
+use pictorus_traits::{PassBy, ProcessBlock};
+
+use crate::traits::{Float, Scalar};
 
 #[derive(strum::EnumString)]
 pub enum Method {
@@ -7,20 +9,20 @@ pub enum Method {
 }
 
 /// Parameters for the TimerBlock
-pub struct Parameters {
+pub struct Parameters<O: Float> {
     /// Method of the TimerBlock: CountDown or StopWatch. CountDown will count down from
     /// the countdown_time_s, while StopWatch will count up from 0.
     pub method: Method,
     /// If the TimerBlock is interruptable. If this is true and the trigger is > 0, the timer will restart.
     pub interruptable: bool,
     /// The time in seconds to count down from. Only used if method is CountDown.
-    pub countdown_time_s: f64,
+    pub countdown_time_s: O,
 }
 
-impl Parameters {
-    pub fn new(method: &str, interruptable: bool, countdown_time_s: f64) -> Parameters {
+impl<O: Float> Parameters<O> {
+    pub fn new(method: &str, interruptable: bool, countdown_time_s: O) -> Parameters<O> {
         Parameters {
-            method: method.parse().expect("Faile to parse Timer Method"),
+            method: method.parse().expect("Failed to parse Timer Method"),
             interruptable,
             countdown_time_s,
         }
@@ -35,44 +37,47 @@ impl Parameters {
 /// or count up without ever restarting.
 ///
 /// This block is useful for tracking how much time has passed since an event for logical conditions.
-pub struct TimerBlock<T> {
-    buffer: T,
+pub struct TimerBlock<T, O = T> {
+    buffer: O,
     timer_running: bool,
-    start_time_s: T,
+    start_time_s: O,
+    phantom: core::marker::PhantomData<T>,
 }
 
-impl<T> Default for TimerBlock<T>
+impl<T, O> Default for TimerBlock<T, O>
 where
-    T: Scalar + num_traits::Zero,
+    T: Scalar,
+    O: Float,
 {
     fn default() -> Self {
         Self {
-            buffer: T::zero(),
+            buffer: O::zero(),
             timer_running: false,
-            start_time_s: T::zero(),
+            start_time_s: O::zero(),
+            phantom: core::marker::PhantomData,
         }
     }
 }
 
-impl TimerBlock<f64> {
-    fn _do_countdown(&mut self, time_since_start: f64, countdown_time_s: f64) {
+impl<T: Scalar, O: Float> TimerBlock<T, O> {
+    fn _do_countdown(&mut self, time_since_start: O, countdown_time_s: O) {
         if time_since_start < countdown_time_s {
             self.buffer = countdown_time_s - time_since_start;
         } else {
-            self.buffer = 0.0;
+            self.buffer = O::zero();
             self.timer_running = false;
         }
     }
 
-    fn _do_stopwatch(&mut self, time_since_start: f64) {
+    fn _do_stopwatch(&mut self, time_since_start: O) {
         self.buffer = time_since_start;
     }
 }
 
-impl ProcessBlock for TimerBlock<f64> {
-    type Inputs = f64;
-    type Output = f64;
-    type Parameters = Parameters;
+impl<T: Scalar, O: Float> ProcessBlock for TimerBlock<T, O> {
+    type Inputs = T;
+    type Output = O;
+    type Parameters = Parameters<O>;
 
     fn process(
         &mut self,
@@ -80,9 +85,9 @@ impl ProcessBlock for TimerBlock<f64> {
         context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
-        let time = context.time().as_secs_f64();
+        let time = O::from_duration(context.time());
 
-        let trigger_high = input > 0.0;
+        let trigger_high = input.is_truthy();
         // Early exit if not running and input trigger is false
         if !self.timer_running && !trigger_high {
             return self.buffer;
@@ -290,5 +295,31 @@ mod tests {
         let output = block.process(&p, &runtime.context(), 0.0);
         assert_eq!(block.buffer(), 96.0);
         assert_eq!(output, 96.0);
+    }
+
+    #[test]
+    fn test_f32_output_type() {
+        let mut runtime = StubRuntime::default();
+        runtime.set_time(time::Duration::from_secs(42));
+        let mut block: TimerBlock<f32, f32> = Default::default();
+        let params = Parameters::new("CountDown", false, 5.0);
+        let output = block.process(&params, &runtime.context(), 1.0);
+        assert_eq!(output, 5.0);
+    }
+
+    #[test]
+    fn test_mixed_types() {
+        let mut runtime = StubRuntime::default();
+        runtime.set_time(time::Duration::from_secs(42));
+        let mut block: TimerBlock<f32, f64> = Default::default();
+        let params = Parameters::new("CountDown", false, 5.0);
+        let output = block.process(&params, &runtime.context(), 1.0);
+        assert_eq!(output, 5.0);
+
+        let mut block: TimerBlock<bool, f64> = Default::default();
+        let params = Parameters::new("CountDown", false, 5.0);
+
+        let output = block.process(&params, &runtime.context(), true);
+        assert_eq!(output, 5.0);
     }
 }
