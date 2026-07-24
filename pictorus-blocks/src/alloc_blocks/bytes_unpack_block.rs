@@ -5,6 +5,7 @@ use crate::{
     traits::Float,
 };
 use generic_array::{ArrayLength, GenericArray};
+use num_traits::AsPrimitive;
 use typenum::{Const, NonZero, Sub1, ToUInt, B1, U};
 
 use crate::byte_data::{parse_byte_data_spec, try_unpack_data, ByteOrderSpec, DataType};
@@ -107,42 +108,31 @@ pub trait Unpack: Float {
         -> (Option<Self>, &[u8]);
 }
 
-impl Unpack for f64 {
+impl<F> Unpack for F
+where
+    F: Float,
+    u8: AsPrimitive<F>,
+    i8: AsPrimitive<F>,
+    u16: AsPrimitive<F>,
+    i16: AsPrimitive<F>,
+    u32: AsPrimitive<F>,
+    i32: AsPrimitive<F>,
+    u64: AsPrimitive<F>,
+    i64: AsPrimitive<F>,
+    u128: AsPrimitive<F>,
+    i128: AsPrimitive<F>,
+    f32: AsPrimitive<F>,
+    f64: AsPrimitive<F>,
+{
     fn unpack(
         data: &[u8],
         data_type: DataType,
         byte_order: ByteOrderSpec,
     ) -> (Option<Self>, &[u8]) {
         let val = match byte_order {
-            ByteOrderSpec::BigEndian => {
-                try_unpack_data::<f64, byteorder::BigEndian>(data, data_type)
-            }
+            ByteOrderSpec::BigEndian => try_unpack_data::<F, byteorder::BigEndian>(data, data_type),
             ByteOrderSpec::LittleEndian => {
-                try_unpack_data::<f64, byteorder::LittleEndian>(data, data_type)
-            }
-        }
-        .ok();
-        let advanced_data = if val.is_some() {
-            &data[data_type.byte_size()..]
-        } else {
-            data
-        };
-        (val, advanced_data)
-    }
-}
-
-impl Unpack for f32 {
-    fn unpack(
-        data: &[u8],
-        data_type: DataType,
-        byte_order: ByteOrderSpec,
-    ) -> (Option<Self>, &[u8]) {
-        let val = match byte_order {
-            ByteOrderSpec::BigEndian => {
-                try_unpack_data::<f32, byteorder::BigEndian>(data, data_type)
-            }
-            ByteOrderSpec::LittleEndian => {
-                try_unpack_data::<f32, byteorder::LittleEndian>(data, data_type)
+                try_unpack_data::<F, byteorder::LittleEndian>(data, data_type)
             }
         }
         .ok();

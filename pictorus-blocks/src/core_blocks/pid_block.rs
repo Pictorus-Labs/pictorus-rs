@@ -80,7 +80,10 @@ where
         DerivativeParameters { ic: parameters.ic }
     }
 }
-
+// The Generics here are made more complicated because this block contains an IntegralBlock and DerivativeBlock.
+// It needs to enforce its own bounds as well as those of the sub-blocks. `ComponentOps` is the trait this block defines
+// itself. The first two sections of the where clause are the bounds for the sub-blocks. And the last section is the bound
+// for the Integral's `Apply` trait.
 impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> ProcessBlock
     for PidBlock<T, R, ND_SAMPLES>
 where

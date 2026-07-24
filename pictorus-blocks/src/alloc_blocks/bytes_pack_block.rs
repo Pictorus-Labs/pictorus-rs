@@ -1,6 +1,7 @@
 use crate::byte_data::{parse_byte_data_spec, try_pack_data, ByteOrderSpec, DataType};
-use crate::traits::Scalar;
+use crate::traits::{Float, Scalar};
 use alloc::vec::Vec;
+use num_traits::AsPrimitive;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
 
 /// Packs scalar inputs into a byte buffer according to the provided data spec.
@@ -58,32 +59,30 @@ pub trait AppendBytes: Scalar {
     fn append_bytes(&self, data_spec: (DataType, ByteOrderSpec), buffer: &mut Vec<u8>) -> usize;
 }
 
-impl AppendBytes for f64 {
+impl<F> AppendBytes for F
+where
+    F: Float
+        + AsPrimitive<u8>
+        + AsPrimitive<i8>
+        + AsPrimitive<u16>
+        + AsPrimitive<i16>
+        + AsPrimitive<u32>
+        + AsPrimitive<i32>
+        + AsPrimitive<u64>
+        + AsPrimitive<i64>
+        + AsPrimitive<u128>
+        + AsPrimitive<i128>
+        + AsPrimitive<f32>
+        + AsPrimitive<f64>,
+{
     fn append_bytes(&self, data_spec: (DataType, ByteOrderSpec), buffer: &mut Vec<u8>) -> usize {
         let mut scratch = [0u8; 16]; // 16 bytes is the size of i128 which is the largest output spec we support
         let n = match data_spec.1 {
             ByteOrderSpec::BigEndian => {
-                try_pack_data::<f64, byteorder::BigEndian>(&mut scratch, *self, data_spec.0)
+                try_pack_data::<F, byteorder::BigEndian>(&mut scratch, *self, data_spec.0)
             }
             ByteOrderSpec::LittleEndian => {
-                try_pack_data::<f64, byteorder::LittleEndian>(&mut scratch, *self, data_spec.0)
-            }
-        }
-        .expect("Scratch should always be big enough, which is the only way to produce an error");
-        buffer.extend_from_slice(scratch[..n].as_ref());
-        n
-    }
-}
-
-impl AppendBytes for f32 {
-    fn append_bytes(&self, data_spec: (DataType, ByteOrderSpec), buffer: &mut Vec<u8>) -> usize {
-        let mut scratch = [0u8; 16]; // 16 bytes is the size of i128 which is the largest output spec we support
-        let n = match data_spec.1 {
-            ByteOrderSpec::BigEndian => {
-                try_pack_data::<f32, byteorder::BigEndian>(&mut scratch, *self, data_spec.0)
-            }
-            ByteOrderSpec::LittleEndian => {
-                try_pack_data::<f32, byteorder::LittleEndian>(&mut scratch, *self, data_spec.0)
+                try_pack_data::<F, byteorder::LittleEndian>(&mut scratch, *self, data_spec.0)
             }
         }
         .expect("Scratch should always be big enough, which is the only way to produce an error");
