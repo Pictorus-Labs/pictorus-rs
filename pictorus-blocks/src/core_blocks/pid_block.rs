@@ -80,6 +80,10 @@ where
         DerivativeParameters { ic: parameters.ic }
     }
 }
+// The Generics here are made more complicated because this block contains an IntegralBlock and DerivativeBlock.
+// It needs to enforce its own bounds as well as those of the sub-blocks. `ComponentOps` is the trait this block defines
+// itself. The first two sections of the where clause are the bounds for the sub-blocks. And the last section is the bound
+// for the Integral's `Apply` trait.
 impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> ProcessBlock
     for PidBlock<T, R, ND_SAMPLES>
 where
@@ -129,25 +133,13 @@ where
     }
 }
 
-// TODO: This is currently only implemented for f64 types. The IntegralBlock
-// and DerivativeBlock are implemented using very different approaches: integral
-// block uses a trait-based approach, and derivative block uses macros. I think if we
-// consolidated our approach for these 3 blocks we could make this simpler and more generic.
-// Ideally we could just have a blanket impl for <const ND_SAMPLES: usize, T: ComponentOps>.
-impl<const ND_SAMPLES: usize, R: Scalar> HasIc for PidBlock<f64, R, ND_SAMPLES> {
-    fn new(parameters: &Self::Parameters) -> Self {
-        let integrator_params = Self::integrator_params(parameters);
-        let derivative_params = Self::derivative_params(parameters);
-        Self {
-            buffer: parameters.ic,
-            integrator: IntegralBlock::new(&integrator_params),
-            derivative: DerivativeBlock::new(&derivative_params),
-        }
-    }
-}
-
-impl<const ND_SAMPLES: usize, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
-    for PidBlock<Matrix<NROWS, NCOLS, f64>, R, ND_SAMPLES>
+impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> HasIc for PidBlock<T, R, ND_SAMPLES>
+where
+    DerivativeBlock<T, ND_SAMPLES>:
+        ProcessBlock<Output = T, Inputs = T, Parameters = DerivativeParameters<T>> + HasIc,
+    IntegralBlock<(T, R)>:
+        ProcessBlock<Output = T, Inputs = (T, R), Parameters = IntegralParameters<(T, R)>> + HasIc,
+    (T, R): IntegralApply<Output = T, Float = T::Float> + for<'a> Pass<By<'a> = (PassBy<'a, T>, R)>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         let integrator_params = Self::integrator_params(parameters);
@@ -159,7 +151,6 @@ impl<const ND_SAMPLES: usize, const NROWS: usize, const NCOLS: usize, R: Scalar>
         }
     }
 }
-
 // It would be nice to have these types of common operators defined somewhere reusable
 // I.e. mixed scalar/matrix addition, multiplication, etc. This would reduce a lot
 // of repetition in block implementations
@@ -326,6 +317,26 @@ mod tests {
     }
 
     #[test]
+    fn test_pid_f32_scalar_with_ic() {
+        let mut runtime = StubRuntime::new(StubContext::new(
+            Duration::ZERO,
+            None,
+            Duration::from_secs_f64(1.0),
+        ));
+        let params = Parameters::new(5.0, 1.0, 2.0, 3.0, 10.0);
+        let mut block = PidBlock::<f32, bool, 2>::new(&params);
+
+        let res = block.process(&params, &runtime.context(), (0.0, false));
+        assert_relative_eq!(res, 20.0, max_relative = 0.01);
+        runtime.tick();
+
+        // p: 2, i: 5 + 4 = 9, d: 6
+        let res = block.process(&params, &runtime.context(), (2.0, false));
+        assert_relative_eq!(res, 17.0, max_relative = 0.01);
+        assert_relative_eq!(block.buffer(), 17.0, max_relative = 0.01);
+    }
+
+    #[test]
     fn test_p_matrix() {
         let mut runtime = StubRuntime::new(StubContext::new(
             Duration::ZERO,
@@ -469,6 +480,44 @@ mod tests {
         ));
         let params = Parameters::new(Matrix::zeroed(), 1.0, 2.0, 3.0, 10.0);
         let mut block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
+
+        let input = Matrix {
+            data: [[0.0, 0.0], [0.0, 0.0]],
+        };
+        let res = block.process(&params, &runtime.context(), (&input, false));
+        let expected = Matrix {
+            data: [[0.0, 0.0], [0.0, 0.0]],
+        };
+        assert_eq!(res, &expected);
+        assert_eq!(
+            block.buffer().data.as_flattened(),
+            expected.data.as_flattened()
+        );
+        runtime.tick();
+
+        let input = Matrix {
+            data: [[1.0, 2.0], [3.0, 4.0]],
+        };
+        let res = block.process(&params, &runtime.context(), (&input, false));
+        let expected = Matrix {
+            data: [[6.0, 12.0], [18.0, 24.0]],
+        };
+        assert_eq!(res, &expected);
+        assert_eq!(
+            block.buffer().data.as_flattened(),
+            expected.data.as_flattened()
+        );
+    }
+
+    #[test]
+    fn test_pid_matrix_f32() {
+        let mut runtime = StubRuntime::new(StubContext::new(
+            Duration::ZERO,
+            None,
+            Duration::from_secs_f64(1.0),
+        ));
+        let params = Parameters::new(Matrix::zeroed(), 1.0, 2.0, 3.0, 10.0);
+        let mut block = PidBlock::<Matrix<2, 2, f32>, bool, 2>::new(&params);
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],

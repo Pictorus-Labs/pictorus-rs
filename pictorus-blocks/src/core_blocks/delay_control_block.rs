@@ -9,13 +9,13 @@ use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 /// The block has two modes: Debounce and Throttle
 ///  - Debounce: Wait until the input signal stops being true for delay_time before emitting true.
 ///  - Throttle: Immediately emit true on first true input, but then wait delay_time before passing through a true input again.
-pub struct DelayControlBlock<T: Apply> {
+pub struct DelayControlBlock<T: Apply<O>, O: Scalar = f64> {
     buffer: T::Output,
     /// This is the state of the block used for the debounce and throttle functionality
     state: T::State,
 }
 
-impl<T: Apply> Default for DelayControlBlock<T> {
+impl<T: Apply<O>, O: Scalar> Default for DelayControlBlock<T, O> {
     fn default() -> Self {
         Self {
             buffer: T::Output::default(),
@@ -24,7 +24,7 @@ impl<T: Apply> Default for DelayControlBlock<T> {
     }
 }
 
-impl<T: Apply> ProcessBlock for DelayControlBlock<T> {
+impl<T: Apply<O>, O: Scalar> ProcessBlock for DelayControlBlock<T, O> {
     type Inputs = T;
     type Output = T::Output;
     type Parameters = Parameters;
@@ -50,7 +50,7 @@ impl<T: Apply> ProcessBlock for DelayControlBlock<T> {
     }
 }
 
-pub trait Apply: Pass {
+pub trait Apply<O>: Pass {
     type State;
     type Output: Pass + Default;
 
@@ -65,9 +65,9 @@ pub trait Apply: Pass {
     ) -> PassBy<'s, Self::Output>;
 }
 
-impl<S: Scalar> Apply for S {
+impl<S: Scalar, O: Scalar> Apply<O> for S {
     type State = Option<Duration>;
-    type Output = f64;
+    type Output = O;
 
     fn init_state() -> Self::State {
         None
@@ -83,19 +83,21 @@ impl<S: Scalar> Apply for S {
         let is_true = input.is_truthy();
         match parameters.method {
             DelayControlMethod::Debounce => {
-                *store = debounce(is_true, state, parameters.delay, context.time());
+                *store = O::from_bool(debounce(is_true, state, parameters.delay, context.time()));
             }
 
             DelayControlMethod::Throttle => {
-                *store = throttle(is_true, state, parameters.delay, context.time());
+                *store = O::from_bool(throttle(is_true, state, parameters.delay, context.time()));
             }
         }
         store.as_by()
     }
 }
 
-impl<S: Scalar, const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, S> {
-    type Output = Matrix<NROWS, NCOLS, f64>;
+impl<S: Scalar, const NROWS: usize, const NCOLS: usize, O: Scalar> Apply<O>
+    for Matrix<NROWS, NCOLS, S>
+{
+    type Output = Matrix<NROWS, NCOLS, O>;
     type State = [[Option<Duration>; NROWS]; NCOLS];
 
     fn init_state() -> Self::State {
@@ -116,21 +118,21 @@ impl<S: Scalar, const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, 
             let is_true = input_flat[i].is_truthy();
             match parameters.method {
                 DelayControlMethod::Debounce => {
-                    store_flat[i] = debounce(
+                    store_flat[i] = O::from_bool(debounce(
                         is_true,
                         &mut state_flat[i],
                         parameters.delay,
                         context.time(),
-                    );
+                    ));
                 }
 
                 DelayControlMethod::Throttle => {
-                    store_flat[i] = throttle(
+                    store_flat[i] = O::from_bool(throttle(
                         is_true,
                         &mut state_flat[i],
                         parameters.delay,
                         context.time(),
-                    );
+                    ));
                 }
             }
         }
@@ -146,7 +148,7 @@ fn debounce(
     state: &mut Option<Duration>,
     delay: Duration,
     curr_time: Duration,
-) -> f64 {
+) -> bool {
     let mut output = false;
     if input {
         *state = Some(curr_time);
@@ -156,11 +158,7 @@ fn debounce(
             *state = None;
         }
     }
-    if output {
-        1.0
-    } else {
-        0.0
-    }
+    output
 }
 
 /// If state is Some(d) and current_time - d >= delay then set state to None
@@ -171,7 +169,7 @@ fn throttle(
     state: &mut Option<Duration>,
     delay: Duration,
     curr_time: Duration,
-) -> f64 {
+) -> bool {
     let mut output = false;
     if let Some(d) = state {
         if curr_time - *d >= delay {
@@ -182,11 +180,7 @@ fn throttle(
         output = true;
         *state = Some(curr_time);
     }
-    if output {
-        1.0
-    } else {
-        0.0
-    }
+    output
 }
 
 #[derive(strum::EnumString, Clone, Copy, Debug)]

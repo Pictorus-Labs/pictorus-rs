@@ -1,4 +1,5 @@
-use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock, Scalar};
+use crate::traits::Scalar;
+use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
 use strum::EnumString;
 
 /// Detects whether the input value has changed.
@@ -15,14 +16,14 @@ use strum::EnumString;
 ///
 /// The first execution of this block has no value to compare with
 /// so it will always emit `false`
-pub struct ChangeDetectionBlock<T: Apply> {
+pub struct ChangeDetectionBlock<T: Apply<O>, O: Scalar = f64> {
     buffer: T::Output,
     last_input: Option<T>,
 }
 
-impl<T> Default for ChangeDetectionBlock<T>
+impl<T, O: Scalar> Default for ChangeDetectionBlock<T, O>
 where
-    T: Apply,
+    T: Apply<O>,
 {
     fn default() -> Self {
         const {
@@ -34,21 +35,21 @@ where
     }
 }
 
-impl<T> HasIc for ChangeDetectionBlock<T>
+impl<T, O: Scalar> HasIc for ChangeDetectionBlock<T, O>
 where
-    T: Apply,
+    T: Apply<O>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
-        ChangeDetectionBlock::<T> {
+        ChangeDetectionBlock::<T, O> {
             buffer: T::Output::default(),
             last_input: Some(parameters.ic),
         }
     }
 }
 
-impl<T> ProcessBlock for ChangeDetectionBlock<T>
+impl<T, O: Scalar> ProcessBlock for ChangeDetectionBlock<T, O>
 where
-    T: Apply,
+    T: Apply<O>,
 {
     type Inputs = T;
     type Output = T::Output;
@@ -69,7 +70,7 @@ where
     }
 }
 
-pub trait Apply: Pass + Sized + Copy {
+pub trait Apply<O>: Pass + Sized + Copy {
     type Output: Pass + Default;
 
     fn apply<'s>(
@@ -80,8 +81,8 @@ pub trait Apply: Pass + Sized + Copy {
     ) -> PassBy<'s, Self::Output>;
 }
 
-impl<C: ChangeDetect> Apply for C {
-    type Output = f64;
+impl<C: ChangeDetect, O: Scalar> Apply<O> for C {
+    type Output = O;
 
     fn apply<'s>(
         store: &'s mut Self::Output,
@@ -93,13 +94,15 @@ impl<C: ChangeDetect> Apply for C {
         let old_last_input = last_input.replace(input);
         let old_last_input = old_last_input.unwrap_or(params.ic);
         let res = Self::change_detect(input, old_last_input, params.change_mode);
-        *store = res;
-        res.as_by()
+        *store = O::from_bool(res);
+        store.as_by()
     }
 }
 
-impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<NROWS, NCOLS, C> {
-    type Output = Matrix<NROWS, NCOLS, f64>;
+impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect, O: Scalar> Apply<O>
+    for Matrix<NROWS, NCOLS, C>
+{
+    type Output = Matrix<NROWS, NCOLS, O>;
 
     fn apply<'s>(
         store: &'s mut Self::Output,
@@ -127,23 +130,18 @@ impl<const NROWS: usize, const NCOLS: usize, C: ChangeDetect> Apply for Matrix<N
             .iter_mut()
             .zip(inputs)
             .for_each(|(output, (lh, rh))| {
-                *output = C::change_detect(*lh, *rh, params.change_mode)
+                *output = O::from_bool(C::change_detect(*lh, *rh, params.change_mode));
             });
         store
     }
 }
 
 trait ChangeDetect: Scalar + for<'a> Pass<By<'a> = Self> + PartialEq + PartialOrd {
-    fn change_detect(left_hand: PassBy<Self>, right_hand: PassBy<Self>, mode: ChangeMode) -> f64 {
-        let bool_output = match mode {
+    fn change_detect(left_hand: PassBy<Self>, right_hand: PassBy<Self>, mode: ChangeMode) -> bool {
+        match mode {
             ChangeMode::Any => left_hand != right_hand,
             ChangeMode::Rising => left_hand > right_hand,
             ChangeMode::Falling => left_hand < right_hand,
-        };
-        if bool_output {
-            1.0
-        } else {
-            0.0
         }
     }
 }
@@ -185,7 +183,6 @@ impl<T> Parameters<T> {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
-    use crate::traits::Scalar as _;
     use paste::paste;
 
     macro_rules! test_scalars {
@@ -477,5 +474,46 @@ mod tests {
         //Rising all values
         let output = block.process(&params, &context, true);
         assert!(!output.is_truthy());
+    }
+
+    #[test]
+    fn test_f32_output_type_scalar() {
+        let context = StubContext::default();
+        let params = Parameters::new(1.0f64, "Any");
+        let mut block: ChangeDetectionBlock<_, f32> = ChangeDetectionBlock::new(&params);
+
+        // No change
+        let output = block.process(&params, &context, 1.0);
+        assert_eq!(output, 0.0f32);
+
+        // Falling for all values
+        let output = block.process(&params, &context, 0.0);
+        assert_eq!(output, 1.0f32);
+
+        //Rising all values
+        let output = block.process(&params, &context, 2.0);
+        assert_eq!(output, 1.0f32);
+    }
+
+    #[test]
+    fn test_f32_output_type_matrix() {
+        let context = StubContext::default();
+        let params = Parameters::new(
+            Matrix {
+                data: [[1u8; 2]; 2],
+            },
+            "Any",
+        );
+        // Accepts a Matrix<2,2, u8> as input and outputs a Matrix<2,2,f32>
+        let mut block: ChangeDetectionBlock<_, f32> = ChangeDetectionBlock::new(&params);
+
+        // No change
+        let output = block.process(&params, &context, &Matrix { data: [[1; 2]; 2] });
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[0.0f32; 2]; 2]
+            }
+        );
     }
 }

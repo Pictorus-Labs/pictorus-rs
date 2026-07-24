@@ -25,50 +25,120 @@ pub trait Scalar:
     /// Returns true if the scalar is truthy
     /// Truthiness is defined as not equal to zero
     fn is_truthy(&self) -> bool;
+
+    fn from_bool(value: bool) -> Self;
 }
 impl Scalar for bool {
     fn is_truthy(&self) -> bool {
         *self
+    }
+
+    fn from_bool(value: bool) -> Self {
+        value
     }
 }
 impl Scalar for u8 {
     fn is_truthy(&self) -> bool {
         *self != 0
     }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
+    }
 }
 impl Scalar for i8 {
     fn is_truthy(&self) -> bool {
         *self != 0
+    }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
     }
 }
 impl Scalar for u16 {
     fn is_truthy(&self) -> bool {
         *self != 0
     }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
+    }
 }
 impl Scalar for i16 {
     fn is_truthy(&self) -> bool {
         *self != 0
+    }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
     }
 }
 impl Scalar for u32 {
     fn is_truthy(&self) -> bool {
         *self != 0
     }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
+    }
 }
 impl Scalar for i32 {
     fn is_truthy(&self) -> bool {
         *self != 0
+    }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
     }
 }
 impl Scalar for f32 {
     fn is_truthy(&self) -> bool {
         *self != 0.0
     }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1.0
+        } else {
+            0.0
+        }
+    }
 }
 impl Scalar for f64 {
     fn is_truthy(&self) -> bool {
         *self != 0.0
+    }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1.0
+        } else {
+            0.0
+        }
     }
 }
 

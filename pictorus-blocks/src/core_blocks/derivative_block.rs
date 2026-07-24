@@ -1,6 +1,4 @@
-use crate::matrix_ext::MatrixNalgebraExt;
-use num_traits::One;
-use paste::paste;
+use crate::{matrix_ext::MatrixNalgebraExt, traits::Float};
 use pictorus_traits::{HasIc, Matrix, Pass, ProcessBlock};
 
 /// Compute the discrete derivative of a signal using a sliding window of samples.
@@ -22,112 +20,108 @@ impl<const N: usize, T: Pass + Default + Copy> Default for DerivativeBlock<T, N>
     }
 }
 
-macro_rules! impl_process {
-    ($type:ty) => {
-        paste! {
-        impl<const N: usize> ProcessBlock for DerivativeBlock< $type, N>
-        {
-            type Inputs = $type;
-            type Output = $type;
-            type Parameters = Parameters<$type>;
+impl<T: Float, const N: usize> ProcessBlock for DerivativeBlock<T, N> {
+    type Inputs = T;
+    type Output = T;
+    type Parameters = Parameters<T>;
 
-            fn process<'b>(
-                &'b mut self,
-                _parameters: &Self::Parameters,
-                context: &dyn pictorus_traits::Context,
-                inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
-            ) -> pictorus_traits::PassBy<'b, Self::Output> {
-                // store the current input in the sample buffer
-                self.samples[self.sample_index] = inputs;
+    fn process<'b>(
+        &'b mut self,
+        _parameters: &Self::Parameters,
+        context: &dyn pictorus_traits::Context,
+        inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
+    ) -> pictorus_traits::PassBy<'b, Self::Output> {
+        // store the current input in the sample buffer
+        self.samples[self.sample_index] = inputs;
 
-                // increment the sample index, wrapping at N (and setting initial_accumulation to false)
-                self.sample_index += 1;
-                if self.sample_index >= N {
-                    self.sample_index = 0;
-                    self.initial_accumulation = false;
-                }
-
-                // Only set the output when initial accumulation is done, otherwise use the IC
-                if !self.initial_accumulation {
-                    self.output = (inputs - self.samples[self.sample_index])
-                        / ((N as $type - $type::one()) * context.timestep().expect("timestep should never be None outside of Initial Accumulation phase").[<as_secs_ $type>]());
-                }
-
-                self.output.as_by()
-            }
-
-            fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
-                self.output.as_by()
-            }
+        // increment the sample index, wrapping at N (and setting initial_accumulation to false)
+        self.sample_index += 1;
+        if self.sample_index >= N {
+            self.sample_index = 0;
+            self.initial_accumulation = false;
         }
 
-        impl<const N: usize> HasIc for DerivativeBlock<$type, N>
-        {
-            fn new(parameters: &Self::Parameters) -> Self {
-                DerivativeBlock::<$type, N> {
-                    samples: [0.0; N],
-                    sample_index: 0,
-                    initial_accumulation: true,
-                    output: parameters.ic,
-                }
-            }
+        // Only set the output when initial accumulation is done, otherwise use the IC
+        if !self.initial_accumulation {
+            self.output = (inputs - self.samples[self.sample_index])
+                / ((T::from_usize(N).unwrap() - T::one())
+                    * T::from_duration(context.timestep().expect(
+                        "timestep should never be None outside of Initial Accumulation phase",
+                    )));
         }
 
-        impl<const N: usize, const NCOLS: usize, const NROWS: usize> ProcessBlock for DerivativeBlock< Matrix<NROWS, NCOLS, $type>, N>
-        {
-            type Inputs = Matrix<NROWS, NCOLS, $type>;
-            type Output = Matrix<NROWS, NCOLS, $type>;
-            type Parameters = Parameters<Matrix<NROWS, NCOLS, $type>>;
-
-            fn process<'b>(
-                &'b mut self,
-                _parameters: &Self::Parameters,
-                context: &dyn pictorus_traits::Context,
-                inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
-            ) -> pictorus_traits::PassBy<'b, Self::Output> {
-                // store the current input in the sample buffer
-                self.samples[self.sample_index] = *inputs;
-
-                // increment the sample index, wrapping at N (and setting initial_accumulation to false)
-                self.sample_index += 1;
-                if self.sample_index >= N {
-                    self.sample_index = 0;
-                    self.initial_accumulation = false;
-                }
-
-                // Only set the output when initial accumulation is done, otherwise use the IC
-                if !self.initial_accumulation {
-                    let output =
-                     (inputs.as_view() - self.samples[self.sample_index].as_view())
-                        / ((N as $type - $type::one()) * context.timestep().expect("timestep should never be None outside of Initial Accumulation phase").[<as_secs_ $type>]());
-                    self.output.as_view_mut().copy_from(&output);
-                }
-
-                &self.output
-            }
-
-            fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
-                self.output.as_by()
-            }
-        }
-
-        impl<const N: usize, const NCOLS: usize, const NROWS: usize> HasIc for DerivativeBlock<Matrix<NROWS, NCOLS, $type>, N>
-        {
-            fn new(parameters: &Self::Parameters) -> Self {
-                DerivativeBlock::<Matrix<NROWS, NCOLS, $type>, N> {
-                    samples: [Matrix::zeroed(); N],
-                    sample_index: 0,
-                    initial_accumulation: true,
-                    output: parameters.ic,
-                }
-            }
-        }
+        self.output.as_by()
     }
-    };
+
+    fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+        self.output.as_by()
+    }
 }
 
-impl_process!(f64);
-impl_process!(f32);
+impl<T: Float, const N: usize> HasIc for DerivativeBlock<T, N> {
+    fn new(parameters: &Self::Parameters) -> Self {
+        DerivativeBlock::<T, N> {
+            samples: [T::zero(); N],
+            sample_index: 0,
+            initial_accumulation: true,
+            output: parameters.ic,
+        }
+    }
+}
+
+impl<T: Float, const N: usize, const NCOLS: usize, const NROWS: usize> ProcessBlock
+    for DerivativeBlock<Matrix<NROWS, NCOLS, T>, N>
+{
+    type Inputs = Matrix<NROWS, NCOLS, T>;
+    type Output = Matrix<NROWS, NCOLS, T>;
+    type Parameters = Parameters<Matrix<NROWS, NCOLS, T>>;
+
+    fn process<'b>(
+        &'b mut self,
+        _parameters: &Self::Parameters,
+        context: &dyn pictorus_traits::Context,
+        inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
+    ) -> pictorus_traits::PassBy<'b, Self::Output> {
+        // store the current input in the sample buffer
+        self.samples[self.sample_index] = *inputs;
+
+        // increment the sample index, wrapping at N (and setting initial_accumulation to false)
+        self.sample_index += 1;
+        if self.sample_index >= N {
+            self.sample_index = 0;
+            self.initial_accumulation = false;
+        }
+
+        // Only set the output when initial accumulation is done, otherwise use the IC
+        if !self.initial_accumulation {
+            let output = (inputs.as_view() - self.samples[self.sample_index].as_view())
+                / ((T::from_usize(N).unwrap() - T::one())
+                    * T::from_duration(context.timestep().expect(
+                        "timestep should never be None outside of Initial Accumulation phase",
+                    )));
+            self.output.as_view_mut().copy_from(&output);
+        }
+
+        &self.output
+    }
+
+    fn buffer(&self) -> pictorus_traits::PassBy<'_, Self::Output> {
+        self.output.as_by()
+    }
+}
+
+impl<T: Float, const N: usize, const NCOLS: usize, const NROWS: usize> HasIc
+    for DerivativeBlock<Matrix<NROWS, NCOLS, T>, N>
+{
+    fn new(parameters: &Self::Parameters) -> Self {
+        DerivativeBlock::<Matrix<NROWS, NCOLS, T>, N> {
+            samples: [Matrix::zeroed(); N],
+            sample_index: 0,
+            initial_accumulation: true,
+            output: parameters.ic,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Parameters<T: Pass> {
