@@ -1,5 +1,4 @@
 use crate::{traits::MatrixOps, Scalar};
-use num_traits::ToPrimitive;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the VectorSliceBlock
