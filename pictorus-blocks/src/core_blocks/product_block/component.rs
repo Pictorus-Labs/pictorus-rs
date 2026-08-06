@@ -11,10 +11,10 @@ pub struct ParametersComponentWise<const N: usize> {
 impl<const N: usize> ParametersComponentWise<N> {
     /// This new function accepts a fixed size arrays of f64 because that is what codgen hands it currently
     /// It should be revisited when we tackle codegen changes
-    pub fn new(input: [f64; N]) -> Self {
+    pub fn new<T: Scalar>(input: [T; N]) -> Self {
         let mut operations = [ProductOperation::Multiply; N];
         for (i, val) in input.iter().enumerate() {
-            if *val < 0.0 {
+            if !val.is_truthy() {
                 operations[i] = ProductOperation::Divide;
             }
         }
