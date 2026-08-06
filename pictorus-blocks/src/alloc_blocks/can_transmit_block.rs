@@ -92,79 +92,79 @@ pub trait ToVec<S: Float>: Pass {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>);
 }
 
-impl<S: Float> ToVec<S> for S {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for S2 {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input);
+        dest.push(input.into());
     }
 }
 
-impl<S: Float> ToVec<S> for (S, S) {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for (S2, S2) {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input.0);
-        dest.push(input.1);
+        dest.push(input.0.into());
+        dest.push(input.1.into());
     }
 }
 
-impl<S: Float> ToVec<S> for (S, S, S) {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for (S2, S2, S2) {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input.0);
-        dest.push(input.1);
-        dest.push(input.2);
+        dest.push(input.0.into());
+        dest.push(input.1.into());
+        dest.push(input.2.into());
     }
 }
 
-impl<S: Float> ToVec<S> for (S, S, S, S) {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for (S2, S2, S2, S2) {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input.0);
-        dest.push(input.1);
-        dest.push(input.2);
-        dest.push(input.3);
+        dest.push(input.0.into());
+        dest.push(input.1.into());
+        dest.push(input.2.into());
+        dest.push(input.3.into());
     }
 }
 
-impl<S: Float> ToVec<S> for (S, S, S, S, S) {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for (S2, S2, S2, S2, S2) {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input.0);
-        dest.push(input.1);
-        dest.push(input.2);
-        dest.push(input.3);
-        dest.push(input.4);
+        dest.push(input.0.into());
+        dest.push(input.1.into());
+        dest.push(input.2.into());
+        dest.push(input.3.into());
+        dest.push(input.4.into());
     }
 }
 
-impl<S: Float> ToVec<S> for (S, S, S, S, S, S) {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for (S2, S2, S2, S2, S2, S2) {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input.0);
-        dest.push(input.1);
-        dest.push(input.2);
-        dest.push(input.3);
-        dest.push(input.4);
-        dest.push(input.5);
+        dest.push(input.0.into());
+        dest.push(input.1.into());
+        dest.push(input.2.into());
+        dest.push(input.3.into());
+        dest.push(input.4.into());
+        dest.push(input.5.into());
     }
 }
 
-impl<S: Float> ToVec<S> for (S, S, S, S, S, S, S) {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for (S2, S2, S2, S2, S2, S2, S2) {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input.0);
-        dest.push(input.1);
-        dest.push(input.2);
-        dest.push(input.3);
-        dest.push(input.4);
-        dest.push(input.5);
-        dest.push(input.6);
+        dest.push(input.0.into());
+        dest.push(input.1.into());
+        dest.push(input.2.into());
+        dest.push(input.3.into());
+        dest.push(input.4.into());
+        dest.push(input.5.into());
+        dest.push(input.6.into());
     }
 }
 
-impl<S: Float> ToVec<S> for (S, S, S, S, S, S, S, S) {
+impl<S: Float, S2: Float + Into<S>> ToVec<S> for (S2, S2, S2, S2, S2, S2, S2, S2) {
     fn to_vec(input: PassBy<Self>, dest: &mut Vec<S>) {
-        dest.push(input.0);
-        dest.push(input.1);
-        dest.push(input.2);
-        dest.push(input.3);
-        dest.push(input.4);
-        dest.push(input.5);
-        dest.push(input.6);
-        dest.push(input.7);
+        dest.push(input.0.into());
+        dest.push(input.1.into());
+        dest.push(input.2.into());
+        dest.push(input.3.into());
+        dest.push(input.4.into());
+        dest.push(input.5.into());
+        dest.push(input.6.into());
+        dest.push(input.7.into());
     }
 }
 
@@ -354,5 +354,12 @@ mod tests {
             );
         let output = block.process(&parameters, &context, (10., 9., 8., 7., 6., 5., 4.));
         assert_eq!(output, vec![10, 9, 8, 7, 6, 5, 4, 0]);
+    }
+
+    #[test]
+    fn test_f32_float_type_into_f64() {
+        let mut output: Vec<f64> = Vec::new();
+        <(f32, f32) as ToVec<f64>>::to_vec((1.0f32, 2.0f32), &mut output);
+        assert_eq!(output, vec![1.0f64, 2.0f64]);
     }
 }
