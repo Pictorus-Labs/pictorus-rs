@@ -451,10 +451,10 @@ pub struct Parameters<const NUM_INPUTS: usize> {
 impl<const NUM_INPUTS: usize> Parameters<NUM_INPUTS> {
     /// This new function accepts a fixed size arrays of f64 because that is what codegen hands it currently
     /// It should be revisited when we tackle codegen changes
-    pub fn new(input: [f64; NUM_INPUTS]) -> Self {
+    pub fn new<S: crate::traits::Scalar>(input: [S; NUM_INPUTS]) -> Self {
         let mut operations = [SumType::Addition; NUM_INPUTS];
         for (i, &val) in input.iter().enumerate() {
-            if val < 0.0 {
+            if !val.is_truthy() {
                 operations[i] = SumType::Subtraction;
             }
         }

@@ -88,7 +88,9 @@ pub fn transpose<const N: usize, const M: usize, T: Copy>(input: [[T; N]; M]) ->
 #[cfg(feature = "std")]
 mod std_utils {
     use super::*;
+    use core::str::FromStr;
     use pictorus_traits::Matrix;
+    use pictorus_traits::Scalar;
     use serde::de::DeserializeOwned;
     use std::collections::HashMap;
     use std::format;
@@ -112,6 +114,10 @@ mod std_utils {
         #[serde(with = "serde_big_array::BigArray")] [BigArrayWrap<NCOLS, T>; NROWS],
     );
 
+    trait LoadableFloat: Scalar + FromStr + DeserializeOwned + 'static {}
+    impl LoadableFloat for f32 {}
+    impl LoadableFloat for f64 {}
+
     // Trait definition for parameters loadable from DiagramParams or env vars
     pub trait LoadableParams: Sized {
         fn parse(source: &str, default: Option<&Self>) -> Option<Self>;
@@ -123,11 +129,22 @@ mod std_utils {
         }
     }
 
-    impl LoadableParams for f64 {
+    impl<F: LoadableFloat> LoadableParams for F {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             source.parse().ok()
         }
     }
+    // impl LoadableParams for f64 {
+    //     fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+    //         source.parse().ok()
+    //     }
+    // }
+
+    // impl LoadableParams for f32 {
+    //     fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+    //         source.parse().ok()
+    //     }
+    // }
 
     impl LoadableParams for Vec<String> {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
@@ -177,31 +194,32 @@ mod std_utils {
         }
     }
 
-    impl<const N: usize> LoadableParams for [f64; N]
+    impl<const N: usize, F: LoadableFloat> LoadableParams for [F; N]
     where
-        BigArrayWrap<N, f64>: serde::de::DeserializeOwned,
+        BigArrayWrap<N, F>: serde::de::DeserializeOwned,
     {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             // Try and parse as a 1d array
-            if let Ok(parsed) = serde_json::from_str::<BigArrayWrap<N, f64>>(source) {
+            if let Ok(parsed) = serde_json::from_str::<BigArrayWrap<N, F>>(source) {
                 return Some(parsed.0);
             }
             // If that fails check for scalar special case
             // We check for a bare scalar, or a 1d array with 1 element,
-            serde_json::from_str::<[f64; 1]>(source)
+            serde_json::from_str::<[F; 1]>(source)
                 .map(|[scalar]| [scalar; N])
-                .or_else(|_| serde_json::from_str::<f64>(source).map(|scalar| [scalar; N]))
+                .or_else(|_| serde_json::from_str::<F>(source).map(|scalar| [scalar; N]))
                 .ok()
         }
     }
 
-    impl<const NROWS: usize, const NCOLS: usize> LoadableParams for Matrix<NROWS, NCOLS, f64>
+    impl<const NROWS: usize, const NCOLS: usize, F: LoadableFloat> LoadableParams
+        for Matrix<NROWS, NCOLS, F>
     where
-        BigMatrixWrap<NROWS, NCOLS, f64>: serde::de::DeserializeOwned,
+        BigMatrixWrap<NROWS, NCOLS, F>: serde::de::DeserializeOwned,
     {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             // Try and parse as a 2d array
-            if let Ok(parsed) = serde_json::from_str::<BigMatrixWrap<NROWS, NCOLS, f64>>(source) {
+            if let Ok(parsed) = serde_json::from_str::<BigMatrixWrap<NROWS, NCOLS, F>>(source) {
                 let mut matrix = Matrix::zeroed();
                 // transpose
                 #[allow(clippy::needless_range_loop)]
@@ -215,10 +233,10 @@ mod std_utils {
             // If that fails check for scalar special case
             // We check for a bare scalar, a 1x1 matrix, or a 1d array with 1 element,
             // all of which we interpret as scalars that fill the whole matrix
-            serde_json::from_str::<[[f64; 1]; 1]>(source)
+            serde_json::from_str::<[[F; 1]; 1]>(source)
                 .map(|[[scalar]]| scalar)
-                .or_else(|_| serde_json::from_str::<[f64; 1]>(source).map(|[scalar]| scalar))
-                .or_else(|_| serde_json::from_str::<f64>(source))
+                .or_else(|_| serde_json::from_str::<[F; 1]>(source).map(|[scalar]| scalar))
+                .or_else(|_| serde_json::from_str::<F>(source))
                 .map(|scalar| Matrix {
                     data: [[scalar; NROWS]; NCOLS],
                 })
@@ -380,21 +398,51 @@ mod tests {
             params
         });
 
-        let default = 5.0;
+        let default_f64: f64 = 5.0;
 
         // Test env_var path
         with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("42.0"))], || {
-            let result_env = load_param::<f64>("test_block", "test_var", default, &diagram_params);
+            let result_env =
+                load_param::<f64>("test_block", "test_var", default_f64, &diagram_params);
             assert_eq!(result_env, 42.0);
         });
 
         // Test diagram_param_path
-        let result_param = load_param::<f64>("test_block", "test_var", default, &diagram_params);
+        let result_param =
+            load_param::<f64>("test_block", "test_var", default_f64, &diagram_params);
         assert_eq!(result_param, 3.14159);
 
         // Test default path
-        let result_default = load_param::<f64>("test_block", "foo", default, &diagram_params);
-        assert_eq!(result_default, default);
+        let result_default = load_param::<f64>("test_block", "foo", default_f64, &diagram_params);
+        assert_eq!(result_default, default_f64);
+    }
+
+    #[test]
+    fn test_load_param_f32() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("test_var".to_string(), "3.14159".to_string());
+            params
+        });
+
+        let default_f32: f32 = 5.0;
+
+        // Test env_var path
+        with_vars(vec![("TEST_BLOCK_TEST_VAR", Some("42.0"))], || {
+            let result_env =
+                load_param::<f32>("test_block", "test_var", default_f32, &diagram_params);
+            assert_eq!(result_env, 42.0);
+        });
+
+        // Test diagram_param_path
+        let result_param =
+            load_param::<f32>("test_block", "test_var", default_f32, &diagram_params);
+        assert_eq!(result_param, 3.14159);
+
+        // Test default path
+        let result_default = load_param::<f32>("test_block", "foo", default_f32, &diagram_params);
+        assert_eq!(result_default, default_f32);
     }
 
     #[test]
@@ -490,7 +538,7 @@ mod tests {
             params
         });
 
-        let default = [7., 8., 9., 10., 11., 12.];
+        let default_f64: [f64; 6] = [7., 8., 9., 10., 11., 12.];
 
         with_vars(
             vec![(
@@ -499,18 +547,55 @@ mod tests {
             )],
             || {
                 let result_env =
-                    load_param::<[f64; 6]>("test_block", "test_var", default, &diagram_params);
+                    load_param::<[f64; 6]>("test_block", "test_var", default_f64, &diagram_params);
                 assert_eq!(result_env, [-1., -2., -3., -4., -5., -6.]);
             },
         );
 
         let result_param =
-            load_param::<[f64; 6]>("test_block", "test_var", default, &diagram_params);
+            load_param::<[f64; 6]>("test_block", "test_var", default_f64, &diagram_params);
 
         assert_eq!(result_param, [1., 2., 3., 4., 5., 6.]);
 
-        let result_default = load_param::<[f64; 6]>("test_block", "foo", default, &diagram_params);
-        assert_eq!(result_default, default);
+        let result_default =
+            load_param::<[f64; 6]>("test_block", "foo", default_f64, &diagram_params);
+        assert_eq!(result_default, default_f64);
+    }
+
+    #[test]
+    fn test_load_param_vec_f32() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert(
+                "test_var".to_string(),
+                "[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]".to_string(),
+            );
+            params
+        });
+
+        let default_f32: [f32; 6] = [7., 8., 9., 10., 11., 12.];
+
+        with_vars(
+            vec![(
+                "TEST_BLOCK_TEST_VAR",
+                Some("[-1.0, -2.0, -3.0, -4.0, -5.0, -6.0]"),
+            )],
+            || {
+                let result_env =
+                    load_param::<[f32; 6]>("test_block", "test_var", default_f32, &diagram_params);
+                assert_eq!(result_env, [-1., -2., -3., -4., -5., -6.]);
+            },
+        );
+
+        let result_param =
+            load_param::<[f32; 6]>("test_block", "test_var", default_f32, &diagram_params);
+
+        assert_eq!(result_param, [1., 2., 3., 4., 5., 6.]);
+
+        let result_default =
+            load_param::<[f32; 6]>("test_block", "foo", default_f32, &diagram_params);
+        assert_eq!(result_default, default_f32);
     }
 
     #[test]
@@ -706,6 +791,56 @@ mod tests {
         );
 
         let result_default =
+            load_param::<Matrix<_, _, _>>("test_block", "foo", default, &diagram_params);
+
+        assert_eq!(result_default, default);
+    }
+
+    #[test]
+    fn test_load_param_matrix_f32() {
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert(
+                "test_var".to_string(),
+                "[[1.0, 2.0], [3.0, 4.0]]".to_string(),
+            );
+            params
+        });
+
+        let default: Matrix<2, 2, f32> = Matrix {
+            data: [[7., 9.], [8., 10.]],
+        };
+
+        with_vars(
+            vec![("TEST_BLOCK_TEST_VAR", Some("[[3.0, 4.0],[5.0, 6.0]]"))],
+            || {
+                let result_env = load_param::<Matrix<_, _, _>>(
+                    "test_block",
+                    "test_var",
+                    default,
+                    &diagram_params,
+                );
+                assert_eq!(
+                    result_env,
+                    Matrix {
+                        data: [[3., 5.], [4., 6.]]
+                    }
+                );
+            },
+        );
+
+        let result_param: Matrix<2, 2, f32> =
+            load_param::<Matrix<_, _, _>>("test_block", "test_var", default, &diagram_params);
+
+        assert_eq!(
+            result_param,
+            Matrix {
+                data: [[1., 3.], [2., 4.]]
+            }
+        );
+
+        let result_default: Matrix<2, 2, f32> =
             load_param::<Matrix<_, _, _>>("test_block", "foo", default, &diagram_params);
 
         assert_eq!(result_default, default);
