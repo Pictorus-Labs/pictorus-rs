@@ -94,8 +94,8 @@ pub struct Parameters<C: Scalar, const N: usize> {
     pub cases: [C; N],
 }
 
-impl<const N: usize> Parameters<f64, N> {
-    pub fn new(cases: [f64; N]) -> Self {
+impl<C: Scalar, const N: usize> Parameters<C, N> {
+    pub fn new(cases: [C; N]) -> Self {
         Self { cases }
     }
 }
