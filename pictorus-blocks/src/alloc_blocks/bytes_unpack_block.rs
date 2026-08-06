@@ -92,13 +92,13 @@ where
 
 impl<N: ArrayLength> Parameters<N> {
     /// This constructor takes a slice of strings that represent the data spec for each input.
-    pub fn new<S: AsRef<str>>(pack_spec_str: &[S], stale_age_ms: f64) -> Self {
+    pub fn new<S: AsRef<str>, T: Into<f64>>(pack_spec_str: &[S], stale_age_ms: T) -> Self {
         let pack_spec = parse_byte_data_spec(pack_spec_str)
             .try_into()
             .expect("Bytes Data Spec is incorrectly sized for the number of inputs");
         Self {
             pack_spec,
-            stale_age: duration_from_ms_f64(stale_age_ms),
+            stale_age: duration_from_ms_f64(stale_age_ms.into()),
         }
     }
 }

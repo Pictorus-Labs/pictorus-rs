@@ -20,11 +20,11 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new(frame_id: embedded_can::Id, length: usize, stale_age_ms: f64) -> Self {
+    pub fn new<T: Into<f64>>(frame_id: embedded_can::Id, length: usize, stale_age_ms: T) -> Self {
         Self {
             frame_id,
             length,
-            stale_age: duration_from_ms_f64(stale_age_ms),
+            stale_age: duration_from_ms_f64(stale_age_ms.into()),
         }
     }
 }

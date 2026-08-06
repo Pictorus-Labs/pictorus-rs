@@ -199,9 +199,9 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new(delay: f64, method: &str) -> Self {
+    pub fn new<T: Into<f64>>(delay: T, method: &str) -> Self {
         Self {
-            delay: Duration::from_secs_f64(delay),
+            delay: Duration::from_secs_f64(delay.into()),
             method: method.parse().unwrap(),
         }
     }
