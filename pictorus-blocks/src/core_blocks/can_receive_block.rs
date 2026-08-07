@@ -74,7 +74,6 @@ impl<const N: usize, S: Float, C: embedded_can::Frame, O: Pass + Default> Proces
     for CanReceiveBlock<N, S, C, O>
 where
     O: ToTupleOutput<S>,
-    S: From<f64>,
 {
     type Inputs = ByteSliceSignal;
 
