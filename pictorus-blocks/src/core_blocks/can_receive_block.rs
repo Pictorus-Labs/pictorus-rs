@@ -20,11 +20,11 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new<T: Into<f64>>(frame_id: embedded_can::Id, length: usize, stale_age_ms: T) -> Self {
+    pub fn new(frame_id: embedded_can::Id, length: usize, stale_age_ms: f64) -> Self {
         Self {
             frame_id,
             length,
-            stale_age: duration_from_ms_f64(stale_age_ms.into()),
+            stale_age: duration_from_ms_f64(stale_age_ms),
         }
     }
 }
@@ -74,6 +74,7 @@ impl<const N: usize, S: Float, C: embedded_can::Frame, O: Pass + Default> Proces
     for CanReceiveBlock<N, S, C, O>
 where
     O: ToTupleOutput<S>,
+    S: From<f64>,
 {
     type Inputs = ByteSliceSignal;
 

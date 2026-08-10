@@ -134,17 +134,6 @@ mod std_utils {
             source.parse().ok()
         }
     }
-    // impl LoadableParams for f64 {
-    //     fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-    //         source.parse().ok()
-    //     }
-    // }
-
-    // impl LoadableParams for f32 {
-    //     fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-    //         source.parse().ok()
-    //     }
-    // }
 
     impl LoadableParams for Vec<String> {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
