@@ -451,10 +451,12 @@ pub struct Parameters<const NUM_INPUTS: usize> {
 impl<const NUM_INPUTS: usize> Parameters<NUM_INPUTS> {
     /// This new function accepts a fixed size array of scalar flags because that is what codegen hands it currently
     /// It should be revisited when we tackle codegen changes
-    pub fn new<S: crate::traits::Scalar>(input: [S; NUM_INPUTS]) -> Self {
+    pub fn new<S: crate::traits::Scalar + num_traits::Zero + PartialOrd>(
+        input: [S; NUM_INPUTS],
+    ) -> Self {
         let mut operations = [SumType::Addition; NUM_INPUTS];
         for (i, &val) in input.iter().enumerate() {
-            if !val.is_truthy() {
+            if val < S::zero() {
                 operations[i] = SumType::Subtraction;
             }
         }
@@ -796,6 +798,22 @@ mod tests {
         assert_relative_eq!(
             result.data.as_flattened(),
             [[11.0, 13.0], [15.0, 17.0]].as_flattened()
+        );
+    }
+
+    #[test]
+    fn test_parameters_new() {
+        let input = [1.0, -2.0, 3.0, -4.0, 0.0];
+        let parameters = Parameters::new(input);
+        assert_eq!(
+            parameters.operations,
+            [
+                SumType::Addition,
+                SumType::Subtraction,
+                SumType::Addition,
+                SumType::Subtraction,
+                SumType::Addition
+            ]
         );
     }
 }
