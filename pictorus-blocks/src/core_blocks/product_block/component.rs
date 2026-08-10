@@ -9,7 +9,7 @@ pub struct ParametersComponentWise<const N: usize> {
 }
 
 impl<const N: usize> ParametersComponentWise<N> {
-    /// This new function accepts a fixed size arrays of f64 because that is what codgen hands it currently
+    /// This new function accepts a fixed size array of scalar flags because that is what codegen hands it currently
     /// It should be revisited when we tackle codegen changes
     pub fn new<T: Scalar + num_traits::Zero + PartialOrd>(input: [T; N]) -> Self {
         let mut operations = [ProductOperation::Multiply; N];
