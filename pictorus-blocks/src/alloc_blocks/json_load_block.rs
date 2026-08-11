@@ -99,11 +99,11 @@ impl Parameters {
     // TODO: This should be changed to accept an &[&str]. In some other places we use a generic
     // `<S: AsRef<str>>` to allow for both &str and String. It's tricky to do that here because
     // we allow empty select_data, which would require us to specify a generic type.
-    pub fn new(select_data: &[String], stale_age_ms: f64) -> Self {
+    pub fn new<T: Into<f64>>(select_data: &[String], stale_age_ms: T) -> Self {
         let select_data = Self::parse_select_spec(select_data);
         Self {
             select_data,
-            stale_age: duration_from_ms_f64(stale_age_ms),
+            stale_age: duration_from_ms_f64(stale_age_ms.into()),
         }
     }
 

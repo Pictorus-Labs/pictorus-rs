@@ -1,5 +1,4 @@
 use crate::{traits::MatrixOps, Scalar};
-use num_traits::ToPrimitive;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the VectorSliceBlock
@@ -11,7 +10,7 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new(rows: f64, cols: f64) -> Self {
+    pub fn new<T: num_traits::ToPrimitive>(rows: T, cols: T) -> Self {
         let r_usize = rows
             .to_usize()
             .expect("Failed to convert rows to usize in VectorSliceBlock Parameters");

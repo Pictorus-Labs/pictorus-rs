@@ -31,7 +31,11 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new<S: AsRef<str>>(delimiter: &str, desired_outputs: &[S], stale_age_ms: f64) -> Self {
+    pub fn new<S: AsRef<str>, T: Into<f64>>(
+        delimiter: &str,
+        desired_outputs: &[S],
+        stale_age_ms: T,
+    ) -> Self {
         // TODO: For now this accepts the normal desired output spec even though it only uses the indexes from it
         // The actual Datatypes are encoded as part of the type of the block, would make sense to address this more completely when
         // we rework codegen
@@ -39,7 +43,7 @@ impl Parameters {
         Self {
             delimiter: delimiter.to_owned(),
             desired_output_idx,
-            stale_age: duration_from_ms_f64(stale_age_ms),
+            stale_age: duration_from_ms_f64(stale_age_ms.into()),
         }
     }
 

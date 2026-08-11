@@ -9,12 +9,12 @@ pub struct ParametersComponentWise<const N: usize> {
 }
 
 impl<const N: usize> ParametersComponentWise<N> {
-    /// This new function accepts a fixed size arrays of f64 because that is what codgen hands it currently
+    /// This new function accepts a fixed size array of scalar flags because that is what codegen hands it currently
     /// It should be revisited when we tackle codegen changes
-    pub fn new(input: [f64; N]) -> Self {
+    pub fn new<T: Scalar + num_traits::Zero + PartialOrd>(input: [T; N]) -> Self {
         let mut operations = [ProductOperation::Multiply; N];
-        for (i, val) in input.iter().enumerate() {
-            if *val < 0.0 {
+        for (i, &val) in input.iter().enumerate() {
+            if val < T::zero() {
                 operations[i] = ProductOperation::Divide;
             }
         }
@@ -23,7 +23,7 @@ impl<const N: usize> ParametersComponentWise<N> {
 }
 
 /// One of these is associated with each input signal
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProductOperation {
     Multiply,
     Divide,
@@ -282,5 +282,27 @@ where
         F::apply_into(rhs5, &params.operations[5], dest);
         G::apply_into(rhs6, &params.operations[6], dest);
         H::apply_into(rhs7, &params.operations[7], dest)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parameters_new() {
+        let input = [1.0, -2.0, 3.0, -4.0, 0.0];
+        let parameters = ParametersComponentWise::new(input);
+        let ops: &[ProductOperation; 5] = &parameters.operations;
+        assert_eq!(
+            ops,
+            &[
+                ProductOperation::Multiply,
+                ProductOperation::Divide,
+                ProductOperation::Multiply,
+                ProductOperation::Divide,
+                ProductOperation::Multiply
+            ]
+        );
     }
 }

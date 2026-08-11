@@ -84,7 +84,7 @@ pub trait BlockDef {
     /// Optional cleanup of any resources used by this block
     ///
     /// This is useful if you would like to set some hardware state back to a default value before the app exits
-    #[deprecated = "Users should use impl the core::ops::Drop trait instead"]
+    #[deprecated = "Users should use an impl of the core::ops::Drop trait instead"]
     fn cleanup(&mut self) {}
 }
 
