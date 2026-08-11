@@ -132,7 +132,7 @@ macro_rules! scalar_block_data_read_impl {
             $(
                 impl BlockDataRead for &$t {
                     fn get_scalar(&self) -> f64 {
-                        (**self).into()
+                        crate::Scalar::to_f64_lossy(**self)
                     }
                     fn get_matrix(&self) -> (usize, usize, &[f64]) {
                         unimplemented!(
@@ -144,7 +144,7 @@ macro_rules! scalar_block_data_read_impl {
 
                 impl BlockDataRead for $t {
                     fn get_scalar(&self) -> f64 {
-                        (*self).into()
+                        crate::Scalar::to_f64_lossy(*self)
                     }
                     fn get_matrix(&self) -> (usize, usize, &[f64]) {
                         unimplemented!(
@@ -157,7 +157,7 @@ macro_rules! scalar_block_data_read_impl {
         };
     }
 
-scalar_block_data_read_impl!(u8, i8, u16, i16, u32, i32, f32);
+scalar_block_data_read_impl!(u8, i8, u16, i16, u32, i32, u64, i64, f32);
 
 impl BlockDataRead for &f64 {
     fn get_scalar(&self) -> f64 {
