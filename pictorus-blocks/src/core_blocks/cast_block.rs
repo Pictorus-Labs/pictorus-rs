@@ -22,18 +22,18 @@ impl Parameters {
 
 /// Converts a scalar element from one type to another.
 ///
-/// This is deliberately not built on `num_traits::AsPrimitive` (as of 0.2.19), which has 
-//  incomplete bool conversion. Instead the three cases are handled explicitly:
+/// This is deliberately not built on `num_traits::AsPrimitive` (as of 0.2.19), which has
+/// incomplete bool conversion. Instead the three cases are handled explicitly:
 /// - converting to `bool` tests truthiness
-//  - converting from `bool` maps to 0/1
+/// - converting from `bool` maps to 0/1
 /// - numerics as a plain `as` cast.
 pub trait CastElement<O: Scalar>: Scalar {
     fn cast_element(self) -> O;
 }
 
+// TODO: Add configurable truncation, etc. in the future.
 /// Numeric -> numeric. Overflow, truncation and precision loss follow Rust's `as`
 /// semantics.
-// TODO: Add trunctation, etc. in the future.
 macro_rules! impl_casts_from {
     ($from:ty => $($to:ty),* $(,)?) => {
         $(
