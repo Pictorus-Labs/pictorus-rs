@@ -419,34 +419,41 @@ where
 /// "Scalar" types
 ///
 /// Marker trait for small primitives like floats, integers and booleans
-pub trait Scalar: Sealed + Copy + 'static + Default + Into<f64> + PartialEq {}
+pub trait Scalar: Sealed + Copy + 'static + Default + PartialEq {
+    /// Widen to `f64` for interop with APIs that speak only `f64`.
+    ///
+    /// Exact for every scalar type except `u64`/`i64`, where magnitudes above 2^53 are
+    /// rounded to the nearest representable `f64`.
+    fn to_f64_lossy(self) -> f64;
+}
 
-impl Scalar for bool {}
+macro_rules! impl_scalar {
+    ($($t:ty),* $(,)?) => {
+        $(
+            impl Scalar for $t {
+                #[inline]
+                fn to_f64_lossy(self) -> f64 {
+                    self as f64
+                }
+            }
+            impl Sealed for $t {}
+        )*
+    };
+}
+
+impl_scalar!(u8, i8, u16, i16, u32, i32, u64, i64, f32, f64);
+
+impl Scalar for bool {
+    #[inline]
+    fn to_f64_lossy(self) -> f64 {
+        if self {
+            1.0
+        } else {
+            0.0
+        }
+    }
+}
 impl Sealed for bool {}
-
-impl Scalar for u8 {}
-impl Sealed for u8 {}
-
-impl Scalar for i8 {}
-impl Sealed for i8 {}
-
-impl Scalar for u16 {}
-impl Sealed for u16 {}
-
-impl Scalar for i16 {}
-impl Sealed for i16 {}
-
-impl Scalar for u32 {}
-impl Sealed for u32 {}
-
-impl Scalar for i32 {}
-impl Sealed for i32 {}
-
-impl Scalar for f32 {}
-impl Sealed for f32 {}
-
-impl Scalar for f64 {}
-impl Sealed for f64 {}
 
 /// Auto-promotion
 pub trait Promote<RHS: Scalar>: Scalar {

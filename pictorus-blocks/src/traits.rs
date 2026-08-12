@@ -115,6 +115,32 @@ impl Scalar for i32 {
         }
     }
 }
+impl Scalar for u64 {
+    fn is_truthy(&self) -> bool {
+        *self != 0
+    }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
+    }
+}
+impl Scalar for i64 {
+    fn is_truthy(&self) -> bool {
+        *self != 0
+    }
+
+    fn from_bool(value: bool) -> Self {
+        if value {
+            1
+        } else {
+            0
+        }
+    }
+}
 impl Scalar for f32 {
     fn is_truthy(&self) -> bool {
         *self != 0.0
