@@ -6,17 +6,12 @@ use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
 /// The destination type is carried in the block's generics rather than here, since it has
 /// to be known at compile time.
 #[doc(hidden)]
+#[derive(Default)]
 pub struct Parameters;
-
-impl Default for Parameters {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl Parameters {
     pub fn new() -> Parameters {
-        Parameters {}
+        Self
     }
 }
 
@@ -139,6 +134,7 @@ where
 }
 
 /// Converts the input signal to a different data type.
+#[derive(Default)]
 pub struct CastBlock<I, O>
 where
     I: CastTo<O>,
@@ -146,19 +142,6 @@ where
 {
     buffer: O,
     phantom: core::marker::PhantomData<I>,
-}
-
-impl<I, O> Default for CastBlock<I, O>
-where
-    I: CastTo<O>,
-    O: Pass + Default,
-{
-    fn default() -> Self {
-        Self {
-            buffer: O::default(),
-            phantom: core::marker::PhantomData,
-        }
-    }
 }
 
 impl<I, O> ProcessBlock for CastBlock<I, O>

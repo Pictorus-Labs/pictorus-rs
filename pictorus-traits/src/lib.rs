@@ -419,9 +419,6 @@ where
 /// "Scalar" types
 ///
 /// Marker trait for small primitives like floats, integers and booleans
-///
-/// Note that this trait deliberately doesn't require `Into<f64>`; the full range of
-/// `u64`/`i64` is not representable in an `f64`, so they don't work with `.into()`.
 pub trait Scalar: Sealed + Copy + 'static + Default + PartialEq {
     /// Widen to `f64` for interop with APIs that speak only `f64`.
     ///
