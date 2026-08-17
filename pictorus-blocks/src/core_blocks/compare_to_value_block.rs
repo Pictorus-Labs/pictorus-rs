@@ -250,6 +250,7 @@ mod tests {
     test_compare_to_value!(i8, u8, i16, u16, i32, u32, i64, u64, f32, f64);
 
     #[test]
+    #[allow(clippy::bool_assert_comparison)]
     fn test_compare_to_value_bool() {
         let mut parameters = Parameter::new("Equal", true);
         let context = StubContext::default();
