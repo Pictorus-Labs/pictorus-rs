@@ -1,34 +1,33 @@
-use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Promote, Promotion, Scalar};
+use crate::traits::Scalar;
+use core::ops::Mul;
+use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Multiplies the input by a gain factor.
-pub struct GainBlock<G, T>
+pub struct GainBlock<T>
 where
-    G: Scalar,
-    T: Apply<G>,
+    T: Apply,
 {
-    buffer: T::Output,
+    buffer: T,
 }
 
-impl<G, T> Default for GainBlock<G, T>
+impl<T> Default for GainBlock<T>
 where
-    G: Scalar,
-    T: Apply<G>,
+    T: Apply,
 {
     fn default() -> Self {
         Self {
-            buffer: <T::Output>::default(),
+            buffer: T::default(),
         }
     }
 }
 
-impl<G, T> ProcessBlock for GainBlock<G, T>
+impl<T> ProcessBlock for GainBlock<T>
 where
-    G: Scalar,
-    T: Apply<G>,
+    T: Apply,
 {
     type Inputs = T;
-    type Output = T::Output;
-    type Parameters = Parameters<G>;
+    type Output = T;
+    type Parameters = Parameters<T::Gain>;
 
     fn process(
         &mut self,
@@ -36,8 +35,7 @@ where
         _context: &dyn pictorus_traits::Context,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
-        let output = T::apply(&mut self.buffer, input, parameters.gain);
-        output
+        T::apply(&mut self.buffer, input, parameters.gain)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
@@ -45,73 +43,42 @@ where
     }
 }
 
-pub trait Apply<G: Scalar>: Pass {
-    type Output: Pass + Default;
+pub trait Apply: Pass + Default {
+    /// The scalar type of the gain parameter. Matches the element type for
+    /// matrix signals and the signal type itself for scalar signals.
+    type Gain: Scalar;
 
-    fn apply<'s>(
-        store: &'s mut Self::Output,
-        input: PassBy<Self>,
-        gain: G,
-    ) -> PassBy<'s, Self::Output>;
+    fn apply<'s>(store: &'s mut Self, input: PassBy<Self>, gain: Self::Gain) -> PassBy<'s, Self>;
 }
 
-impl<G> Apply<G> for f64
+impl<S> Apply for S
 where
-    G: Promote<f64> + Scalar,
+    S: Scalar + Mul<Output = S>,
 {
-    type Output = Promotion<G, f64>;
-    fn apply<'s>(
-        store: &'s mut Self::Output,
-        input: PassBy<Self>,
-        gain: G,
-    ) -> PassBy<'s, Self::Output> {
-        let output =
-            <G as Promote<f64>>::promote_left(gain) * <G as Promote<f64>>::promote_right(input);
+    type Gain = S;
+
+    fn apply<'s>(store: &'s mut Self, input: PassBy<Self>, gain: S) -> PassBy<'s, Self> {
+        let output = input * gain;
         *store = output;
         output
     }
 }
 
-impl<T> Apply<T> for f32
+impl<const NROWS: usize, const NCOLS: usize, S> Apply for Matrix<NROWS, NCOLS, S>
 where
-    T: Promote<f32> + Scalar,
+    S: Scalar + Apply<Gain = S>,
 {
-    type Output = Promotion<T, f32>;
-    fn apply<'s>(
-        store: &'s mut Self::Output,
-        input: PassBy<Self>,
-        gain: T,
-    ) -> PassBy<'s, Self::Output> {
-        let output =
-            <T as Promote<f32>>::promote_left(gain) * <T as Promote<f32>>::promote_right(input);
-        *store = output;
-        output
-    }
-}
+    type Gain = S;
 
-impl<const NROWS: usize, const NCOLS: usize, G, T> Apply<G> for Matrix<NROWS, NCOLS, T>
-where
-    T: Scalar,
-    G: Promote<T>,
-    T: Promote<G>,
-{
-    type Output = Matrix<NROWS, NCOLS, Promotion<G, T>>;
-
-    fn apply<'s>(
-        store: &'s mut Self::Output,
-        input: PassBy<Self>,
-        gain: G,
-    ) -> PassBy<'s, Self::Output> {
-        *store = Matrix::zeroed();
-        store
+    fn apply<'s>(store: &'s mut Self, input: PassBy<Self>, gain: S) -> PassBy<'s, Self> {
+        for (elem, &val) in store
             .data
             .as_flattened_mut()
             .iter_mut()
-            .enumerate()
-            .for_each(|(i, lhs)| {
-                *lhs = <G as Promote<T>>::promote_right(input.data.as_flattened()[i])
-                    * <G as Promote<T>>::promote_left(gain);
-            });
+            .zip(input.data.as_flattened().iter())
+        {
+            S::apply(elem, val, gain);
+        }
         store
     }
 }
@@ -130,61 +97,77 @@ impl<G: Scalar> Parameters<G> {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
+    use paste::paste;
 
     #[test]
     fn test_gain_default_buffer_no_panic() {
-        let block = GainBlock::<f64, f64>::default();
+        let block = GainBlock::<f64>::default();
         assert_eq!(block.buffer(), 0.0);
 
-        let block = GainBlock::<f64, Matrix<2, 2, f64>>::default();
+        let block = GainBlock::<Matrix<2, 2, f64>>::default();
         assert_eq!(block.buffer(), &Matrix::<2, 2, f64>::zeroed());
     }
 
-    #[test]
-    fn test_gain_scalar() {
-        let mut block = GainBlock::<f64, f64>::default();
-        let context = StubContext::default();
-        let input = 1.0;
-        let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, input);
-        assert_eq!(output, 2.0);
-        assert_eq!(block.buffer(), output);
-    }
-
-    #[test]
-    fn test_gain_matrix() {
-        let mut block = GainBlock::<f64, Matrix<2, 2, f64>>::default();
-        let context = StubContext::default();
-        let input = Matrix {
-            data: [[1.0, 2.0], [3.0, 4.0]],
+    macro_rules! test_gain_block {
+        // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_gain_block!($type);
+            test_gain_block!($($other_types),*);
         };
-        let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, &input);
-        assert_eq!(output.data, [[2.0, 4.0], [6.0, 8.0]]);
-        assert_eq!(block.buffer().data, [[2.0, 4.0], [6.0, 8.0]]);
-    }
+        ($type:ty) => {
+            paste! {
+                #[test]
+                fn [<test_gain_scalar_ $type>]() {
+                    let mut block = GainBlock::<$type>::default();
+                    let context = StubContext::default();
+                    let input = 3 as $type;
+                    let parameters = Parameters::new(2 as $type);
+                    let output = block.process(&parameters, &context, input);
+                    assert_eq!(output, 6 as $type);
+                    assert_eq!(block.buffer(), output);
+                }
 
-    #[test]
-    fn test_scalar_with_to_pass() {
-        let mut block = GainBlock::<f64, f64>::default();
-        let context = StubContext::default();
-        let input = 1.0;
-        let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, input);
-        assert_eq!(output, 2.0);
-        assert_eq!(block.buffer(), 2.0);
-    }
-
-    #[test]
-    fn test_matrix_with_to_pass() {
-        let mut block = GainBlock::<f64, Matrix<2, 2, f64>>::default();
-        let context = StubContext::default();
-        let input = Matrix {
-            data: [[1.0, 3.0], [2.0, 4.0]],
+                #[test]
+                fn [<test_gain_matrix_ $type>]() {
+                    let mut block = GainBlock::<Matrix<2, 2, $type>>::default();
+                    let context = StubContext::default();
+                    let input = Matrix {
+                        data: [[1 as $type, 2 as $type], [3 as $type, 4 as $type]],
+                    };
+                    let parameters = Parameters::new(2 as $type);
+                    let output = block.process(&parameters, &context, &input);
+                    let expected = [
+                        [2 as $type, 4 as $type],
+                        [6 as $type, 8 as $type],
+                    ];
+                    assert_eq!(output.data, expected);
+                    assert_eq!(block.buffer().data, expected);
+                }
+            }
         };
-        let parameters = Parameters::new(2.0);
-        let output = block.process(&parameters, &context, &input);
-        assert_eq!(output.data, [[2.0, 6.0], [4.0, 8.0]]);
-        assert_eq!(block.buffer().data, [[2.0, 6.0], [4.0, 8.0]]);
+    }
+
+    test_gain_block!(f32, f64, i8, i16, i32, i64, u8, u16, u32, u64);
+
+    #[test]
+    fn test_gain_negative() {
+        let mut block = GainBlock::<i32>::default();
+        let context = StubContext::default();
+        let parameters = Parameters::new(-3);
+        let output = block.process(&parameters, &context, 7);
+        assert_eq!(output, -21);
+        assert_eq!(block.buffer(), -21);
+    }
+
+    #[test]
+    #[should_panic]
+    fn overflow_panics() {
+        // Native integer multiplication overflow panics in debug builds (wraps in release).
+        let mut block = GainBlock::<u8>::default();
+        let parameters = Parameters::new(2u8);
+        let context = StubContext::default();
+
+        let output = block.process(&parameters, &context, 128u8);
+        assert_eq!(output, 0);
     }
 }
