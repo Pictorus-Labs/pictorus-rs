@@ -1,5 +1,5 @@
 use crate::byte_data::{parse_byte_data_spec, try_pack_data, ByteOrderSpec, DataType};
-use crate::traits::{Float, Scalar};
+use crate::traits::Scalar;
 use alloc::vec::Vec;
 use num_traits::AsPrimitive;
 use pictorus_traits::{ByteSliceSignal, Pass, PassBy, ProcessBlock};
@@ -61,7 +61,7 @@ pub trait AppendBytes: Scalar {
 
 impl<F> AppendBytes for F
 where
-    F: Float
+    F: Scalar
         + AsPrimitive<u8>
         + AsPrimitive<i8>
         + AsPrimitive<u16>
@@ -253,6 +253,91 @@ mod tests {
         let expected = {
             let mut expected = Vec::new();
             expected.write_i8(inputs as i8).unwrap();
+            expected
+        };
+
+        let output = block.process(&params, &context, inputs);
+        assert_eq!(output, expected.as_slice());
+        assert_eq!(block.buffer(), expected.as_slice());
+    }
+
+    #[test]
+    fn test_bytes_pack_block_1_input_u8_exact() {
+        let context = StubContext::default();
+        let params = Parameters::new(&["U8:BigEndian"]);
+        let mut block = BytesPackBlock::<u8>::default();
+
+        let output = block.process(&params, &context, 255u8);
+        assert_eq!(output, [255u8].as_slice());
+        assert_eq!(block.buffer(), [255u8].as_slice());
+    }
+
+    #[test]
+    fn test_bytes_pack_block_1_input_i16_negative() {
+        let context = StubContext::default();
+        let params = Parameters::new(&["I16:LittleEndian"]);
+        let mut block = BytesPackBlock::<i16>::default();
+
+        let expected = {
+            let mut expected = Vec::new();
+            expected
+                .write_i16::<byteorder::LittleEndian>(-12345)
+                .unwrap();
+            expected
+        };
+
+        let output = block.process(&params, &context, -12345i16);
+        assert_eq!(output, expected.as_slice());
+        assert_eq!(block.buffer(), expected.as_slice());
+    }
+
+    #[test]
+    fn test_bytes_pack_block_1_input_i64_beyond_f64_precision() {
+        // An i64 input larger than 2^53 packs exactly; routing it through an f64
+        // signal (the only option before int support) would have rounded it.
+        let context = StubContext::default();
+        let params = Parameters::new(&["I64:BigEndian"]);
+        let mut block = BytesPackBlock::<i64>::default();
+        let value = (1i64 << 53) + 1;
+
+        let expected = {
+            let mut expected = Vec::new();
+            expected.write_i64::<byteorder::BigEndian>(value).unwrap();
+            expected
+        };
+
+        let output = block.process(&params, &context, value);
+        assert_eq!(output, expected.as_slice());
+        assert_eq!(block.buffer(), expected.as_slice());
+    }
+
+    #[test]
+    fn test_bytes_pack_block_int_truncating_spec() {
+        // An input wider than its pack spec truncates with native `as` cast semantics.
+        let context = StubContext::default();
+        let params = Parameters::new(&["U8:BigEndian"]);
+        let mut block = BytesPackBlock::<u32>::default();
+
+        let output = block.process(&params, &context, 300u32);
+        assert_eq!(output, [300u32 as u8].as_slice());
+    }
+
+    #[test]
+    fn test_bytes_pack_block_mixed_input_types() {
+        let context = StubContext::default();
+        let params = Parameters::new(&["U8:BigEndian", "F32:BigEndian", "I16:LittleEndian"]);
+        let mut block = BytesPackBlock::<(u8, f32, i16)>::default();
+        let inputs = (42u8, 3.5f32, -1000i16);
+
+        let expected = {
+            let mut expected = Vec::new();
+            expected.write_u8(inputs.0).unwrap();
+            expected
+                .write_f32::<byteorder::BigEndian>(inputs.1)
+                .unwrap();
+            expected
+                .write_i16::<byteorder::LittleEndian>(inputs.2)
+                .unwrap();
             expected
         };
 

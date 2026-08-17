@@ -246,8 +246,7 @@ pub fn try_pack_data<T, Endian: ByteOrder>(
     data_type: DataType,
 ) -> Result<usize, ByteDataError>
 where
-    T: Float
-        + AsPrimitive<u8>
+    T: AsPrimitive<u8>
         + AsPrimitive<i8>
         + AsPrimitive<u16>
         + AsPrimitive<i16>

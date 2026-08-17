@@ -1,4 +1,6 @@
-use crate::matrix_ext::MatrixNalgebraExt;
+use crate::traits::Scalar;
+use core::marker::PhantomData;
+use num_traits::{AsPrimitive, Float};
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameters {}
@@ -19,30 +21,35 @@ impl Parameters {
 ///
 /// More specifically, it computes the Frobenius norm of a matrix, which is a generalization of the
 /// Euclidean norm for matrices.
-pub struct VectorNormBlock<T>
+///
+/// The input can be a matrix of any scalar type; the output is a selectable float type
+/// (`f64` by default) in which the sum of squares is accumulated.
+pub struct VectorNormBlock<T, O: Scalar = f64>
 where
-    T: Apply,
+    T: Apply<O>,
 {
-    buffer: T::Output,
+    buffer: O,
+    phantom: PhantomData<T>,
 }
 
-impl<T> Default for VectorNormBlock<T>
+impl<T, O: Scalar> Default for VectorNormBlock<T, O>
 where
-    T: Apply,
+    T: Apply<O>,
 {
     fn default() -> Self {
         Self {
-            buffer: T::Output::default(),
+            buffer: O::default(),
+            phantom: PhantomData,
         }
     }
 }
 
-impl<T> ProcessBlock for VectorNormBlock<T>
+impl<T, O: Scalar> ProcessBlock for VectorNormBlock<T, O>
 where
-    T: Apply,
+    T: Apply<O>,
 {
     type Inputs = T;
-    type Output = T::Output;
+    type Output = O;
     type Parameters = Parameters;
 
     fn process(
@@ -51,8 +58,7 @@ where
         _context: &dyn pictorus_traits::Context,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
-        let output = T::apply(&mut self.buffer, inputs);
-        output
+        T::apply(&mut self.buffer, inputs)
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
@@ -60,63 +66,29 @@ where
     }
 }
 
-pub trait Apply: Pass {
-    type Output: Pass + Default;
-
-    fn apply<'s>(store: &'s mut Self::Output, input: PassBy<Self>) -> PassBy<'s, Self::Output>;
+pub trait Apply<O: Scalar>: Pass {
+    fn apply<'s>(store: &'s mut O, input: PassBy<Self>) -> PassBy<'s, O>;
 }
 
-// Promote i8, u8, i16, u16, i32, and u32
-macro_rules! impl_vector_norm_apply {
-    ($type:ty, $otype:ty) => {
-        impl<const ROWS: usize, const COLS: usize> Apply for Matrix<ROWS, COLS, $type> {
-            type Output = $otype;
-
-            fn apply<'s>(
-                store: &'s mut Self::Output,
-                input: PassBy<Self>,
-            ) -> PassBy<'s, Self::Output> {
-                let mut output = Matrix::<ROWS, COLS, $otype>::zeroed();
-                for r in 0..ROWS {
-                    for c in 0..COLS {
-                        output.data[c][r] = input.data[c][r].into();
-                    }
-                }
-                let n = output.as_view().norm();
-                *store = n;
-                n
-            }
-        }
-    };
+impl<const ROWS: usize, const COLS: usize, T, O> Apply<O> for Matrix<ROWS, COLS, T>
+where
+    T: Scalar + AsPrimitive<O>,
+    O: Scalar + Float,
+{
+    fn apply<'s>(store: &'s mut O, input: PassBy<Self>) -> PassBy<'s, O> {
+        let sum_of_squares = input
+            .data
+            .as_flattened()
+            .iter()
+            .fold(O::zero(), |acc, &v| {
+                let val: O = v.as_();
+                acc + val * val
+            });
+        let n = sum_of_squares.sqrt();
+        *store = n;
+        n
+    }
 }
-
-impl_vector_norm_apply!(i8, f32);
-impl_vector_norm_apply!(u8, f32);
-impl_vector_norm_apply!(i16, f32);
-impl_vector_norm_apply!(u16, f32);
-impl_vector_norm_apply!(i32, f64);
-impl_vector_norm_apply!(u32, f64);
-
-// f32 and f64 don't need to be promoted
-macro_rules! impl_vector_norm {
-    ($type:ty) => {
-        impl<const ROWS: usize, const COLS: usize> Apply for Matrix<ROWS, COLS, $type> {
-            type Output = $type;
-
-            fn apply<'s>(
-                store: &'s mut Self::Output,
-                input: PassBy<Self>,
-            ) -> PassBy<'s, Self::Output> {
-                let n = input.as_view().norm();
-                *store = n;
-                n
-            }
-        }
-    };
-}
-
-impl_vector_norm!(f32);
-impl_vector_norm!(f64);
 
 #[cfg(test)]
 mod tests {
@@ -130,47 +102,68 @@ mod tests {
         assert_eq!(block.buffer(), 0.0);
     }
 
+    #[test]
+    fn test_vector_norm_default_output_type() {
+        // Output type param defaults to f64 for any input type
+        let mut block = VectorNormBlock::<Matrix<1, 2, i8>>::default();
+        let p = Parameters::new();
+        let c = StubContext::default();
+
+        let input = Matrix { data: [[3], [4]] };
+        let output: f64 = block.process(&p, &c, &input);
+        assert_eq!(output, 5.0);
+    }
+
     macro_rules! test_vector_norm {
-        ($type:ty) => {
+        // Convenience call to generate a call to the main macro for every pair in the list
+        ($type:ty : $otype:ty, $($rest_t:ty : $rest_o:ty),*) => {
+            test_vector_norm!($type : $otype);
+            test_vector_norm!($($rest_t : $rest_o),*);
+        };
+        ($type:ty : $otype:ty) => {
             paste! {
                 #[test]
-                fn [<test_vector_norm_ $type>]() {
-                    let mut block = VectorNormBlock::<Matrix<1, 2, $type>>::default();
+                fn [<test_vector_norm_ $type _to_ $otype>]() {
+                    let mut block = VectorNormBlock::<Matrix<1, 2, $type>, $otype>::default();
                     let p = Parameters::new();
                     let c = StubContext::default();
 
                     let input = Matrix {
-                        data: [[[<3_$type>]], [[<4 $type>]]]
+                        data: [[3 as $type], [4 as $type]]
                     };
 
                     let output = block.process(&p, &c, &input);
-                    assert_eq!(output, [<5 $type>].into());
+                    assert_eq!(output, 5 as $otype);
                     assert_eq!(block.buffer(), output);
                 }
 
                 #[test]
-                fn [<test_matrix_norm_ $type>]() {
-                    let mut block = VectorNormBlock::<Matrix<2, 2, $type>>::default();
+                fn [<test_matrix_norm_ $type _to_ $otype>]() {
+                    let mut block = VectorNormBlock::<Matrix<2, 2, $type>, $otype>::default();
                     let p = Parameters::new();
                     let c = StubContext::default();
 
                     let input = Matrix {
-                        data: [[[<3 $type>], [<3 $type>]], [[<3 $type>], [<3 $type>]]],
+                        data: [[3 as $type, 3 as $type], [3 as $type, 3 as $type]],
                     };
                     let output = block.process(&p, &c, &input);
-                    assert_eq!(output, [<6 $type>].into());
+                    assert_eq!(output, 6 as $otype);
                     assert_eq!(block.buffer(), output);
                 }
             }
         };
     }
 
-    test_vector_norm!(i8);
-    test_vector_norm!(u8);
-    test_vector_norm!(i16);
-    test_vector_norm!(u16);
-    test_vector_norm!(i32);
-    test_vector_norm!(u32);
-    test_vector_norm!(f32);
-    test_vector_norm!(f64);
+    test_vector_norm!(
+        i8: f32, i8: f64,
+        u8: f32, u8: f64,
+        i16: f32, i16: f64,
+        u16: f32, u16: f64,
+        i32: f32, i32: f64,
+        u32: f32, u32: f64,
+        i64: f32, i64: f64,
+        u64: f32, u64: f64,
+        f32: f32, f32: f64,
+        f64: f32, f64: f64
+    );
 }
