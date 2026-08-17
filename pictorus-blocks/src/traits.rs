@@ -21,6 +21,7 @@ pub trait Scalar:
     + PartialEq
     + nalgebra::Scalar
     + SimdPartialOrd
+    + PartialOrd
 {
     /// Returns true if the scalar is truthy
     /// Truthiness is defined as not equal to zero
