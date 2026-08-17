@@ -87,6 +87,8 @@ impl_bitwise_operator_simple!(u16);
 impl_bitwise_operator_simple!(i16);
 impl_bitwise_operator_simple!(u32);
 impl_bitwise_operator_simple!(i32);
+impl_bitwise_operator_simple!(u64);
+impl_bitwise_operator_simple!(i64);
 
 // Impl for float types that require casting to integer before applying the operation
 impl BitOperations<f32> for f32 {
@@ -444,6 +446,8 @@ mod test {
     test_bitwise_operator!(i16);
     test_bitwise_operator!(u32);
     test_bitwise_operator!(i32);
+    test_bitwise_operator!(u64);
+    test_bitwise_operator!(i64);
     test_bitwise_operator!(f32);
     test_bitwise_operator!(f64);
 }

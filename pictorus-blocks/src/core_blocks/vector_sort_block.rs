@@ -116,6 +116,8 @@ macro_rules! impl_vector_sort {
 
 impl_vector_sort!(f64);
 impl_vector_sort!(f32);
+impl_vector_sort!(i64);
+impl_vector_sort!(u64);
 impl_vector_sort!(i32);
 impl_vector_sort!(u32);
 impl_vector_sort!(i16);
@@ -234,6 +236,8 @@ mod tests {
 
     impl_vector_sort_tests!(f64);
     impl_vector_sort_tests!(f32);
+    impl_vector_sort_tests!(i64);
+    impl_vector_sort_tests!(u64);
     impl_vector_sort_tests!(i32);
     impl_vector_sort_tests!(u32);
     impl_vector_sort_tests!(i16);

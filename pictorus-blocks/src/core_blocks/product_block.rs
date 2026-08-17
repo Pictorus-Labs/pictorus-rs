@@ -101,6 +101,7 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use component::ParametersComponentWise;
+    use paste::paste;
     use pictorus_traits::Matrix;
 
     #[test]
@@ -237,5 +238,191 @@ mod tests {
 
         assert_eq!(output, &expected);
         assert_eq!(block.buffer(), &expected);
+    }
+
+    macro_rules! test_product_types {
+        // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_product_types!($type);
+            test_product_types!($($other_types),*);
+        };
+        ($type:ty) => {
+            paste! {
+                #[test]
+                fn [<test_component_wise_scalar_ $type>]() {
+                    let context = StubContext::default();
+                    let mut block = ProductBlock::<($type, $type), ComponentWise>::default();
+
+                    // Multiply only
+                    let parameters = ParametersComponentWise::new([1.0, 1.0]);
+                    let output = block.process(&parameters, &context, (6 as $type, 2 as $type));
+                    assert_eq!(output, 12 as $type);
+                    assert_eq!(block.buffer(), output);
+
+                    // Multiply then divide, chosen to divide exactly for every type
+                    let parameters = ParametersComponentWise::new([1.0, -1.0]);
+                    let output = block.process(&parameters, &context, (12 as $type, 4 as $type));
+                    assert_eq!(output, 3 as $type);
+                    assert_eq!(block.buffer(), output);
+                }
+
+                #[test]
+                fn [<test_component_wise_matrix_ $type>]() {
+                    let context = StubContext::default();
+                    let mut block = ProductBlock::<
+                        (Matrix<2, 2, $type>, Matrix<2, 2, $type>),
+                        ComponentWise,
+                    >::default();
+                    let parameters = ParametersComponentWise::new([1.0, 1.0]);
+                    let output = block.process(
+                        &parameters,
+                        &context,
+                        (
+                            &Matrix {
+                                data: [[1 as $type, 2 as $type], [3 as $type, 4 as $type]],
+                            },
+                            &Matrix {
+                                data: [[5 as $type, 6 as $type], [7 as $type, 8 as $type]],
+                            },
+                        ),
+                    );
+                    let expected = Matrix {
+                        data: [[5 as $type, 12 as $type], [21 as $type, 32 as $type]],
+                    };
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
+                }
+
+                #[test]
+                fn [<test_component_wise_mixed_ $type>]() {
+                    let context = StubContext::default();
+                    let mut block =
+                        ProductBlock::<($type, Matrix<2, 2, $type>), ComponentWise>::default();
+                    let parameters = ParametersComponentWise::new([1.0, 1.0]);
+                    let output = block.process(
+                        &parameters,
+                        &context,
+                        (
+                            3 as $type,
+                            &Matrix {
+                                data: [[1 as $type, 2 as $type], [3 as $type, 4 as $type]],
+                            },
+                        ),
+                    );
+                    let expected = Matrix {
+                        data: [[3 as $type, 6 as $type], [9 as $type, 12 as $type]],
+                    };
+                    assert_eq!(output, &expected);
+                    assert_eq!(block.buffer(), &expected);
+                }
+            }
+        };
+    }
+
+    test_product_types!(f32, f64, i8, i16, i32, i64, u8, u16, u32, u64);
+
+    #[test]
+    fn test_matrix_mult_int() {
+        let context = StubContext::default();
+        let p = ParametersMatrixMult {};
+
+        // [[1, 2, 3], [4, 5, 6]] * [[7, 8], [9, 10], [11, 12]] = [[58, 64], [139, 154]]
+        let mut block =
+            ProductBlock::<(Matrix<2, 3, i32>, Matrix<3, 2, i32>), MatrixMultiply>::default();
+        let output = block.process(
+            &p,
+            &context,
+            (
+                &Matrix {
+                    data: [[1, 4], [2, 5], [3, 6]],
+                },
+                &Matrix {
+                    data: [[7, 9, 11], [8, 10, 12]],
+                },
+            ),
+        );
+        let expected = Matrix {
+            data: [[58, 139], [64, 154]],
+        };
+        assert_eq!(output, &expected);
+        assert_eq!(block.buffer(), &expected);
+
+        // [[1, 2], [3, 4]] * [[5, 6], [7, 8]] = [[19, 22], [43, 50]], fits in u8
+        let mut block =
+            ProductBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, u8>), MatrixMultiply>::default();
+        let output = block.process(
+            &p,
+            &context,
+            (
+                &Matrix {
+                    data: [[1u8, 3], [2, 4]],
+                },
+                &Matrix {
+                    data: [[5u8, 7], [6, 8]],
+                },
+            ),
+        );
+        let expected = Matrix {
+            data: [[19u8, 43], [22, 50]],
+        };
+        assert_eq!(output, &expected);
+        assert_eq!(block.buffer(), &expected);
+    }
+
+    #[test]
+    fn test_component_wise_int_division_truncates() {
+        // Integer division truncates toward zero
+        let context = StubContext::default();
+        let mut block = ProductBlock::<(i32, i32), ComponentWise>::default();
+        let parameters = ParametersComponentWise::new([1.0, -1.0]);
+        let output = block.process(&parameters, &context, (7, 2));
+        assert_eq!(output, 3);
+    }
+
+    #[test]
+    fn test_component_wise_int_leading_divide() {
+        // The accumulator starts at one, so a leading divide computes 1 / x,
+        // which truncates to zero for any integer input > 1
+        let context = StubContext::default();
+        let mut block = ProductBlock::<(i32, i32), ComponentWise>::default();
+        let parameters = ParametersComponentWise::new([-1.0, 1.0]);
+        let output = block.process(&parameters, &context, (5, 10));
+        assert_eq!(output, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn int_division_by_zero_panics() {
+        // Integer division by zero panics in all build profiles (unlike float inf)
+        let context = StubContext::default();
+        let mut block = ProductBlock::<(i32, i32), ComponentWise>::default();
+        let parameters = ParametersComponentWise::new([1.0, -1.0]);
+        let output = block.process(&parameters, &context, (4, 0));
+        assert_eq!(output, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn int_multiply_overflow_panics() {
+        // 16 * 16 overflows u8; native arithmetic panics in debug builds (wraps in release).
+        let context = StubContext::default();
+        let mut block = ProductBlock::<(u8, u8), ComponentWise>::default();
+        let parameters = ParametersComponentWise::new([1.0, 1.0]);
+        let output = block.process(&parameters, &context, (16u8, 16u8));
+        assert_eq!(output, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn matrix_mult_overflow_panics() {
+        // Each output element is 16*16 + 16*16 = 512, which overflows u8;
+        // panics in debug builds (wraps in release).
+        let context = StubContext::default();
+        let p = ParametersMatrixMult {};
+        let mut block =
+            ProductBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, u8>), MatrixMultiply>::default();
+        let input = Matrix { data: [[16u8; 2]; 2] };
+        let output = block.process(&p, &context, (&input, &input));
+        assert_eq!(output, &Matrix { data: [[0u8; 2]; 2] });
     }
 }

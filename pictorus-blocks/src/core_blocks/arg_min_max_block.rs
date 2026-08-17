@@ -61,14 +61,7 @@ pub trait Apply: Pass {
 }
 
 trait ArgMinMaxScalar: Scalar + PartialOrd + Zero + FromPrimitive {}
-impl ArgMinMaxScalar for f32 {}
-impl ArgMinMaxScalar for f64 {}
-impl ArgMinMaxScalar for i8 {}
-impl ArgMinMaxScalar for i16 {}
-impl ArgMinMaxScalar for i32 {}
-impl ArgMinMaxScalar for u8 {}
-impl ArgMinMaxScalar for u16 {}
-impl ArgMinMaxScalar for u32 {}
+impl<S> ArgMinMaxScalar for S where S: crate::traits::Scalar + Zero + FromPrimitive {}
 
 impl<T: ArgMinMaxScalar> Apply for T {
     type Output = T;
@@ -140,6 +133,7 @@ impl Parameters {
 mod tests {
     use super::*;
     use crate::testing::StubContext;
+    use paste::paste;
 
     #[test]
     fn test_default_buffer_no_panic() {
@@ -186,4 +180,53 @@ mod tests {
         assert_eq!(output, 1.0);
         assert_eq!(block.buffer(), output);
     }
+
+    macro_rules! test_arg_min_max {
+        // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_arg_min_max!($type);
+            test_arg_min_max!($($other_types),*);
+        };
+        ($type:ty) => {
+            paste! {
+                #[test]
+                fn [<test_arg_min_max_scalar_ $type>]() {
+                    let mut block = ArgMinMaxBlock::<$type>::default();
+                    let context = StubContext::default();
+                    let params = Parameters::new("Min");
+                    // A scalar input always yields index 0
+                    let output = block.process(&params, &context, 7 as $type);
+                    assert_eq!(output, 0 as $type);
+                    assert_eq!(block.buffer(), output);
+                }
+
+                #[test]
+                fn [<test_arg_min_max_matrix_ $type>]() {
+                    let context = StubContext::default();
+                    let mut block = ArgMinMaxBlock::<Matrix<2, 3, $type>>::default();
+                    // | 11  13  15 |
+                    // | 12   4  16 |
+                    // Min is 4 at linear index 3, max is 16 at linear index 5
+                    let input = Matrix {
+                        data: [
+                            [11 as $type, 12 as $type],
+                            [13 as $type, 4 as $type],
+                            [15 as $type, 16 as $type],
+                        ],
+                    };
+                    let params = Parameters::new("Min");
+                    let output = block.process(&params, &context, &input);
+                    assert_eq!(output, 3 as $type);
+                    assert_eq!(block.buffer(), output);
+
+                    let params = Parameters::new("Max");
+                    let output = block.process(&params, &context, &input);
+                    assert_eq!(output, 5 as $type);
+                    assert_eq!(block.buffer(), output);
+                }
+            }
+        };
+    }
+
+    test_arg_min_max!(f32, f64, i8, i16, i32, i64, u8, u16, u32, u64);
 }

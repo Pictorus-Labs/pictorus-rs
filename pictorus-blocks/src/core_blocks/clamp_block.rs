@@ -89,6 +89,8 @@ impl_clamp_block!(i16);
 impl_clamp_block!(u16);
 impl_clamp_block!(i32);
 impl_clamp_block!(u32);
+impl_clamp_block!(i64);
+impl_clamp_block!(u64);
 impl_clamp_block!(f32);
 impl_clamp_block!(f64);
 
@@ -179,6 +181,7 @@ mod test {
 
     impl_clamp_block_test_negatives!(f64, f64);
     impl_clamp_block_test_negatives!(f32, f32);
+    impl_clamp_block_test_negatives!(i64, i64);
     impl_clamp_block_test_negatives!(i32, i32);
     impl_clamp_block_test_negatives!(i16, i16);
     impl_clamp_block_test_negatives!(i8, i8);
@@ -237,6 +240,8 @@ mod test {
 
     impl_clamp_block_test_positives!(f64, f64);
     impl_clamp_block_test_positives!(f32, f32);
+    impl_clamp_block_test_positives!(i64, i64);
+    impl_clamp_block_test_positives!(u64, u64);
     impl_clamp_block_test_positives!(u32, u32);
     impl_clamp_block_test_positives!(i32, i32);
     impl_clamp_block_test_positives!(i16, i16);
