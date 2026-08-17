@@ -1,3 +1,4 @@
+use crate::traits::Scalar;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 #[derive(strum::EnumString, Clone, Copy)]
@@ -11,7 +12,7 @@ pub struct NotBlock<T>
 where
     T: Apply,
 {
-    buffer: T::Output,
+    buffer: T,
 }
 
 impl<T> Default for NotBlock<T>
@@ -20,7 +21,7 @@ where
 {
     fn default() -> Self {
         Self {
-            buffer: T::Output::default(),
+            buffer: T::default(),
         }
     }
 }
@@ -30,7 +31,7 @@ where
     T: Apply,
 {
     type Inputs = T;
-    type Output = T::Output;
+    type Output = T;
     type Parameters = Parameters;
 
     fn process(
@@ -48,24 +49,12 @@ where
     }
 }
 
-pub trait Apply: Pass {
-    type Output: Pass + Default;
-
-    fn apply<'s>(
-        store: &'s mut Self::Output,
-        input: PassBy<Self>,
-        method: NotMethod,
-    ) -> PassBy<'s, Self::Output>;
+pub trait Apply: Pass + Default {
+    fn apply<'s>(store: &'s mut Self, input: PassBy<Self>, method: NotMethod) -> PassBy<'s, Self>;
 }
 
 impl Apply for bool {
-    type Output = bool;
-
-    fn apply<'s>(
-        store: &'s mut Self::Output,
-        input: PassBy<Self>,
-        method: NotMethod,
-    ) -> PassBy<'s, Self::Output> {
+    fn apply<'s>(store: &'s mut Self, input: PassBy<Self>, method: NotMethod) -> PassBy<'s, Self> {
         let output = match method {
             NotMethod::Logical => !input,
             NotMethod::Bitwise => !input,
@@ -75,14 +64,47 @@ impl Apply for bool {
     }
 }
 
-impl<const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, bool> {
-    type Output = Matrix<NROWS, NCOLS, bool>;
+macro_rules! impl_not_apply {
+    ($type:ty) => {
+        impl Apply for $type {
+            fn apply<'s>(
+                store: &'s mut Self,
+                input: PassBy<Self>,
+                method: NotMethod,
+            ) -> PassBy<'s, Self> {
+                let output = match method {
+                    NotMethod::Logical => Self::from_bool(!input.is_truthy()),
+                    NotMethod::Bitwise => !input,
+                };
+                *store = output;
+                output
+            }
+        }
+    };
+    ($type:ty, $cast_type:ty) => {
+        impl Apply for $type {
+            fn apply<'s>(
+                store: &'s mut Self,
+                input: PassBy<Self>,
+                method: NotMethod,
+            ) -> PassBy<'s, Self> {
+                let output = match method {
+                    NotMethod::Logical => Self::from_bool(!input.is_truthy()),
+                    NotMethod::Bitwise => !(input as $cast_type) as $type,
+                };
+                *store = output;
+                output
+            }
+        }
+    };
+}
 
-    fn apply<'s>(
-        store: &'s mut Self::Output,
-        input: PassBy<Self>,
-        method: NotMethod,
-    ) -> PassBy<'s, Self::Output> {
+impl<T: Apply + Pass + Scalar, const NROWS: usize, const NCOLS: usize> Apply
+    for Matrix<NROWS, NCOLS, T>
+where
+    for<'a> Matrix<NROWS, NCOLS, T>: Pass<By<'a> = &'a Self>,
+{
+    fn apply<'s>(store: &'s mut Self, input: PassBy<Self>, method: NotMethod) -> PassBy<'s, Self> {
         *store = Matrix::zeroed();
         store
             .data
@@ -91,71 +113,10 @@ impl<const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, bool
             .enumerate()
             .for_each(|(i, lhs)| {
                 let input_val = input.data.as_flattened()[i];
-                *lhs = match method {
-                    NotMethod::Logical => !input_val,
-                    NotMethod::Bitwise => !input_val,
-                };
+                T::apply(lhs, input_val, method);
             });
         store
     }
-}
-
-macro_rules! impl_not_apply {
-    ($type:ty, $cast_type:ty) => {
-        impl Apply for $type {
-            type Output = $type;
-
-            fn apply<'s>(
-                store: &'s mut Self::Output,
-                input: PassBy<Self>,
-                method: NotMethod,
-            ) -> PassBy<'s, Self::Output> {
-                let output = match method {
-                    NotMethod::Logical => {
-                        if input == 0.0 {
-                            1.0
-                        } else {
-                            0.0
-                        }
-                    }
-                    NotMethod::Bitwise => !(input as $cast_type) as $type,
-                };
-                *store = output;
-                output
-            }
-        }
-
-        impl<const NROWS: usize, const NCOLS: usize> Apply for Matrix<NROWS, NCOLS, $type> {
-            type Output = Matrix<NROWS, NCOLS, $type>;
-
-            fn apply<'s>(
-                store: &'s mut Self::Output,
-                input: PassBy<Self>,
-                method: NotMethod,
-            ) -> PassBy<'s, Self::Output> {
-                *store = Matrix::zeroed();
-                store
-                    .data
-                    .as_flattened_mut()
-                    .iter_mut()
-                    .enumerate()
-                    .for_each(|(i, lhs)| {
-                        let input_val = input.data.as_flattened()[i];
-                        *lhs = match method {
-                            NotMethod::Logical => {
-                                if input_val == 0.0 {
-                                    1.0
-                                } else {
-                                    0.0
-                                }
-                            }
-                            NotMethod::Bitwise => !(input_val as $cast_type) as $type,
-                        };
-                    });
-                store
-            }
-        }
-    };
 }
 
 pub struct Parameters {
@@ -175,11 +136,20 @@ impl Parameters {
 
 impl_not_apply!(f32, i32);
 impl_not_apply!(f64, i64);
+impl_not_apply!(i32);
+impl_not_apply!(i64);
+impl_not_apply!(u32);
+impl_not_apply!(u64);
+impl_not_apply!(u8);
+impl_not_apply!(u16);
+impl_not_apply!(i8);
+impl_not_apply!(i16);
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::testing::StubContext;
+    use num_traits::{One, Zero};
     use paste::paste;
 
     #[test]
@@ -200,21 +170,13 @@ mod tests {
                     let context = StubContext::default();
                     let parameters = Parameters::new("Logical");
 
-                    let res = block.process(&parameters, &context, 1.0);
-                    assert_eq!(res, 0.0);
+                    let res = block.process(&parameters, &context, $type::one());
+                    assert_eq!(res, $type::zero());
                     assert_eq!(block.buffer(), res);
 
-                    let res = block.process(&parameters, &context, 0.0);
-                    assert_eq!(res, 1.0);
-                    assert_eq!(block.buffer(), 1.0);
-
-                    let res = block.process(&parameters, &context, -1.2);
-                    assert_eq!(res, 0.0);
-                    assert_eq!(block.buffer(), 0.0);
-
-                    let res = block.process(&parameters, &context, 1.2);
-                    assert_eq!(res, 0.0);
-                    assert_eq!(block.buffer(), 0.0);
+                    let res = block.process(&parameters, &context, $type::zero());
+                    assert_eq!(res, $type::one());
+                    assert_eq!(block.buffer(), $type::one());
                 }
 
                 #[test]
@@ -224,11 +186,11 @@ mod tests {
                     let parameters = Parameters::new("Logical");
 
                     let input = Matrix {
-                        data: [[1.0, 0.0, -1.2, 1.2]],
+                        data: [[$type::one(), $type::zero(), $type::one(), $type::one()]],
                     };
                     let res = block.process(&parameters, &context, &input);
-                    assert_eq!(res.data, [[0.0, 1.0, 0.0, 0.0]]);
-                    assert_eq!(block.buffer().data, [[0.0, 1.0, 0.0, 0.0]]);
+                    assert_eq!(res.data, [[$type::zero(), $type::one(), $type::zero(), $type::zero()]]);
+                    assert_eq!(block.buffer().data, [[$type::zero(), $type::one(), $type::zero(), $type::zero()]]);
                 }
 
                 #[test]
@@ -237,21 +199,21 @@ mod tests {
                     let context = StubContext::default();
                     let parameters = Parameters::new("Bitwise");
 
-                    let res = block.process(&parameters, &context, 1.0);
-                    assert_eq!(res, -2.0);
-                    assert_eq!(block.buffer(), -2.0);
+                    let res = block.process(&parameters, &context, 0b1 as $type);
+                    assert_eq!(res, !0b1 as $type);
+                    assert_eq!(block.buffer(), !0b1 as $type);
 
-                    let res = block.process(&parameters, &context, 42.0);
-                    assert_eq!(res, -43.0);
-                    assert_eq!(block.buffer(), -43.0);
+                    let res = block.process(&parameters, &context, 42 as $type);
+                    assert_eq!(res, !42 as $type);
+                    assert_eq!(block.buffer(), !42 as $type);
 
-                    let res = block.process(&parameters, &context, -1.2);
-                    assert_eq!(res, 0.0);
-                    assert_eq!(block.buffer(), 0.0);
+                    let res = block.process(&parameters, &context, -1i8 as $type);
+                    assert_eq!(res, !-1i8 as $type);
+                    assert_eq!(block.buffer(), !-1i8 as $type);
 
-                    let res = block.process(&parameters, &context, 1.2);
-                    assert_eq!(res, -2.0);
-                    assert_eq!(block.buffer(), -2.0);
+                    let res = block.process(&parameters, &context, 1 as $type);
+                    assert_eq!(res, !1 as $type);
+                    assert_eq!(block.buffer(), !1 as $type);
                 }
 
                 #[test]
@@ -261,11 +223,11 @@ mod tests {
                     let parameters = Parameters::new("Bitwise");
 
                     let input = Matrix {
-                        data: [[1.0, 42.0], [-1.2, 1.2]],
+                        data: [[1 as $type, 42 as $type], [-1i8 as $type, 1 as $type]],
                     };
                     let res = block.process(&parameters, &context, &input);
-                    assert_eq!(res.data, [[-2.0, -43.0], [0.0, -2.0]]);
-                    assert_eq!(block.buffer().data, [[-2.0, -43.0], [0.0, -2.0]]);
+                    assert_eq!(res.data, [[!1 as $type, !42 as $type], [!-1i8 as $type, !1 as $type]]);
+                    assert_eq!(block.buffer().data, [[!1 as $type, !42 as $type], [!-1i8 as $type, !1 as $type]]);
                 }
             }
         };
@@ -273,6 +235,14 @@ mod tests {
 
     test_not_block!(f32);
     test_not_block!(f64);
+    test_not_block!(i64);
+    test_not_block!(u64);
+    test_not_block!(i8);
+    test_not_block!(i16);
+    test_not_block!(i32);
+    test_not_block!(u8);
+    test_not_block!(u16);
+    test_not_block!(u32);
 
     #[test]
     fn test_scalar_bool() {
