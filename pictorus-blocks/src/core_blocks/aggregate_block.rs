@@ -96,9 +96,8 @@ where
             }
             AggregateMethod::Median => {
                 let mut sorted = *input;
-                let sorted = sorted.data.as_flattened_mut();
                 sorted.sort_unstable_by(|a, b| {
-                    a.partial_cmp(b).expect("NaNs and INFs are not supported")
+                    a.partial_cmp(b).expect("NaNs are not supported")
                 });
                 let mid = sorted.len() / 2;
                 if sorted.len() % 2 == 0 {
