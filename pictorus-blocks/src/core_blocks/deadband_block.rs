@@ -1,6 +1,7 @@
+use num_traits::Zero;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
-use crate::traits::MatrixOps;
+use crate::{traits::MatrixOps, Scalar};
 
 pub struct Parameters<T> {
     // Lower limit of the deadband
@@ -36,60 +37,52 @@ where
     }
 }
 
-macro_rules! impl_deadband_block {
-    ($type:ty) => {
-        impl ProcessBlock for DeadbandBlock<$type> {
-            type Inputs = $type;
-            type Output = $type;
-            type Parameters = Parameters<$type>;
+impl<S: Scalar + PartialOrd<S> + Default + Zero> ProcessBlock for DeadbandBlock<S> {
+    type Inputs = S;
+    type Output = S;
+    type Parameters = Parameters<S>;
 
-            fn process(
-                &mut self,
-                parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                input: PassBy<Self::Inputs>,
-            ) -> PassBy<'_, Self::Output> {
-                let in_deadband = input < parameters.upper_limit && input > parameters.lower_limit;
-                let res = if in_deadband { 0.0 } else { input };
-                self.buffer = res;
-                self.buffer
-            }
+    fn process(
+        &mut self,
+        parameters: &Self::Parameters,
+        _context: &dyn pictorus_traits::Context,
+        input: PassBy<Self::Inputs>,
+    ) -> PassBy<'_, Self::Output> {
+        let in_deadband = input < parameters.upper_limit && input > parameters.lower_limit;
+        let res = if in_deadband { S::zero() } else { input };
+        self.buffer = res;
+        self.buffer
+    }
 
-            fn buffer(&self) -> PassBy<'_, Self::Output> {
-                self.buffer.as_by()
-            }
-        }
-
-        impl<const ROWS: usize, const COLS: usize> ProcessBlock
-            for DeadbandBlock<Matrix<ROWS, COLS, $type>>
-        {
-            type Inputs = Matrix<ROWS, COLS, $type>;
-            type Output = Matrix<ROWS, COLS, $type>;
-            type Parameters = Parameters<$type>;
-
-            fn process(
-                &mut self,
-                parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                input: PassBy<Self::Inputs>,
-            ) -> PassBy<'_, Self::Output> {
-                self.buffer = Matrix::zeroed();
-                input.for_each(|v, c, r| {
-                    let in_deadband = v < parameters.upper_limit && v > parameters.lower_limit;
-                    self.buffer.data[c][r] = if in_deadband { 0.0 } else { v };
-                });
-                &self.buffer
-            }
-
-            fn buffer(&self) -> PassBy<'_, Self::Output> {
-                self.buffer.as_by()
-            }
-        }
-    };
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
+impl<S: Scalar + PartialOrd<S> + Default + Zero, const NROWS: usize, const NCOLS: usize>
+    ProcessBlock for DeadbandBlock<Matrix<NROWS, NCOLS, S>>
+{
+    type Inputs = Matrix<NROWS, NCOLS, S>;
+    type Output = Matrix<NROWS, NCOLS, S>;
+    type Parameters = Parameters<S>;
 
-impl_deadband_block!(f32);
-impl_deadband_block!(f64);
+    fn process(
+        &mut self,
+        parameters: &Self::Parameters,
+        _context: &dyn pictorus_traits::Context,
+        input: PassBy<Self::Inputs>,
+    ) -> PassBy<'_, Self::Output> {
+        self.buffer = Matrix::zeroed();
+        input.for_each(|v, c, r| {
+            let in_deadband = v < parameters.upper_limit && v > parameters.lower_limit;
+            self.buffer.data[c][r] = if in_deadband { S::zero() } else { v };
+        });
+        &self.buffer
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -107,62 +100,79 @@ mod tests {
     }
 
     macro_rules! test_deadband_block {
+         // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_deadband_block!($type);
+            test_deadband_block!($($other_types),*);
+        };
         ($type:ty) => {
             paste! {
                 #[test]
                 fn [<test_deadband_block_ $type>]() {
+                    let (lower_limit,  upper_limit) = if (<$type>::MIN as f64).lt(&0.0) {
+                        ((0 - 10) as $type,  10 as $type)
+                    } else {
+                        (10 as $type,  20 as $type)
+                    };
+
+                    const ZERO: $type = 0 as $type;
                     let mut block = DeadbandBlock::<$type>::default();
-                    let parameters = Parameters::new(-1.0, 1.0);
+                    let parameters = Parameters::new(lower_limit, upper_limit);
                     let ctxt = StubContext::default();
 
                     // Anything exactly at the deadband limits maintains data
-                    let input = -1.0;
+                    let input = lower_limit;
                     let output = block.process(&parameters, &ctxt, input);
-                    assert_eq!(output, -1.0);
+                    assert_eq!(output, lower_limit);
                     assert_eq!(block.buffer(), output);
 
-                    let input = 1.0;
+                    let input = upper_limit;
                     let output = block.process(&parameters, &ctxt, input);
-                    assert_eq!(output, 1.0);
+                    assert_eq!(output, upper_limit);
 
                     // Anything between the deadband is set to zero.
-                    let input = -0.999;
+                    let input = lower_limit + 1 as $type;
                     let output = block.process(&parameters, &ctxt, input);
-                    assert_eq!(output, 0.0);
+                    assert_eq!(output, ZERO);
 
-                    let input = 0.0;
+                    let input = ZERO;
                     let output = block.process(&parameters, &ctxt, input);
-                    assert_eq!(output, 0.0);
+                    assert_eq!(output, ZERO);
 
-                    let input = 0.999;
+                    let input = upper_limit - 1 as $type;
                     let output = block.process(&parameters, &ctxt, input);
-                    assert_eq!(output, 0.0);
+                    assert_eq!(output, ZERO);
                 }
 
                 #[test]
                 fn [<test_deadband_block_matrix_ $type>]() {
+                    let (lower_limit,  upper_limit) = if (<$type>::MIN as f64).lt(&0.0) {
+                        ((0-10) as $type,  10 as $type)
+                    } else {
+                        (10 as $type,  20 as $type)
+                    };
+                    const ZERO: $type = 0 as $type;
                     let mut block = DeadbandBlock::<Matrix<2, 2, $type>>::default();
-                    let parameters = Parameters::new(-1.0, 1.0);
+                    let parameters = Parameters::new(lower_limit, upper_limit);
                     let ctxt = StubContext::default();
 
                     // Anything exactly at the deadband limits maintains data
                     let input = Matrix {
-                        data: [[-1.0, 1.0], [1.0, -1.0]],
+                        data: [[lower_limit, upper_limit], [upper_limit, lower_limit]],
                     };
                     let output = block.process(&parameters, &ctxt, &input);
-                    assert_eq!(output.data, [[-1.0, 1.0], [1.0, -1.0]]);
+                    assert_eq!(output.data, [[lower_limit, upper_limit], [upper_limit, lower_limit]]);
 
                     // Anything between the deadband is set to zero.
                     let input = Matrix {
-                        data: [[-0.999, 0.0], [0.0, 0.999]],
+                        data: [[lower_limit + 1 as $type, ZERO], [ZERO, upper_limit - 1 as $type]],
                     };
                     let output = block.process(&parameters, &ctxt, &input);
-                    assert_eq!(output.data, [[0.0, 0.0], [0.0, 0.0]]);
+                    assert_eq!(output.data, [[ZERO, ZERO], [ZERO, ZERO]]);
                 }
             }
         };
     }
 
-    test_deadband_block!(f32);
-    test_deadband_block!(f64);
+    test_deadband_block!(f32, f64, i8, i16, i32, i64, u8, u16, u32, u64);
 }

@@ -113,8 +113,11 @@ impl_compare_to_value_block!(i16);
 impl_compare_to_value_block!(u16);
 impl_compare_to_value_block!(i32);
 impl_compare_to_value_block!(u32);
+impl_compare_to_value_block!(i64);
+impl_compare_to_value_block!(u64);
 impl_compare_to_value_block!(f32);
 impl_compare_to_value_block!(f64);
+impl_compare_to_value_block!(bool);
 
 #[cfg(test)]
 mod tests {
@@ -133,10 +136,15 @@ mod tests {
     }
 
     macro_rules! test_compare_to_value {
-        ($name:ident, $type:ty) => {
+         // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_compare_to_value!($type);
+            test_compare_to_value!($($other_types),*);
+        };
+        ($type:ty) => {
             paste! {
                 #[test]
-                fn [<test_compare_by_value_scalar_ $name>]() {
+                fn [<test_compare_by_value_scalar_ $type>]() {
                     /*
                         Compares an input of 1 to a scalar value of 1 for all comparison types.
                     */
@@ -176,7 +184,7 @@ mod tests {
                 }
 
                 #[test]
-                fn [<test_compare_by_value_matrix_ $name>]() {
+                fn [<test_compare_by_value_matrix_ $type>]() {
                     /*
                         Compares an input [[1, 0], [0, 2]] to a scalar value of 1 for all comparison types.
                     */
@@ -239,12 +247,59 @@ mod tests {
         };
     }
 
-    test_compare_to_value!(i8, i8);
-    test_compare_to_value!(u8, u8);
-    test_compare_to_value!(i16, i16);
-    test_compare_to_value!(u16, u16);
-    test_compare_to_value!(i32, i32);
-    test_compare_to_value!(u32, u32);
-    test_compare_to_value!(f32, f32);
-    test_compare_to_value!(f64, f64);
+    test_compare_to_value!(i8, u8, i16, u16, i32, u32, i64, u64, f32, f64);
+
+    #[test]
+    #[allow(clippy::bool_assert_comparison)]
+    fn test_compare_to_value_bool() {
+        let mut parameters = Parameter::new("Equal", true);
+        let context = StubContext::default();
+
+        let mut block = CompareToValueBlock::<bool>::default();
+
+        let output = block.process(&parameters, &context, true);
+        assert_eq!(output, true);
+        assert_eq!(block.buffer(), output);
+
+        parameters.comparison_type = ComparisonType::NotEqual;
+        let output = block.process(&parameters, &context, false);
+        assert_eq!(output, true);
+        assert_eq!(block.buffer(), true);
+
+        // false < true == true and true < true == false
+        parameters.comparison_type = ComparisonType::LessThan;
+        let output = block.process(&parameters, &context, false);
+        assert_eq!(output, true);
+        assert_eq!(block.buffer(), true);
+        let output = block.process(&parameters, &context, true);
+        assert_eq!(output, false);
+        assert_eq!(block.buffer(), false);
+
+        // false <= true == true and true <= true == true
+        parameters.comparison_type = ComparisonType::LessOrEqual;
+        let output = block.process(&parameters, &context, false);
+        assert_eq!(output, true);
+        assert_eq!(block.buffer(), true);
+        let output = block.process(&parameters, &context, true);
+        assert_eq!(output, true);
+        assert_eq!(block.buffer(), true);
+
+        // false > true == false and true > true == false
+        parameters.comparison_type = ComparisonType::GreaterThan;
+        let output = block.process(&parameters, &context, false);
+        assert_eq!(output, false);
+        assert_eq!(block.buffer(), false);
+        let output = block.process(&parameters, &context, true);
+        assert_eq!(output, false);
+        assert_eq!(block.buffer(), false);
+
+        // false >= true == false and true >= true == true
+        parameters.comparison_type = ComparisonType::GreaterOrEqual;
+        let output = block.process(&parameters, &context, false);
+        assert_eq!(output, false);
+        assert_eq!(block.buffer(), false);
+        let output = block.process(&parameters, &context, true);
+        assert_eq!(output, true);
+        assert_eq!(block.buffer(), true);
+    }
 }

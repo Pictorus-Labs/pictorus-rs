@@ -1,6 +1,6 @@
-use crate::matrix_ext::MatrixNalgebraExt;
-use num_traits::Float;
-use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
+use crate::traits::Scalar;
+use num_traits::Signed;
+use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 pub struct Parameter {}
 
@@ -32,61 +32,56 @@ where
     }
 }
 
-macro_rules! impl_abs_block {
-    ($type:ty) => {
-        impl ProcessBlock for AbsBlock<$type>
-        where
-            $type: Scalar,
-        {
-            type Inputs = $type;
-            type Output = $type;
-            type Parameters = Parameter;
+impl<T: Scalar + Signed> ProcessBlock for AbsBlock<T> {
+    type Inputs = T;
+    type Output = T;
+    type Parameters = Parameter;
 
-            fn process<'b>(
-                &'b mut self,
-                _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
-            ) -> pictorus_traits::PassBy<'b, Self::Output> {
-                let output = Float::abs(inputs);
-                self.buffer = output;
-                output
-            }
+    fn process<'b>(
+        &'b mut self,
+        _parameters: &Self::Parameters,
+        _context: &dyn pictorus_traits::Context,
+        inputs: PassBy<'_, Self::Inputs>,
+    ) -> PassBy<'b, Self::Output> {
+        let output = Signed::abs(&inputs);
+        self.buffer = output;
+        output
+    }
 
-            fn buffer(&self) -> PassBy<'_, Self::Output> {
-                self.buffer.as_by()
-            }
-        }
-
-        impl<const ROWS: usize, const COLS: usize> ProcessBlock
-            for AbsBlock<Matrix<ROWS, COLS, $type>>
-        where
-            $type: Scalar,
-        {
-            type Inputs = Matrix<ROWS, COLS, $type>;
-            type Output = Matrix<ROWS, COLS, $type>;
-            type Parameters = Parameter;
-
-            fn process(
-                &mut self,
-                _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
-                input: PassBy<Self::Inputs>,
-            ) -> PassBy<'_, Self::Output> {
-                let abs = input.as_view().abs();
-                self.buffer = Matrix::<ROWS, COLS, $type>::from_view(&abs.as_view());
-                &self.buffer
-            }
-
-            fn buffer(&self) -> PassBy<'_, Self::Output> {
-                self.buffer.as_by()
-            }
-        }
-    };
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
 }
 
-impl_abs_block!(f32);
-impl_abs_block!(f64);
+impl<const ROWS: usize, const COLS: usize, T: Scalar + Signed> ProcessBlock
+    for AbsBlock<Matrix<ROWS, COLS, T>>
+{
+    type Inputs = Matrix<ROWS, COLS, T>;
+    type Output = Matrix<ROWS, COLS, T>;
+    type Parameters = Parameter;
+
+    fn process(
+        &mut self,
+        _parameters: &Self::Parameters,
+        _context: &dyn pictorus_traits::Context,
+        input: PassBy<Self::Inputs>,
+    ) -> PassBy<'_, Self::Output> {
+        for (elem, &val) in self
+            .buffer
+            .data
+            .as_flattened_mut()
+            .iter_mut()
+            .zip(input.data.as_flattened().iter())
+        {
+            *elem = val.abs();
+        }
+        &self.buffer
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.buffer.as_by()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -96,10 +91,16 @@ mod tests {
     use paste::paste;
 
     macro_rules! test_abs_block {
-        ($name:ident, $type:ty) => {
+        ( $type:ty, $($other_types:ty),* ) => {
+            test_abs_block!($type);
+            $(
+                test_abs_block!($other_types);
+            )*
+        };
+        ( $type:ty) => {
             paste! {
                 #[test]
-                fn [<test_abs_block_default_buffer_ $name>]() {
+                fn [<test_abs_block_default_buffer_ $type>]() {
                     let block = AbsBlock::<$type>::default();
                     assert_eq!(block.buffer(), <$type>::default());
 
@@ -108,7 +109,7 @@ mod tests {
                 }
 
                 #[test]
-                fn [<test_abs_block_scalar_ $name>]()
+                fn [<test_abs_block_scalar_ $type>]()
                 {
                     let mut block = AbsBlock::<$type>::default();
                     let context = StubContext::default();
@@ -123,7 +124,7 @@ mod tests {
                 }
 
                 #[test]
-                fn [<test_abs_block_vector_1x2_ $name>]() {
+                fn [<test_abs_block_vector_1x2_ $type>]() {
                     let mut block = AbsBlock::<Matrix<1, 2, $type>>::default();
                     let context = StubContext::default();
                     let input = Matrix {
@@ -139,7 +140,7 @@ mod tests {
                 }
 
                 #[test]
-                fn [<test_abs_block_vector_2x1_ $name>]() {
+                fn [<test_abs_block_vector_2x1_ $type>]() {
                     let mut block = AbsBlock::<Matrix<2, 1, $type>>::default();
                     let context = StubContext::default();
                     let input = Matrix {
@@ -155,7 +156,7 @@ mod tests {
                 }
 
                 #[test]
-                fn [<test_abs_block_matrix_ $name>]() {
+                fn [<test_abs_block_matrix_ $type>]() {
                     let mut block = AbsBlock::<Matrix<2, 2, $type>>::default();
                     let context = StubContext::default();
                     let input = Matrix {
@@ -178,7 +179,48 @@ mod tests {
             }
         };
     }
+    test_abs_block!(f32, f64, i8, i16, i32, i64);
 
-    test_abs_block!(f32, f32);
-    test_abs_block!(f64, f64);
+    // Two's complement signed integers represent -2^(n-1) to 2^(n-1) - 1, so |iN::MIN|
+    // exceeds iN::MAX and cannot be represented (e.g. -128 is i8::MIN but i8::MAX is 127).
+    // Every signed integer type therefore panics on abs(MIN), while abs(MAX) is always fine.
+    //
+    // Note: the num_traits docs say `Signed::abs` should return `::MIN` in this case, but it
+    // panics instead (in both debug and release, since num_traits is compiled with
+    // overflow-checks): https://docs.rs/num-traits/latest/num_traits/sign/trait.Signed.html#tymethod.abs
+    macro_rules! test_abs_signed_limits {
+        // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_abs_signed_limits!($type);
+            test_abs_signed_limits!($($other_types),*);
+        };
+        ($type:ty) => {
+            paste! {
+                #[test]
+                #[should_panic]
+                fn [<overflow_quirk_min_ $type>]() {
+                    let mut block = AbsBlock::<$type>::default();
+                    let context = StubContext::default();
+
+                    let output = block.process(&Parameter::new(), &context, <$type>::MIN);
+                    assert_eq!(output, <$type>::MIN);
+                }
+
+                #[test]
+                fn [<abs_max_works_ $type>]() {
+                    let mut block = AbsBlock::<$type>::default();
+                    let context = StubContext::default();
+
+                    let output = block.process(&Parameter::new(), &context, <$type>::MAX);
+                    assert_eq!(output, <$type>::MAX);
+
+                    // MIN + 1 is the most negative value whose absolute value is representable
+                    let output = block.process(&Parameter::new(), &context, <$type>::MIN + 1);
+                    assert_eq!(output, <$type>::MAX);
+                }
+            }
+        };
+    }
+
+    test_abs_signed_limits!(i8, i16, i32, i64);
 }

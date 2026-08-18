@@ -109,8 +109,8 @@ pub trait ApplyInto<C: Scalar, const N: usize>: Pass + DefaultStorage {
     );
 }
 
-impl<C: Scalar, const N: usize> ApplyInto<C, N> for C {
-    fn apply_into(condition: C, cases: &[C; N], inputs: &[PassBy<C>; N], dest: &mut C) {
+impl<C: Scalar, S: Scalar, const N: usize> ApplyInto<C, N> for S {
+    fn apply_into(condition: C, cases: &[C; N], inputs: &[PassBy<S>; N], dest: &mut S) {
         for (idx, case) in cases.iter().enumerate() {
             if condition == *case {
                 let res = inputs[idx];
@@ -123,14 +123,14 @@ impl<C: Scalar, const N: usize> ApplyInto<C, N> for C {
     }
 }
 
-impl<C: Scalar, const NROWS: usize, const NCOLS: usize, const N: usize> ApplyInto<C, N>
-    for Matrix<NROWS, NCOLS, C>
+impl<C: Scalar, S: Scalar, const NROWS: usize, const NCOLS: usize, const N: usize> ApplyInto<C, N>
+    for Matrix<NROWS, NCOLS, S>
 {
     fn apply_into(
         condition: C,
         cases: &[C; N],
-        inputs: &[PassBy<Matrix<NROWS, NCOLS, C>>; N],
-        dest: &mut Matrix<NROWS, NCOLS, C>,
+        inputs: &[PassBy<Matrix<NROWS, NCOLS, S>>; N],
+        dest: &mut Matrix<NROWS, NCOLS, S>,
     ) {
         for (idx, case) in cases.iter().enumerate() {
             if condition == *case {
@@ -414,6 +414,70 @@ mod tests {
         let expected: Matrix<3, 3, f64> = Matrix::from_element(2.0);
         assert_eq!(output, &expected);
         assert_eq!(block.buffer(), &expected);
+    }
+
+    #[test]
+    fn test_switch_block_bool_condition_scalars() {
+        let ctxt = StubContext::default();
+
+        let mut block = SwitchBlock::<(bool, f32, f32)>::default();
+        let parameters = Parameters::new([true, false]);
+
+        let input = (true, 1.5f32, 2.5f32);
+        let output = block.process(&parameters, &ctxt, input);
+        assert_eq!(output, 1.5);
+        assert_eq!(block.buffer(), output);
+
+        let input = (false, 1.5f32, 2.5f32);
+        let output = block.process(&parameters, &ctxt, input);
+        assert_eq!(output, 2.5);
+        assert_eq!(block.buffer(), output);
+    }
+
+    #[test]
+    fn test_switch_block_int_condition_scalars() {
+        let ctxt = StubContext::default();
+
+        let mut block = SwitchBlock::<(u8, f64, f64, f64)>::default();
+        let parameters = Parameters::new([10u8, 20u8, 30u8]);
+
+        let input = (20u8, 1.0, 2.0, 3.0);
+        let output = block.process(&parameters, &ctxt, input);
+        assert_eq!(output, 2.0);
+        assert_eq!(block.buffer(), output);
+
+        // No match falls through to the last input
+        let input = (99u8, 1.0, 2.0, 3.0);
+        let output = block.process(&parameters, &ctxt, input);
+        assert_eq!(output, 3.0);
+        assert_eq!(block.buffer(), output);
+    }
+
+    #[test]
+    fn test_switch_block_int_condition_matrices() {
+        let ctxt = StubContext::default();
+
+        let mut block = SwitchBlock::<(i32, Matrix<2, 2, f32>, Matrix<2, 2, f32>)>::default();
+        let parameters = Parameters::new([-1, 1]);
+
+        let input = (-1, &Matrix::from_element(1.0), &Matrix::from_element(2.0));
+        let output = block.process(&parameters, &ctxt, input);
+        let expected: Matrix<2, 2, f32> = Matrix::from_element(1.0);
+        assert_eq!(output, &expected);
+        assert_eq!(block.buffer(), &expected);
+    }
+
+    #[test]
+    fn test_switch_block_int_condition_bytes() {
+        let ctxt = StubContext::default();
+
+        let mut block = SwitchBlock::<(u16, ByteSliceSignal, ByteSliceSignal)>::default();
+        let parameters = Parameters::new([100u16, 200u16]);
+
+        let input = (200u16, b"foo".as_slice(), b"bar".as_slice());
+        let output = block.process(&parameters, &ctxt, input);
+        assert_eq!(output, b"bar");
+        assert_eq!(block.buffer(), b"bar".as_slice());
     }
 
     #[test]

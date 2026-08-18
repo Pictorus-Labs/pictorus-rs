@@ -1,5 +1,6 @@
-use crate::matrix_ext::MatrixNalgebraExt;
-use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock, Scalar};
+use crate::traits::Scalar;
+use core::ops::{Add, AddAssign, Sub, SubAssign};
+use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Sums (adds or subtracts) all inputs together.
 pub struct SumBlock<T: Summable> {
@@ -39,18 +40,11 @@ where
     }
 }
 
-trait SumScalar:
-    Scalar
-    + nalgebra::Scalar
-    + core::ops::Neg<Output = Self>
-    + core::ops::Add<Output = Self>
-    + core::ops::Sub<Output = Self>
-    + core::ops::AddAssign
-    + core::ops::SubAssign
+trait SumScalar: Scalar + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign {}
+impl<S> SumScalar for S where
+    S: Scalar + Add<Output = S> + Sub<Output = S> + AddAssign + SubAssign
 {
 }
-impl SumScalar for f32 {}
-impl SumScalar for f64 {}
 
 /// This trait is used to determine the output type of a sum operation
 /// between two types, most importantly it can be used recursively. To get the output type for
@@ -176,13 +170,15 @@ impl<const R: usize, const C: usize, S: SumScalar> SumInto<Matrix<R, C, S>> for 
         dest: &'a mut Option<Matrix<R, C, S>>,
     ) -> PassBy<'a, Matrix<R, C, S>> {
         let dest = dest.get_or_insert(Matrix::<R, C, S>::zeroed());
-        let orig_dest = dest.as_view().clone_owned();
-        match sum_type {
-            SumType::Addition => {
-                orig_dest.add_to(&input.as_view(), &mut dest.as_view_mut());
-            }
-            SumType::Subtraction => {
-                orig_dest.sub_to(&input.as_view(), &mut dest.as_view_mut());
+        for (elem, &val) in dest
+            .data
+            .as_flattened_mut()
+            .iter_mut()
+            .zip(input.data.as_flattened().iter())
+        {
+            match sum_type {
+                SumType::Addition => *elem += val,
+                SumType::Subtraction => *elem -= val,
             }
         }
         dest
@@ -197,16 +193,12 @@ impl<const R: usize, const C: usize, S: SumScalar> SumInto<Matrix<R, C, S>> for 
         dest: &'a mut Option<Matrix<R, C, S>>,
     ) -> PassBy<'a, Matrix<R, C, S>> {
         let dest = dest.get_or_insert(Matrix::<R, C, S>::zeroed());
-        let mut orig_dest = dest.as_view().clone_owned();
-        match sum_type {
-            SumType::Addition => {
-                orig_dest = orig_dest.add_scalar(input);
-            }
-            SumType::Subtraction => {
-                orig_dest = orig_dest.add_scalar(-input);
+        for elem in dest.data.as_flattened_mut() {
+            match sum_type {
+                SumType::Addition => *elem += input,
+                SumType::Subtraction => *elem -= input,
             }
         }
-        dest.as_view_mut().copy_from(&orig_dest);
         dest
     }
 }
@@ -469,6 +461,7 @@ mod tests {
     use super::*;
     use crate::testing::StubContext;
     use approx::assert_relative_eq;
+    use paste::paste;
 
     #[test]
     fn test_sum_default_buffer_no_panic() {
@@ -799,6 +792,134 @@ mod tests {
             result.data.as_flattened(),
             [[11.0, 13.0], [15.0, 17.0]].as_flattened()
         );
+    }
+
+    macro_rules! test_sum_types {
+        // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_sum_types!($type);
+            test_sum_types!($($other_types),*);
+        };
+        ($type:ty) => {
+            paste! {
+                #[test]
+                fn [<test_sum_scalars_ $type>]() {
+                    let stub_context = StubContext::default();
+                    let mut block = SumBlock::<($type, $type)>::default();
+                    let input = (7 as $type, 3 as $type);
+
+                    let parameters = Parameters {
+                        operations: [SumType::Addition, SumType::Addition],
+                    };
+                    let result = block.process(&parameters, &stub_context, input);
+                    assert_eq!(result, 10 as $type);
+                    assert_eq!(block.buffer(), result);
+
+                    let parameters = Parameters {
+                        operations: [SumType::Addition, SumType::Subtraction],
+                    };
+                    let result = block.process(&parameters, &stub_context, input);
+                    assert_eq!(result, 4 as $type);
+                    assert_eq!(block.buffer(), result);
+                }
+
+                #[test]
+                fn [<test_sum_matrices_ $type>]() {
+                    let stub_context = StubContext::default();
+                    let mut block =
+                        SumBlock::<(Matrix<2, 2, $type>, Matrix<2, 2, $type>)>::default();
+                    let input = (
+                        &Matrix {
+                            data: [[5 as $type, 6 as $type], [7 as $type, 8 as $type]],
+                        },
+                        &Matrix {
+                            data: [[1 as $type, 2 as $type], [3 as $type, 4 as $type]],
+                        },
+                    );
+
+                    let parameters = Parameters {
+                        operations: [SumType::Addition, SumType::Addition],
+                    };
+                    let result = block.process(&parameters, &stub_context, input);
+                    assert_eq!(
+                        result.data,
+                        [[6 as $type, 8 as $type], [10 as $type, 12 as $type]]
+                    );
+
+                    let parameters = Parameters {
+                        operations: [SumType::Addition, SumType::Subtraction],
+                    };
+                    let result = block.process(&parameters, &stub_context, input);
+                    assert_eq!(
+                        result.data,
+                        [[4 as $type, 4 as $type], [4 as $type, 4 as $type]]
+                    );
+                }
+
+                #[test]
+                fn [<test_sum_mixed_ $type>]() {
+                    let stub_context = StubContext::default();
+                    let mut block = SumBlock::<($type, Matrix<2, 2, $type>)>::default();
+                    let input = (
+                        3 as $type,
+                        &Matrix {
+                            data: [[1 as $type, 2 as $type], [3 as $type, 4 as $type]],
+                        },
+                    );
+
+                    let parameters = Parameters {
+                        operations: [SumType::Addition, SumType::Addition],
+                    };
+                    let result = block.process(&parameters, &stub_context, input);
+                    assert_eq!(
+                        result.data,
+                        [[4 as $type, 5 as $type], [6 as $type, 7 as $type]]
+                    );
+                }
+            }
+        };
+    }
+
+    test_sum_types!(f32, f64, i8, i16, i32, i64, u8, u16, u32, u64);
+
+    #[test]
+    #[should_panic]
+    fn unsigned_subtraction_underflow_panics() {
+        // 3 - 7 underflows u8; native arithmetic panics in debug builds (wraps in release).
+        let stub_context = StubContext::default();
+        let mut block = SumBlock::<(u8, u8)>::default();
+        let parameters = Parameters {
+            operations: [SumType::Addition, SumType::Subtraction],
+        };
+        let result = block.process(&parameters, &stub_context, (3u8, 7u8));
+        assert_eq!(result, 252);
+    }
+
+    #[test]
+    #[should_panic]
+    fn signed_subtraction_negative_overflow_panics() {
+        // -100 - 100 = -200 underflows i8::MIN; native integer subtraction panics in
+        // debug builds (wraps in release).
+        let stub_context = StubContext::default();
+        let mut block = SumBlock::<(i8, i8)>::default();
+        let parameters = Parameters {
+            operations: [SumType::Addition, SumType::Subtraction],
+        };
+        let result = block.process(&parameters, &stub_context, (-100i8, 100i8));
+        assert_eq!(result, 56);
+    }
+
+    #[test]
+    #[should_panic]
+    fn addition_overflow_panics() {
+        // 200 + 100 overflows u8; native arithmetic panics in debug builds (wraps in release).
+        let stub_context = StubContext::default();
+        let mut block = SumBlock::<(u8, u8)>::default();
+        let parameters = Parameters {
+            operations: [SumType::Addition, SumType::Addition],
+        };
+        let result = block.process(&parameters, &stub_context, (200u8, 100u8));
+        assert_eq!(result, 44);
     }
 
     #[test]
