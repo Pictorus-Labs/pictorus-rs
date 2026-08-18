@@ -181,15 +181,46 @@ mod tests {
     }
     test_abs_block!(f32, f64, i8, i16, i32, i64);
 
-    #[test]
-    #[should_panic]
-    fn overflow_quirk() {
-        // According to num_traits docs this should return `::MIN` for signed integers, but instead it appears to panic:
-        // https://docs.rs/num-traits/latest/num_traits/sign/trait.Signed.html#tymethod.abs
-        let mut block = AbsBlock::<i8>::default();
-        let context = StubContext::default();
+    // Two's complement signed integers represent -2^(n-1) to 2^(n-1) - 1, so |iN::MIN|
+    // exceeds iN::MAX and cannot be represented (e.g. -128 is i8::MIN but i8::MAX is 127).
+    // Every signed integer type therefore panics on abs(MIN), while abs(MAX) is always fine.
+    //
+    // Note: the num_traits docs say `Signed::abs` should return `::MIN` in this case, but it
+    // panics instead (in both debug and release, since num_traits is compiled with
+    // overflow-checks): https://docs.rs/num-traits/latest/num_traits/sign/trait.Signed.html#tymethod.abs
+    macro_rules! test_abs_signed_limits {
+        // Convenience call to generate a call to the main macro for every type in the list
+        ($type:ty, $($other_types:ty),*) => {
+            test_abs_signed_limits!($type);
+            test_abs_signed_limits!($($other_types),*);
+        };
+        ($type:ty) => {
+            paste! {
+                #[test]
+                #[should_panic]
+                fn [<overflow_quirk_min_ $type>]() {
+                    let mut block = AbsBlock::<$type>::default();
+                    let context = StubContext::default();
 
-        let output = block.process(&Parameter::new(), &context, i8::MIN);
-        assert_eq!(output, -128i8);
+                    let output = block.process(&Parameter::new(), &context, <$type>::MIN);
+                    assert_eq!(output, <$type>::MIN);
+                }
+
+                #[test]
+                fn [<abs_max_works_ $type>]() {
+                    let mut block = AbsBlock::<$type>::default();
+                    let context = StubContext::default();
+
+                    let output = block.process(&Parameter::new(), &context, <$type>::MAX);
+                    assert_eq!(output, <$type>::MAX);
+
+                    // MIN + 1 is the most negative value whose absolute value is representable
+                    let output = block.process(&Parameter::new(), &context, <$type>::MIN + 1);
+                    assert_eq!(output, <$type>::MAX);
+                }
+            }
+        };
     }
+
+    test_abs_signed_limits!(i8, i16, i32, i64);
 }

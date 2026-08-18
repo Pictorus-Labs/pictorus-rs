@@ -897,6 +897,20 @@ mod tests {
 
     #[test]
     #[should_panic]
+    fn signed_subtraction_negative_overflow_panics() {
+        // -100 - 100 = -200 underflows i8::MIN; native integer subtraction panics in
+        // debug builds (wraps in release).
+        let stub_context = StubContext::default();
+        let mut block = SumBlock::<(i8, i8)>::default();
+        let parameters = Parameters {
+            operations: [SumType::Addition, SumType::Subtraction],
+        };
+        let result = block.process(&parameters, &stub_context, (-100i8, 100i8));
+        assert_eq!(result, 56);
+    }
+
+    #[test]
+    #[should_panic]
     fn addition_overflow_panics() {
         // 200 + 100 overflows u8; native arithmetic panics in debug builds (wraps in release).
         let stub_context = StubContext::default();

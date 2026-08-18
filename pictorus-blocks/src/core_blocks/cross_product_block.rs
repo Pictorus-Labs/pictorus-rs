@@ -202,6 +202,25 @@ mod tests {
 
     #[test]
     #[should_panic]
+    fn multiplication_overflow_panics() {
+        // The first output element computes 16 * 16 = 256, which overflows i8 in the
+        // multiply step (before any subtraction). Native arithmetic panics in debug
+        // builds (wraps in release).
+        let context = StubContext::default();
+        let p = Parameters::new();
+        let mut cross_block = CrossProductBlock::<(Matrix<1, 3, i8>, Matrix<1, 3, i8>)>::default();
+        let input1: Matrix<1, 3, i8> = Matrix {
+            data: [[0], [16], [0]],
+        };
+        let input2: Matrix<1, 3, i8> = Matrix {
+            data: [[0], [0], [16]],
+        };
+        let output = cross_block.process(&p, &context, (&input1, &input2));
+        assert_eq!(output.data, [[0], [0], [0]]);
+    }
+
+    #[test]
+    #[should_panic]
     fn underflow_panics_unsigned() {
         // y cross x = -z, which underflows unsigned types and panics in debug builds
         // (wraps in release).

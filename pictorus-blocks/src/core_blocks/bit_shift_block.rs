@@ -214,4 +214,29 @@ mod tests {
     }
 
     test_bit_shift!(f64, f32, i8, i16, i32, i64, u8, u16, u32, u64);
+
+    #[test]
+    #[should_panic]
+    fn shift_amount_exceeds_width_panics() {
+        // Shifting by an amount >= the type's bit width panics in debug builds
+        // (the shift amount wraps in release).
+        let mut block = BitShiftBlock::<u8>::default();
+        let context = StubContext::default();
+        let params = Parameters::new("Left", 8);
+        let output = block.process(&params, &context, 1u8);
+        assert_eq!(output, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn float_shift_amount_exceeds_cast_width_panics() {
+        // Floats shift through a cast to i32 (f32) / i64 (f64), so the panic threshold
+        // is the *cast* integer type's bit width — 32 for f32 — not anything about the
+        // float itself. Panics in debug builds, wraps in release.
+        let mut block = BitShiftBlock::<f32>::default();
+        let context = StubContext::default();
+        let params = Parameters::new("Left", 32);
+        let output = block.process(&params, &context, 1.0f32);
+        assert_eq!(output, 0.0);
+    }
 }

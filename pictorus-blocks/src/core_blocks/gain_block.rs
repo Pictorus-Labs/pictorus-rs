@@ -3,6 +3,9 @@ use core::ops::Mul;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Multiplies the input by a gain factor.
+///
+/// The gain parameter is the same type as the input signal (the element type for
+/// matrix signals). To apply a gain of a different type, cast the input signal first.
 pub struct GainBlock<T>
 where
     T: Apply,
@@ -169,5 +172,18 @@ mod tests {
 
         let output = block.process(&parameters, &context, 128u8);
         assert_eq!(output, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn negative_overflow_panics() {
+        // -100 * 2 = -200 underflows i8::MIN; native integer multiplication panics in
+        // debug builds (wraps in release).
+        let mut block = GainBlock::<i8>::default();
+        let parameters = Parameters::new(2i8);
+        let context = StubContext::default();
+
+        let output = block.process(&parameters, &context, -100i8);
+        assert_eq!(output, 56);
     }
 }

@@ -414,6 +414,18 @@ mod tests {
 
     #[test]
     #[should_panic]
+    fn int_multiply_negative_overflow_panics() {
+        // -100 * 2 = -200 underflows i8::MIN; native integer multiplication panics in
+        // debug builds (wraps in release).
+        let context = StubContext::default();
+        let mut block = ProductBlock::<(i8, i8), ComponentWise>::default();
+        let parameters = ParametersComponentWise::new([1.0, 1.0]);
+        let output = block.process(&parameters, &context, (-100i8, 2i8));
+        assert_eq!(output, 56);
+    }
+
+    #[test]
+    #[should_panic]
     fn matrix_mult_overflow_panics() {
         // Each output element is 16*16 + 16*16 = 512, which overflows u8;
         // panics in debug builds (wraps in release).

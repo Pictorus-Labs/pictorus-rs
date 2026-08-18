@@ -3,6 +3,9 @@ use core::ops::Add;
 use pictorus_traits::{Matrix, Pass, PassBy, ProcessBlock};
 
 /// Outputs the input data with an added bias (offset).
+///
+/// The offset parameter is the same type as the input signal (the element type for
+/// matrix signals). To apply an offset of a different type, cast the input signal first.
 pub struct BiasBlock<T>
 where
     T: Apply,
@@ -181,5 +184,18 @@ mod tests {
 
         let output = block.process(&parameters, &context, u8::MAX);
         assert_eq!(output, u8::MIN);
+    }
+
+    #[test]
+    #[should_panic]
+    fn negative_overflow_panics() {
+        // -100 + -100 = -200 underflows i8::MIN; native integer addition panics in
+        // debug builds (wraps in release).
+        let mut block = BiasBlock::<i8>::default();
+        let parameters = Parameters::new(-100i8);
+        let context = StubContext::default();
+
+        let output = block.process(&parameters, &context, -100i8);
+        assert_eq!(output, 56);
     }
 }

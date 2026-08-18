@@ -312,6 +312,26 @@ mod tests {
     }
 
     #[test]
+    fn test_bytes_pack_block_1_input_u64_beyond_f64_precision() {
+        // A u64 input larger than 2^53 (and above i64::MAX) packs exactly; routing it
+        // through an f64 signal (the only option before int support) would have rounded it.
+        let context = StubContext::default();
+        let params = Parameters::new(&["U64:BigEndian"]);
+        let mut block = BytesPackBlock::<u64>::default();
+        let value = u64::MAX - 1;
+
+        let expected = {
+            let mut expected = Vec::new();
+            expected.write_u64::<byteorder::BigEndian>(value).unwrap();
+            expected
+        };
+
+        let output = block.process(&params, &context, value);
+        assert_eq!(output, expected.as_slice());
+        assert_eq!(block.buffer(), expected.as_slice());
+    }
+
+    #[test]
     fn test_bytes_pack_block_int_truncating_spec() {
         // An input wider than its pack spec truncates with native `as` cast semantics.
         let context = StubContext::default();
