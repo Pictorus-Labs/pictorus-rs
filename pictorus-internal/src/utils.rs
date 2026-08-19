@@ -114,9 +114,18 @@ mod std_utils {
         #[serde(with = "serde_big_array::BigArray")] [BigArrayWrap<NCOLS, T>; NROWS],
     );
 
-    trait LoadableFloat: Scalar + FromStr + DeserializeOwned + 'static {}
-    impl LoadableFloat for f32 {}
-    impl LoadableFloat for f64 {}
+    trait LoadableScalar: Scalar + FromStr + DeserializeOwned + 'static {}
+    impl LoadableScalar for bool {}
+    impl LoadableScalar for u8 {}
+    impl LoadableScalar for i8 {}
+    impl LoadableScalar for u16 {}
+    impl LoadableScalar for i16 {}
+    impl LoadableScalar for u32 {}
+    impl LoadableScalar for i32 {}
+    impl LoadableScalar for u64 {}
+    impl LoadableScalar for i64 {}
+    impl LoadableScalar for f32 {}
+    impl LoadableScalar for f64 {}
 
     // Trait definition for parameters loadable from DiagramParams or env vars
     pub trait LoadableParams: Sized {
@@ -129,7 +138,7 @@ mod std_utils {
         }
     }
 
-    impl<F: LoadableFloat> LoadableParams for F {
+    impl<S: LoadableScalar> LoadableParams for S {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             source.parse().ok()
         }
@@ -183,32 +192,43 @@ mod std_utils {
         }
     }
 
-    impl<const N: usize, F: LoadableFloat> LoadableParams for [F; N]
-    where
-        BigArrayWrap<N, F>: serde::de::DeserializeOwned,
-    {
-        fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
-            // Try and parse as a 1d array
-            if let Ok(parsed) = serde_json::from_str::<BigArrayWrap<N, F>>(source) {
-                return Some(parsed.0);
-            }
-            // If that fails check for scalar special case
-            // We check for a bare scalar, or a 1d array with 1 element,
-            serde_json::from_str::<[F; 1]>(source)
-                .map(|[scalar]| [scalar; N])
-                .or_else(|_| serde_json::from_str::<F>(source).map(|scalar| [scalar; N]))
-                .ok()
-        }
+    // Arrays of every loadable scalar except u8, which keeps its dedicated impl above
+    // with the escaped-bytes fallback (a blanket impl here would conflict with it).
+    macro_rules! impl_loadable_scalar_array {
+        ($($type:ty),+) => {
+            $(
+                impl<const N: usize> LoadableParams for [$type; N]
+                where
+                    BigArrayWrap<N, $type>: serde::de::DeserializeOwned,
+                {
+                    fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
+                        // Try and parse as a 1d array
+                        if let Ok(parsed) = serde_json::from_str::<BigArrayWrap<N, $type>>(source) {
+                            return Some(parsed.0);
+                        }
+                        // If that fails check for scalar special case
+                        // We check for a bare scalar, or a 1d array with 1 element,
+                        serde_json::from_str::<[$type; 1]>(source)
+                            .map(|[scalar]| [scalar; N])
+                            .or_else(|_| {
+                                serde_json::from_str::<$type>(source).map(|scalar| [scalar; N])
+                            })
+                            .ok()
+                    }
+                }
+            )+
+        };
     }
+    impl_loadable_scalar_array!(bool, i8, u16, i16, u32, i32, u64, i64, f32, f64);
 
-    impl<const NROWS: usize, const NCOLS: usize, F: LoadableFloat> LoadableParams
-        for Matrix<NROWS, NCOLS, F>
+    impl<const NROWS: usize, const NCOLS: usize, S: LoadableScalar> LoadableParams
+        for Matrix<NROWS, NCOLS, S>
     where
-        BigMatrixWrap<NROWS, NCOLS, F>: serde::de::DeserializeOwned,
+        BigMatrixWrap<NROWS, NCOLS, S>: serde::de::DeserializeOwned,
     {
         fn parse(source: &str, _default: Option<&Self>) -> Option<Self> {
             // Try and parse as a 2d array
-            if let Ok(parsed) = serde_json::from_str::<BigMatrixWrap<NROWS, NCOLS, F>>(source) {
+            if let Ok(parsed) = serde_json::from_str::<BigMatrixWrap<NROWS, NCOLS, S>>(source) {
                 let mut matrix = Matrix::zeroed();
                 // transpose
                 #[allow(clippy::needless_range_loop)]
@@ -222,10 +242,10 @@ mod std_utils {
             // If that fails check for scalar special case
             // We check for a bare scalar, a 1x1 matrix, or a 1d array with 1 element,
             // all of which we interpret as scalars that fill the whole matrix
-            serde_json::from_str::<[[F; 1]; 1]>(source)
+            serde_json::from_str::<[[S; 1]; 1]>(source)
                 .map(|[[scalar]]| scalar)
-                .or_else(|_| serde_json::from_str::<[F; 1]>(source).map(|[scalar]| scalar))
-                .or_else(|_| serde_json::from_str::<F>(source))
+                .or_else(|_| serde_json::from_str::<[S; 1]>(source).map(|[scalar]| scalar))
+                .or_else(|_| serde_json::from_str::<S>(source))
                 .map(|scalar| Matrix {
                     data: [[scalar; NROWS]; NCOLS],
                 })
