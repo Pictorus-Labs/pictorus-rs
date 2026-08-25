@@ -703,8 +703,7 @@ mod tests {
 
     #[test]
     fn test_load_param_empty_bytes() {
-        // Regression test for empty BytesLiteral values (pictorus#3836): an empty
-        // string in diagram_params must not panic in the unescape fallback
+        // Regression test for empty BytesLiteral values string in diagram_params must not panic in the unescape fallback
         let mut diagram_params = DiagramParams::new();
         diagram_params.insert("test_block".to_string(), {
             let mut params = HashMap::new();
