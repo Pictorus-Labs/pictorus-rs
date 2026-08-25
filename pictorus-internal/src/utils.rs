@@ -176,9 +176,14 @@ mod std_utils {
             }
             // Fall back to taking the string as bytes
             // We need to handle `/x**` hex format and turn it into raw bytes
-            let escaped_bytes = smashquote::unescape_bytes(source.as_bytes())
-                .map_err(|e| warn!("Error unescaping string for bytes: {e}"))
-                .ok()?;
+            // smashquote panics on empty input, so treat it as zero bytes directly
+            let escaped_bytes = if source.is_empty() {
+                Vec::new()
+            } else {
+                smashquote::unescape_bytes(source.as_bytes())
+                    .map_err(|e| warn!("Error unescaping string for bytes: {e}"))
+                    .ok()?
+            };
             if escaped_bytes.len() != N {
                 warn!(
                     "Source string \"{source}\" of length {} is not the expected length of {N}, result will be truncated or padded with zeros",
@@ -694,6 +699,24 @@ mod tests {
 
         let result_default = load_param::<[u8; 6]>("test_block", "foo", default, &diagram_params);
         assert_eq!(result_default, default);
+    }
+
+    #[test]
+    fn test_load_param_empty_bytes() {
+        // Regression test for empty BytesLiteral values string in diagram_params must not panic in the unescape fallback
+        let mut diagram_params = DiagramParams::new();
+        diagram_params.insert("test_block".to_string(), {
+            let mut params = HashMap::new();
+            params.insert("value".to_string(), "".to_string());
+            params
+        });
+
+        let result = load_param::<[u8; 0]>("test_block", "value", [], &diagram_params);
+        assert_eq!(result, [0u8; 0]);
+
+        // An empty string against a non-zero-length array zero-fills
+        let result = load_param::<[u8; 4]>("test_block", "value", [1, 2, 3, 4], &diagram_params);
+        assert_eq!(result, [0u8; 4]);
     }
 
     #[test]
