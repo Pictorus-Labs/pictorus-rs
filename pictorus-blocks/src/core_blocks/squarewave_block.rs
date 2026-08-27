@@ -4,12 +4,11 @@ use pictorus_traits::{GeneratorBlock, PassBy};
 /// Combines a wave's amplitude with its bias in the output's native type.
 ///
 /// The square wave's output values never pass through a float, so the "high" level is
-/// formed directly in the output type: saturating addition for integers, plain addition
-/// for floats, and logical OR for bools (matching 0/1 saturating addition).
+/// formed directly in the output type: plain addition for numeric types,
+//  and logical OR for bools.
 ///
-/// No implementation can panic: integers saturate instead of overflowing, float
-/// addition overflows to infinity, and bool OR is total. This is the square wave's
-/// only arithmetic on the output type.
+/// Integer numeric types have the possibility of panic-ing if the bias + amplitude
+// overflow the type's bounds
 pub trait ApplyBias: Scalar {
     fn apply_bias(self, bias: Self) -> Self;
 }
