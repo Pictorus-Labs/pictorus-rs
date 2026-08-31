@@ -1,36 +1,44 @@
-use crate::traits::Float;
+use super::cast_block::CastElement;
+use crate::traits::{Float, Scalar};
 use pictorus_traits::{GeneratorBlock, PassBy};
 
 #[derive(Debug, Clone)]
 /// Outputs a sawtooth wave signal with specified amplitude, frequency, phase, and bias.
-pub struct SawtoothwaveBlock<T>
+///
+/// The wave is computed in the float type `F` and cast to the output type `T` with
+/// `as` semantics. Value-domain parameters (amplitude, bias) are specified in `T`;
+/// time-domain parameters (frequency, phase) in `F`.
+pub struct SawtoothwaveBlock<T, F = T>
 where
-    T: Float,
-    f64: From<T>,
+    T: Scalar + CastElement<F>,
+    F: Float + CastElement<T>,
+    f64: From<F>,
 {
-    phantom: core::marker::PhantomData<T>,
+    phantom: core::marker::PhantomData<F>,
     buffer: T,
 }
 
-impl<T> Default for SawtoothwaveBlock<T>
+impl<T, F> Default for SawtoothwaveBlock<T, F>
 where
-    T: Float,
-    f64: From<T>,
+    T: Scalar + CastElement<F>,
+    F: Float + CastElement<T>,
+    f64: From<F>,
 {
     fn default() -> Self {
         Self {
             phantom: core::marker::PhantomData,
-            buffer: T::zero(),
+            buffer: T::default(),
         }
     }
 }
 
-impl<T> GeneratorBlock for SawtoothwaveBlock<T>
+impl<T, F> GeneratorBlock for SawtoothwaveBlock<T, F>
 where
-    T: Float,
-    f64: From<T>,
+    T: Scalar + CastElement<F>,
+    F: Float + CastElement<T>,
+    f64: From<F>,
 {
-    type Parameters = Parameters<T>;
+    type Parameters = Parameters<T, F>;
     type Output = T;
 
     fn generate(
@@ -38,13 +46,15 @@ where
         parameters: &Self::Parameters,
         context: &dyn pictorus_traits::Context,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        let two = T::one() + T::one();
+        let two = F::one() + F::one();
+        let amplitude: F = parameters.amplitude.cast_element();
+        let bias: F = parameters.bias.cast_element();
         let time =
-            (parameters.frequency * T::from_duration(context.time()) + parameters.phase) / T::TAU;
-        let x = two * (time - num_traits::Float::floor(time)) - T::one();
-        let val = parameters.amplitude * x + parameters.bias;
-        self.buffer = val;
-        val
+            (parameters.frequency * F::from_duration(context.time()) + parameters.phase) / F::TAU;
+        let x = two * (time - num_traits::Float::floor(time)) - F::one();
+        let val = amplitude * x + bias;
+        self.buffer = val.cast_element();
+        self.buffer
     }
 
     fn buffer(&self) -> PassBy<'_, Self::Output> {
@@ -52,18 +62,19 @@ where
     }
 }
 
-pub struct Parameters<T: Float> {
+pub struct Parameters<T: Scalar, F: Float = T> {
     pub amplitude: T,
-    pub frequency: T,
-    pub phase: T,
+    pub frequency: F,
+    pub phase: F,
     pub bias: T,
 }
 
-impl<T> Parameters<T>
+impl<T, F> Parameters<T, F>
 where
-    T: Float,
+    T: Scalar,
+    F: Float,
 {
-    pub fn new(amplitude: T, frequency: T, phase: T, bias: T) -> Self {
+    pub fn new(amplitude: T, frequency: F, phase: F, bias: T) -> Self {
         Self {
             amplitude,
             frequency,
@@ -303,5 +314,38 @@ mod tests {
         runtime.tick();
         block.generate(&params, &runtime.context()); // T = 3 * PI / 2
         assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
+    }
+
+    #[test]
+    fn test_sawtoothwave_block_integer_output() {
+        // i32 output: computed in f64, cast with `as` semantics at the output. T = 0 is
+        // exact (x = -1), so the trough value has no truncation ambiguity.
+        let context = StubContext::new(
+            Duration::from_secs(0),
+            None,
+            Duration::from_secs_f64(PI / 2.0),
+        );
+        let runtime = StubRuntime::new(context);
+
+        let params = Parameters::new(1000i32, 1.0, 0.0, 250i32);
+        let mut block = SawtoothwaveBlock::<i32, f64>::default();
+
+        block.generate(&params, &runtime.context()); // T = 0
+        assert_eq!(block.buffer(), -750);
+    }
+
+    #[test]
+    fn test_sawtoothwave_block_integer_output_saturates() {
+        // The wave's value can exceed the output type's range through amplitude and
+        // bias; the output cast saturates rather than wrapping or panicking, so this
+        // block has no arithmetic panic sites. The trough at T = 0 is exactly
+        // -amplitude + bias: -100 + -100 = -200 saturates at i8::MIN.
+        let runtime = StubRuntime::default();
+
+        let params = Parameters::new(100i8, 1.0, 0.0, -100i8);
+        let mut block = SawtoothwaveBlock::<i8, f64>::default();
+
+        block.generate(&params, &runtime.context());
+        assert_eq!(block.buffer(), i8::MIN);
     }
 }

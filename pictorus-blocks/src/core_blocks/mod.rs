@@ -34,7 +34,7 @@ pub use can_receive_block::CanReceiveBlock;
 pub use can_receive_block::Parameters as CanReceiveBlockParams;
 
 mod cast_block;
-pub use cast_block::CastBlock;
+pub use cast_block::{CastBlock, CastElement};
 
 mod change_detection_block;
 pub use change_detection_block::ChangeDetectionBlock;
