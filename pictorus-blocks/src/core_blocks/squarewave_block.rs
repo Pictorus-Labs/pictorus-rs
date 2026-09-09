@@ -319,8 +319,7 @@ mod tests {
         let runtime = StubRuntime::default();
         let p = Parameters::<i8, f64>::new(100, 1.0, 1.0, 0.0, 100);
         let mut block = SquarewaveBlock::<i8, f64>::default();
-        let _  = block.generate(&p, &runtime.context());
-
+        let _ = block.generate(&p, &runtime.context());
     }
 
     #[test]
@@ -332,7 +331,7 @@ mod tests {
         let p = Parameters::<i8, f64>::new(-100, 1.0, 1.0, 0.0, -100);
         let mut block = SquarewaveBlock::<i8, f64>::default();
         runtime.set_time(Duration::from_secs_f64(0.5));
-       let _ = block.generate(&p, &runtime.context());
+        let _ = block.generate(&p, &runtime.context());
     }
 
     #[test]
