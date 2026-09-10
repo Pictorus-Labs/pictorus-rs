@@ -41,10 +41,7 @@ where
 }
 
 trait SumScalar: Scalar + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign {}
-impl<S> SumScalar for S where
-    S: Scalar + Add<Output = S> + Sub<Output = S> + AddAssign + SubAssign
-{
-}
+impl<S> SumScalar for S where S: Scalar + Add<Output = S> + Sub<Output = S> + AddAssign + SubAssign {}
 
 /// This trait is used to determine the output type of a sum operation
 /// between two types, most importantly it can be used recursively. To get the output type for

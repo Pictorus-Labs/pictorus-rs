@@ -433,8 +433,15 @@ mod tests {
         let p = ParametersMatrixMult {};
         let mut block =
             ProductBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, u8>), MatrixMultiply>::default();
-        let input = Matrix { data: [[16u8; 2]; 2] };
+        let input = Matrix {
+            data: [[16u8; 2]; 2],
+        };
         let output = block.process(&p, &context, (&input, &input));
-        assert_eq!(output, &Matrix { data: [[0u8; 2]; 2] });
+        assert_eq!(
+            output,
+            &Matrix {
+                data: [[0u8; 2]; 2]
+            }
+        );
     }
 }

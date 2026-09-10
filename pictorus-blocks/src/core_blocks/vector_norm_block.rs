@@ -76,14 +76,10 @@ where
     O: Scalar + Float,
 {
     fn apply<'s>(store: &'s mut O, input: PassBy<Self>) -> PassBy<'s, O> {
-        let sum_of_squares = input
-            .data
-            .as_flattened()
-            .iter()
-            .fold(O::zero(), |acc, &v| {
-                let val: O = v.as_();
-                acc + val * val
-            });
+        let sum_of_squares = input.data.as_flattened().iter().fold(O::zero(), |acc, &v| {
+            let val: O = v.as_();
+            acc + val * val
+        });
         let n = sum_of_squares.sqrt();
         *store = n;
         n
