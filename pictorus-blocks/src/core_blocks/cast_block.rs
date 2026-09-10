@@ -123,7 +123,7 @@ impl OverflowMode for Panic {
 ///
 /// Rounding runs before the overflow mode, so it can push a value out of the
 /// destination's range: 255.6 truncates to 255 but rounds to 256, which no longer fits a
-/// `u8`.
+/// `u8`. `Ceiling` can do the same at the top of a range, and `Floor` at the bottom.
 pub trait RoundingMode {
     fn apply<F: Float>(v: F) -> F;
 }
@@ -136,6 +136,9 @@ pub struct Nearest;
 
 /// Round toward negative infinity.
 pub struct Floor;
+
+/// Round toward positive infinity.
+pub struct Ceiling;
 
 impl RoundingMode for Truncate {
     #[inline]
@@ -155,6 +158,13 @@ impl RoundingMode for Floor {
     #[inline]
     fn apply<F: Float>(v: F) -> F {
         v.floor()
+    }
+}
+
+impl RoundingMode for Ceiling {
+    #[inline]
+    fn apply<F: Float>(v: F) -> F {
+        v.ceil()
     }
 }
 
@@ -572,6 +582,28 @@ mod tests {
     }
 
     #[test]
+    fn test_signed_to_unsigned_only_overflows_when_negative() {
+        // Every non-negative i8 fits a u8, so the modes agree and Panic has nothing to
+        // fire on. Only a negative value overflows.
+        for mode_result in [
+            cast_scalar_as::<i8, u8, Panic, Truncate>(100),
+            cast_scalar_as::<i8, u8, Wrap, Truncate>(100),
+            cast_scalar_as::<i8, u8, Saturate, Truncate>(100),
+        ] {
+            assert_eq!(mode_result, 100u8);
+        }
+
+        assert_eq!(cast_scalar_as::<i8, u8, Wrap, Truncate>(-1), 255u8);
+        assert_eq!(cast_scalar_as::<i8, u8, Saturate, Truncate>(-1), 0u8);
+    }
+
+    #[test]
+    #[should_panic(expected = "cast overflowed the destination type")]
+    fn test_signed_to_unsigned_panics_on_negative() {
+        cast_scalar_as::<i8, u8, Panic, Truncate>(-1);
+    }
+
+    #[test]
     fn test_float_to_int_overflow_modes() {
         // Saturate clamps to the nearest limit, for signed and unsigned destinations.
         assert_eq!(cast_scalar_as::<f64, u8, Saturate, Truncate>(300.7), 255u8);
@@ -608,12 +640,20 @@ mod tests {
         assert_eq!(cast_scalar_as::<f64, i32, Saturate, Nearest>(2.7), 3);
         assert_eq!(cast_scalar_as::<f64, i32, Saturate, Floor>(2.7), 2);
 
+        assert_eq!(cast_scalar_as::<f64, i32, Saturate, Ceiling>(2.7), 3);
+
         assert_eq!(cast_scalar_as::<f64, i32, Saturate, Truncate>(-2.7), -2);
         assert_eq!(cast_scalar_as::<f64, i32, Saturate, Nearest>(-2.7), -3);
         assert_eq!(cast_scalar_as::<f64, i32, Saturate, Floor>(-2.7), -3);
+        assert_eq!(cast_scalar_as::<f64, i32, Saturate, Ceiling>(-2.7), -2);
 
         assert_eq!(cast_scalar_as::<f64, i32, Saturate, Nearest>(2.5), 3);
         assert_eq!(cast_scalar_as::<f64, i32, Saturate, Nearest>(-2.5), -3);
+
+        // Truncate matches Ceiling for negatives and Floor for positives, since all three
+        // agree on which way "toward zero" points for a given sign.
+        assert_eq!(cast_scalar_as::<f64, i32, Saturate, Floor>(2.7), 2);
+        assert_eq!(cast_scalar_as::<f64, i32, Saturate, Ceiling>(-2.7), -2);
     }
 
     #[test]
@@ -651,6 +691,31 @@ mod tests {
     fn test_rounding_does_not_apply_to_integer_sources() {
         assert_eq!(cast_scalar_as::<i32, i64, Saturate, Nearest>(-7), -7i64);
         assert_eq!(cast_scalar_as::<i32, f64, Saturate, Floor>(-7), -7.0);
+        assert_eq!(cast_scalar_as::<i32, i64, Saturate, Ceiling>(-7), -7i64);
+    }
+
+    #[test]
+    fn test_ceiling_can_push_a_value_out_of_range() {
+        // Ceiling rounds up, so it overflows the top of a range that Truncate stays inside:
+        // 255.2 truncates to 255 and fits, but ceils to 256 and does not.
+        assert_eq!(cast_scalar_as::<f64, u8, Saturate, Truncate>(255.2), 255u8);
+        assert_eq!(cast_scalar_as::<f64, u8, Saturate, Ceiling>(255.2), 255u8);
+        assert_eq!(cast_scalar_as::<f64, u8, Wrap, Ceiling>(255.2), 0u8);
+
+        // Floor is the mirror at the bottom of a signed range: -128.2 truncates to -128
+        // and fits, but floors to -129 and does not.
+        assert_eq!(
+            cast_scalar_as::<f64, i8, Saturate, Truncate>(-128.2),
+            -128i8
+        );
+        assert_eq!(cast_scalar_as::<f64, i8, Saturate, Floor>(-128.2), -128i8);
+        assert_eq!(cast_scalar_as::<f64, i8, Wrap, Floor>(-128.2), 127i8);
+    }
+
+    #[test]
+    #[should_panic(expected = "cast overflowed the destination type")]
+    fn test_ceiling_out_of_range_panics_under_panic_mode() {
+        cast_scalar_as::<f64, u8, Panic, Ceiling>(255.2);
     }
 
     #[test]
