@@ -100,7 +100,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let integrator_params = Self::integrator_params(parameters);
@@ -110,7 +110,7 @@ where
         let i = ProcessBlock::process(
             &mut self.integrator,
             &integrator_params,
-            context,
+            model_clock,
             (i_sample.as_by(), reset),
         );
 
@@ -118,7 +118,7 @@ where
         let derivative_params = Self::derivative_params(parameters);
 
         let d_res =
-            ProcessBlock::process(&mut self.derivative, &derivative_params, context, sample);
+            ProcessBlock::process(&mut self.derivative, &derivative_params, model_clock, sample);
 
         // Add them all up!
         let p = T::component_mul(sample, parameters.kp);
@@ -209,12 +209,12 @@ mod tests {
         let mut p_block = PidBlock::<f64, bool, 2>::new(&params);
 
         // Output should just be double the input
-        let res = p_block.process(&params, &runtime.context(), (1.0, false));
+        let res = p_block.process(&params, &runtime.model_clock(), (1.0, false));
         assert_eq!(res, 2.0);
         assert_eq!(p_block.buffer(), res);
         runtime.tick();
 
-        let res = p_block.process(&params, &runtime.context(), (-2.0, false));
+        let res = p_block.process(&params, &runtime.model_clock(), (-2.0, false));
         assert_eq!(res, -4.0);
         assert_eq!(p_block.buffer(), -4.0);
     }
@@ -230,31 +230,31 @@ mod tests {
         let params = Parameters::new(0.0, 0.0, 3.0, 0.0, 10.0);
         let mut i_block = PidBlock::<f64, bool, 2>::new(&params);
 
-        let res = i_block.process(&params, &runtime.context(), (0.0, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (0.0, false));
         assert_eq!(res, 0.0);
         assert_eq!(i_block.buffer(), 0.0);
         runtime.tick();
 
-        i_block.process(&params, &runtime.context(), (0.0, false));
-        let res = i_block.process(&params, &runtime.context(), (1.0, false));
+        i_block.process(&params, &runtime.model_clock(), (0.0, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (1.0, false));
         assert_relative_eq!(res, 3.0, max_relative = 0.01);
         assert_relative_eq!(i_block.buffer(), 3.0, max_relative = 0.01);
         runtime.tick();
 
         // Make sure it actually integrates
-        let res = i_block.process(&params, &runtime.context(), (1.0, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (1.0, false));
         assert_relative_eq!(res, 6.0, max_relative = 0.01);
         assert_relative_eq!(i_block.buffer(), 6.0, max_relative = 0.01);
         runtime.tick();
 
         // Check saturation
-        let res = i_block.process(&params, &runtime.context(), (100.0, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (100.0, false));
         assert_relative_eq!(res, 10.0, max_relative = 0.01);
         assert_relative_eq!(i_block.buffer(), 10.0, max_relative = 0.01);
         runtime.tick();
 
         // Test reset
-        let res = i_block.process(&params, &runtime.context(), (1.0, true));
+        let res = i_block.process(&params, &runtime.model_clock(), (1.0, true));
         assert_relative_eq!(res, 0.0, max_relative = 0.01);
         assert_relative_eq!(i_block.buffer(), 0.0, max_relative = 0.01);
     }
@@ -269,10 +269,10 @@ mod tests {
 
         let params = Parameters::new(0.0, 0.0, 0.0, 1.0, 0.0);
         let mut d_block = PidBlock::<f64, bool, 2>::new(&params);
-        d_block.process(&params, &runtime.context(), (0.0, false)); // Need at least 2 samples to estimate derivative
+        d_block.process(&params, &runtime.model_clock(), (0.0, false)); // Need at least 2 samples to estimate derivative
         runtime.tick();
 
-        let res = d_block.process(&params, &runtime.context(), (100.0, false));
+        let res = d_block.process(&params, &runtime.model_clock(), (100.0, false));
         assert_relative_eq!(res, 200.0, max_relative = 0.01);
         assert_relative_eq!(d_block.buffer(), 200.0, max_relative = 0.01);
     }
@@ -286,12 +286,12 @@ mod tests {
         let params = Parameters::new(0.0, 1.0, 2.0, 3.0, 10.0);
         let mut block = PidBlock::<f64, bool, 2>::new(&params);
 
-        let res = block.process(&params, &runtime.context(), (0.0, false));
+        let res = block.process(&params, &runtime.model_clock(), (0.0, false));
         assert_relative_eq!(res, 0.0, max_relative = 0.01);
         runtime.tick();
 
         // p: 2, i: 4, d: 6
-        let res = block.process(&params, &runtime.context(), (2.0, false));
+        let res = block.process(&params, &runtime.model_clock(), (2.0, false));
         assert_relative_eq!(res, 12.0, max_relative = 0.01);
         assert_relative_eq!(block.buffer(), 12.0, max_relative = 0.01);
     }
@@ -306,12 +306,12 @@ mod tests {
         let params = Parameters::new(5.0, 1.0, 2.0, 3.0, 10.0);
         let mut block = PidBlock::<f64, bool, 2>::new(&params);
 
-        let res = block.process(&params, &runtime.context(), (0.0, false));
+        let res = block.process(&params, &runtime.model_clock(), (0.0, false));
         assert_relative_eq!(res, 20.0, max_relative = 0.01);
         runtime.tick();
 
         // p: 2, i: 5 + 4 = 9, d: 6
-        let res = block.process(&params, &runtime.context(), (2.0, false));
+        let res = block.process(&params, &runtime.model_clock(), (2.0, false));
         assert_relative_eq!(res, 17.0, max_relative = 0.01);
         assert_relative_eq!(block.buffer(), 17.0, max_relative = 0.01);
     }
@@ -326,12 +326,12 @@ mod tests {
         let params = Parameters::new(5.0, 1.0, 2.0, 3.0, 10.0);
         let mut block = PidBlock::<f32, bool, 2>::new(&params);
 
-        let res = block.process(&params, &runtime.context(), (0.0, false));
+        let res = block.process(&params, &runtime.model_clock(), (0.0, false));
         assert_relative_eq!(res, 20.0, max_relative = 0.01);
         runtime.tick();
 
         // p: 2, i: 5 + 4 = 9, d: 6
-        let res = block.process(&params, &runtime.context(), (2.0, false));
+        let res = block.process(&params, &runtime.model_clock(), (2.0, false));
         assert_relative_eq!(res, 17.0, max_relative = 0.01);
         assert_relative_eq!(block.buffer(), 17.0, max_relative = 0.01);
     }
@@ -349,7 +349,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let res = p_block.process(&params, &runtime.context(), (&input, false));
+        let res = p_block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[2.0, 4.0], [6.0, 8.0]],
         };
@@ -363,7 +363,7 @@ mod tests {
         let input = Matrix {
             data: [[-2.0, -3.0], [-4.0, -5.0]],
         };
-        let res = p_block.process(&params, &runtime.context(), (&input, false));
+        let res = p_block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[-4.0, -6.0], [-8.0, -10.0]],
         };
@@ -388,7 +388,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
-        let res = i_block.process(&params, &runtime.context(), (&input, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
@@ -402,7 +402,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.0], [1.0, 1.0]],
         };
-        let res = i_block.process(&params, &runtime.context(), (&input, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[0.0, 0.0], [3.0, 3.0]],
         };
@@ -417,7 +417,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.0], [1.0, 1.0]],
         };
-        let res = i_block.process(&params, &runtime.context(), (&input, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[0.0, 0.0], [6.0, 6.0]],
         };
@@ -432,7 +432,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.0], [100.0, 100.0]],
         };
-        let res = i_block.process(&params, &runtime.context(), (&input, false));
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[0.0, 0.0], [10.0, 10.0]],
         };
@@ -454,13 +454,13 @@ mod tests {
 
         let params = Parameters::new(Matrix::zeroed(), 0.0, 0.0, 1.0, 0.0);
         let mut d_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
-        d_block.process(&params, &runtime.context(), (&Matrix::zeroed(), false)); // Need at least 2 samples to estimate derivative
+        d_block.process(&params, &runtime.model_clock(), (&Matrix::zeroed(), false)); // Need at least 2 samples to estimate derivative
         runtime.tick();
 
         let input = Matrix {
             data: [[100.0, 200.0], [300.0, 400.0]],
         };
-        let res = d_block.process(&params, &runtime.context(), (&input, false));
+        let res = d_block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[200.0, 400.0], [600.0, 800.0]],
         };
@@ -484,7 +484,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
-        let res = block.process(&params, &runtime.context(), (&input, false));
+        let res = block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
@@ -498,7 +498,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let res = block.process(&params, &runtime.context(), (&input, false));
+        let res = block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[6.0, 12.0], [18.0, 24.0]],
         };
@@ -522,7 +522,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
-        let res = block.process(&params, &runtime.context(), (&input, false));
+        let res = block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
@@ -536,7 +536,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let res = block.process(&params, &runtime.context(), (&input, false));
+        let res = block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[6.0, 12.0], [18.0, 24.0]],
         };
@@ -563,7 +563,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
-        let res = block.process(&params, &runtime.context(), (&input, false));
+        let res = block.process(&params, &runtime.model_clock(), (&input, false));
         let expected = Matrix {
             data: [[16.0, 20.0], [24.0, 28.0]],
         };
@@ -577,7 +577,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let res = block.process(&params, &runtime.context(), (&input, false));
+        let res = block.process(&params, &runtime.model_clock(), (&input, false));
         // The I components of [1][0] and [1][1] are saturated at 10, so they are
         // lower than expected offset from the IC
         let expected = Matrix {

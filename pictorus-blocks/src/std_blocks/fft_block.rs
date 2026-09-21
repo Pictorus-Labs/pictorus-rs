@@ -39,7 +39,7 @@ impl<T: Float, const N: usize> ProcessBlock for FftBlock<T, N> {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         self.samples[self.sample_index] = inputs;
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_fft_block() {
         let mut runtime = StubRuntime::default();
-        runtime.context.fundamental_timestep = Duration::from_secs_f32(0.1);
+        runtime.model_clock.fundamental_timestep = Duration::from_secs_f32(0.1);
 
         // 2Hz sinewave, amplitude 5, with small bias
         let mut sinewave_2_hz: SinewaveBlock<f64> = SinewaveBlock::default();
@@ -120,12 +120,12 @@ mod tests {
         let fft_parameters = Parameters::new();
 
         for _ in 0..100 {
-            let output_2hz = sinewave_2_hz.generate(&sinewave_2_hz_parameters, &runtime.context);
-            let output_3hz = sinewave_3_hz.generate(&sinewave_3_hz_parameters, &runtime.context);
+            let output_2hz = sinewave_2_hz.generate(&sinewave_2_hz_parameters, &runtime.model_clock);
+            let output_3hz = sinewave_3_hz.generate(&sinewave_3_hz_parameters, &runtime.model_clock);
 
             let combined = output_2hz + output_3hz;
 
-            let _ = fft_block.process(&fft_parameters, &runtime.context, combined);
+            let _ = fft_block.process(&fft_parameters, &runtime.model_clock, combined);
             runtime.tick();
         }
 

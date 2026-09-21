@@ -41,7 +41,7 @@ impl ProcessBlock for SpiReceiveBlock {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn ModelClock,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         if inputs.len() == parameters.read_bytes {
@@ -49,12 +49,12 @@ impl ProcessBlock for SpiReceiveBlock {
             // length check.
             self.buffer.clear();
             self.buffer.extend_from_slice(inputs);
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
         }
 
         self.last_valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         (&self.buffer, self.last_valid)
     }
 
@@ -85,7 +85,7 @@ mod tests {
 
         // Buffer the input data
         let output = {
-            let (data, valid) = block.process(&parameters, &runtime.context(), input_data);
+            let (data, valid) = block.process(&parameters, &runtime.model_clock(), input_data);
             (data.to_vec(), valid)
         };
         assert_eq!(output.0, input_data);
@@ -94,7 +94,7 @@ mod tests {
 
         runtime.set_time(Duration::from_secs(1));
 
-        let (data, valid) = block.process(&parameters, &runtime.context(), &[]);
+        let (data, valid) = block.process(&parameters, &runtime.model_clock(), &[]);
         assert_eq!(data, input_data);
         // Stale: buffered data is preserved, but `is_valid` flips to false
         assert!(!valid);

@@ -47,7 +47,7 @@ macro_rules! impl_determinant_block {
             fn process<'b>(
                 &'b mut self,
                 _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'b, Self::Output> {
                 self.buffer =
@@ -68,7 +68,7 @@ macro_rules! impl_determinant_block {
             fn process<'b>(
                 &'b mut self,
                 _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'b, Self::Output> {
                 self.buffer = inputs;

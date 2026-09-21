@@ -44,7 +44,7 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // These two variables are used to construct constants used in the math below in a way that is infallible and generic
         let two: F = F::one() + F::one();
@@ -52,7 +52,7 @@ where
         let amplitude: F = parameters.amplitude.cast_element();
         let bias: F = parameters.bias.cast_element();
         let t =
-            (parameters.frequency * F::from_duration(context.time()) + parameters.phase) / (F::TAU);
+            (parameters.frequency * F::from_duration(model_clock.time()) + parameters.phase) / (F::TAU);
         let t = num_traits::Float::fract(t);
         let y = if t < F::one() / two { t } else { F::one() - t };
         // y is in the range [0, 0.5] over a t value from 0 to 1. Scale it by 4 ( to a range of [0, 2] )
@@ -102,12 +102,12 @@ mod tests {
 
     #[test]
     fn test_trianglewave_block_simple() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -117,35 +117,35 @@ mod tests {
 
         let mut block = TrianglewaveBlock::default();
 
-        let out = block.generate(&params, &runtime.context()); // T = 0
+        let out = block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 1e-6);
         assert_eq!(block.buffer(), out);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3PI / 2
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2PI
+        block.generate(&params, &runtime.model_clock()); // T = 2PI
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 1e-6);
     }
 
     #[test]
     fn test_trianglewave_block_phase() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -155,34 +155,34 @@ mod tests {
 
         let mut block = TrianglewaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3PI / 2
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2PI
+        block.generate(&params, &runtime.model_clock()); // T = 2PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
     }
 
     #[test]
     fn test_trianglewave_block_bias() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -192,34 +192,34 @@ mod tests {
 
         let mut block = TrianglewaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 2.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3PI / 2
         assert_relative_eq!(block.buffer(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2PI
+        block.generate(&params, &runtime.model_clock()); // T = 2PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
     }
 
     #[test]
     fn test_trianglewave_block_amplitude() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 2.0;
         let frequency = 1.0;
@@ -229,34 +229,34 @@ mod tests {
 
         let mut block = TrianglewaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -2.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 2.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3PI / 2
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2PI
+        block.generate(&params, &runtime.model_clock()); // T = 2PI
         assert_relative_eq!(block.buffer(), -2.0, epsilon = 1e-6);
     }
 
     #[test]
     fn test_trianglewave_block_high_time() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 2.0;
@@ -266,22 +266,22 @@ mod tests {
         let params = Parameters::new(amplitude, frequency, phase, bias);
         let mut block = TrianglewaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 1e-6);
 
         runtime.set_time(Duration::from_secs_f64(400.0 * PI));
-        block.generate(&params, &runtime.context()); // T = 400PI
+        block.generate(&params, &runtime.model_clock()); // T = 400PI
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 1e-6);
     }
 
     #[test]
     fn test_trianglewave_block_frequency() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 4.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 2.0;
@@ -291,48 +291,48 @@ mod tests {
         let params = Parameters::new(amplitude, frequency, phase, bias);
         let mut block = TrianglewaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 4
+        block.generate(&params, &runtime.model_clock()); // T = PI / 4
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), 1.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3PI / 4
+        block.generate(&params, &runtime.model_clock()); // T = 3PI / 4
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 1e-6);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 1e-6);
     }
 
     #[test]
     fn test_trianglewave_block_integer_output() {
         // i16 output: computed in f64, cast with `as` semantics at the output.
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let params = Parameters::new(100i16, 1.0, 0.0, 25i16);
         let mut block = TrianglewaveBlock::<i16, f64>::default();
 
         // T = 0 is exact: (4 * 0 - 1) * 100 + 25 = -75, no truncation ambiguity.
-        block.generate(&params, &runtime.context());
+        block.generate(&params, &runtime.model_clock());
         assert_eq!(block.buffer(), -75);
 
         // T = PI / 2 is the zero crossing: the float value is within +/-1e-7 of 25 due
         // to nanosecond time rounding, and truncates to 25 from either side... almost.
         // A hair below 25.0 would truncate to 24, so allow both.
         runtime.tick();
-        block.generate(&params, &runtime.context());
+        block.generate(&params, &runtime.model_clock());
         assert!(block.buffer() == 25 || block.buffer() == 24);
     }
 
@@ -347,12 +347,12 @@ mod tests {
         // Peak: 100 + 100 = 200 saturates at i8::MAX.
         let params = Parameters::new(100i8, 0.0, core::f64::consts::TAU / 2.0, 100i8);
         let mut block = TrianglewaveBlock::<i8, f64>::default();
-        block.generate(&params, &runtime.context());
+        block.generate(&params, &runtime.model_clock());
         assert_eq!(block.buffer(), i8::MAX);
 
         // Trough: -100 + 100 = 0, exactly representable.
         let params = Parameters::new(100i8, 0.0, 0.0, 100i8);
-        block.generate(&params, &runtime.context());
+        block.generate(&params, &runtime.model_clock());
         assert_eq!(block.buffer(), 0);
     }
 }

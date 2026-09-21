@@ -28,7 +28,7 @@ impl<const CHARS: usize> GeneratorBlock for BytesLiteralBlock<CHARS> {
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         self.buffer = parameters.value;
         &self.buffer
@@ -58,9 +58,9 @@ mod tests {
         let bytes_literal_ic = *b"Hello World";
 
         let parameters = Parameters::new(bytes_literal_ic);
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.generate(&parameters, &context).to_vec();
+        let output = block.generate(&parameters, &model_clock).to_vec();
         assert_eq!(output, "Hello World".as_bytes());
         assert_eq!(block.buffer(), output.as_slice());
     }

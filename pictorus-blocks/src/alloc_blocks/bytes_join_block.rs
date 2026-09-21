@@ -41,7 +41,7 @@ impl<T: Apply> ProcessBlock for BytesJoinBlock<T> {
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer = T::apply(inputs, parameters);

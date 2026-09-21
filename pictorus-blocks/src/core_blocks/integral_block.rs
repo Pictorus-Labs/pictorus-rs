@@ -38,7 +38,7 @@ impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
@@ -49,10 +49,10 @@ impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)> {
         } else {
             let delta = match parameters.method {
                 IntgeralMethod::Rectangle => {
-                    F::from_duration(context.timestep().unwrap_or(Duration::ZERO)) * sample
+                    F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO)) * sample
                 }
                 IntgeralMethod::Trapezoidal => {
-                    F::from_duration(context.timestep().unwrap_or(Duration::ZERO))
+                    F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO))
                         * (sample + self.previous_sample.unwrap_or(parameters.ic))
                         / (F::one() + F::one())
                 }
@@ -102,7 +102,7 @@ impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
@@ -114,10 +114,10 @@ impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
             sample.for_each(|sample, c, r| {
                 let delta = match parameters.method {
                     IntgeralMethod::Rectangle => {
-                        F::from_duration(context.timestep().unwrap_or(Duration::ZERO)) * sample
+                        F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO)) * sample
                     }
                     IntgeralMethod::Trapezoidal => {
-                        F::from_duration(context.timestep().unwrap_or(Duration::ZERO))
+                        F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO))
                             * (sample + self.previous_sample.unwrap_or(parameters.ic).data[c][r])
                             / (F::one() + F::one())
                     }
@@ -223,14 +223,14 @@ mod tests {
             <SinewaveBlock<f64> as GeneratorBlock>::Parameters::new(1.0, 1.0, f64::PI / 2., 0.0);
 
         for _ in 0..100 {
-            let sine_output = sine_wave_block.generate(&sine_wave_parameters, &runtime.context());
+            let sine_output = sine_wave_block.generate(&sine_wave_parameters, &runtime.model_clock());
             let cosine_output =
-                cosine_wave_block.generate(&cosine_wave_parameters, &runtime.context());
+                cosine_wave_block.generate(&cosine_wave_parameters, &runtime.model_clock());
             runtime.tick();
 
             let integral_output = block.process(
                 &parameters,
-                &runtime.context(),
+                &runtime.model_clock(),
                 (cosine_output, false).as_by(),
             );
             // Integral of cosine is sine, with a small offset and allowing discrete tolerance.
@@ -239,7 +239,7 @@ mod tests {
 
         // Reset with any input value
         let reset_output =
-            block.process(&parameters, &runtime.context(), (1000000.0, true).as_by());
+            block.process(&parameters, &runtime.model_clock(), (1000000.0, true).as_by());
         assert_relative_eq!(reset_output, 0.0, epsilon = 0.01);
         assert_relative_eq!(block.buffer(), reset_output);
     }
@@ -266,14 +266,14 @@ mod tests {
             data: [[1.0], [1.0], [15.0]],
         };
 
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         assert_eq!(output.data, [[0.0], [0.0], [0.0]]);
         runtime.tick();
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         assert_eq!(output.data, [[1.0], [1.0], [15.0]]);
 
         runtime.tick();
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         // Hits clamp limit
         assert_eq!(output.data, [[2.0], [2.0], [20.0]]);
     }
@@ -292,15 +292,15 @@ mod tests {
         assert_eq!(block.buffer(), 10.0);
 
         let input = 25.0;
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         // This is pretty confusing, but the dt of the first tick is 0, so the output is the same as the IC
         assert_eq!(output, 10.0);
         runtime.tick();
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         assert_eq!(output, 35.0);
 
         runtime.tick();
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         assert_eq!(output, 50.0);
     }
 
@@ -326,14 +326,14 @@ mod tests {
         let input = Matrix {
             data: [[1.0], [1.0], [25.0]],
         };
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         assert_eq!(output.data, [[10.0], [10.0], [10.0]]);
         runtime.tick();
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         assert_eq!(output.data, [[11.0], [11.0], [35.0]]);
 
         runtime.tick();
-        let output = block.process(&parameters, &runtime.context(), (input, false).as_by());
+        let output = block.process(&parameters, &runtime.model_clock(), (input, false).as_by());
         // Hits clamp limit
         assert_eq!(output.data, [[12.0], [12.0], [50.0]]);
     }

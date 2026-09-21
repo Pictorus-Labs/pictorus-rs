@@ -35,7 +35,7 @@ impl InputBlock for SpiWrapper<'_> {
     fn input<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'b, Self::Output> {
         if self.cache_stale {
             self.cache_stale = false;
@@ -63,7 +63,7 @@ impl OutputBlock for SpiWrapper<'_> {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         self.cs.set_low();

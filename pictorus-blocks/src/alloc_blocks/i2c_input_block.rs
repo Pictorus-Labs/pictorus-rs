@@ -49,20 +49,20 @@ impl ProcessBlock for I2cInputBlock {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn ModelClock,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         // Make sure the data is the correct size, if so, update the stale check, otherwise
         // something has gone wrong.
         if inputs.len() == parameters.read_bytes {
             self.buffer.clear();
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
             self.buffer.extend_from_slice(inputs);
         }
 
         self.last_valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         (&self.buffer, self.last_valid)
     }
 
@@ -93,7 +93,7 @@ mod tests {
         let input_data: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         let output = {
-            let (data, valid) = block.process(&parameters, &runtime.context(), input_data);
+            let (data, valid) = block.process(&parameters, &runtime.model_clock(), input_data);
             (data.to_vec(), valid)
         };
         assert_eq!(output.0, input_data);
@@ -104,7 +104,7 @@ mod tests {
 
         // When the I2cWrapper has an error, the buffer is clear and the parameters.read_bytes is not
         // equal to the length of the empty buffer, however the previous value is buffered
-        let (data, valid) = block.process(&parameters, &runtime.context(), &[]);
+        let (data, valid) = block.process(&parameters, &runtime.model_clock(), &[]);
         assert_eq!(data, input_data);
         assert!(!valid);
     }

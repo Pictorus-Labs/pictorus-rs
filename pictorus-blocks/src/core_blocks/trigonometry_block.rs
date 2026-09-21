@@ -57,7 +57,7 @@ macro_rules! impl_trig_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 let output = match parameters.function {
@@ -93,7 +93,7 @@ macro_rules! impl_trig_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 inputs.for_each(|input, c, r| {

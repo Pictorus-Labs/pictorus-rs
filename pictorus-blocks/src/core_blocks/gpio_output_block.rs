@@ -44,7 +44,7 @@ impl<T: ToBool> ProcessBlock for GpioOutputBlock<T> {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let res = T::to_bool(input);
@@ -102,44 +102,44 @@ mod tests {
     #[test]
     fn test_gpio_output_block_scalar() {
         let mut block = GpioOutputBlock::<f64>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.process(&Parameters::new(), &context, 1.0);
+        let output = block.process(&Parameters::new(), &model_clock, 1.0);
         assert!(output);
         assert_eq!(block.buffer(), output);
 
-        let output = block.process(&Parameters::new(), &context, 0.0);
+        let output = block.process(&Parameters::new(), &model_clock, 0.0);
         assert!(!output);
     }
 
     #[test]
     fn test_gpio_output_block_matrix() {
         let mut block = GpioOutputBlock::<Matrix<2, 2, f64>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 1.0]],
         };
 
-        let output = block.process(&Parameters::new(), &context, &input);
+        let output = block.process(&Parameters::new(), &model_clock, &input);
         assert!(output);
 
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
-        let output = block.process(&Parameters::new(), &context, &input);
+        let output = block.process(&Parameters::new(), &model_clock, &input);
         assert!(!output);
     }
 
     #[test]
     fn test_gpio_output_block_bytes() {
         let mut block = GpioOutputBlock::<ByteSliceSignal>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new();
 
-        let output = block.process(&params, &context, b"hello world");
+        let output = block.process(&params, &model_clock, b"hello world");
         assert!(output);
 
-        let output = block.process(&params, &context, b"");
+        let output = block.process(&params, &model_clock, b"");
         assert!(!output);
     }
 }

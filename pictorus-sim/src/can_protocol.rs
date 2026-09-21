@@ -75,7 +75,7 @@ impl OutputBlock for SimCan {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         _inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         // Do nothing
@@ -90,7 +90,7 @@ impl InputBlock for SimCan {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         &self.frame_buffer
     }

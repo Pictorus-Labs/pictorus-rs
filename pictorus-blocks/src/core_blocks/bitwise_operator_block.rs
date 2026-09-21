@@ -36,7 +36,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let result = T::apply(inputs, *parameters, &mut self.store);
@@ -363,9 +363,9 @@ mod test {
                 #[test]
                 fn [<test_and_scalar_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<($type, $type, $type, $type, $type, $type, $type, $type)>::default();
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Operation::And;
-                    let output = block.process(&params, &context, ([<255 $type>], [<27 $type>], [<8 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>]));
+                    let output = block.process(&params, &model_clock, ([<255 $type>], [<27 $type>], [<8 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>]));
                     assert_eq!(output, [<8 $type>]);
                     assert_eq!(block.buffer(), output);
                 }
@@ -373,25 +373,25 @@ mod test {
                 #[test]
                 fn [<test_or_scalar_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<($type, $type, $type, $type)>::default();
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Operation::Or;
-                    let output = block.process(&params, &context, ([<0 $type>], [<8 $type>], [<1 $type>], [<1 $type>]));
+                    let output = block.process(&params, &model_clock, ([<0 $type>], [<8 $type>], [<1 $type>], [<1 $type>]));
                     assert_eq!(output, [<9 $type>]);
                 }
 
                 #[test]
                 fn [<test_xor_scalar_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<($type, $type)>::default();
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Operation::Xor;
-                    let output = block.process(&params, &context, ([<1 $type>], [<1 $type>]));
+                    let output = block.process(&params, &model_clock, ([<1 $type>], [<1 $type>]));
                     assert_eq!(output, [<0 $type>]);
                 }
 
                 #[test]
                 fn [<test_and_matrix_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<(Matrix<2, 2, $type>, Matrix<2, 2, $type>, Matrix<2, 2, $type>, Matrix<2, 2, $type>)>::default();
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Operation::And;
                     let input = (
                         &Matrix {
@@ -407,7 +407,7 @@ mod test {
                             data: [[[<27 $type>], [<27 $type>]], [[<27 $type>], [<16 $type>]]],
                         },
                     );
-                    let output = block.process(&params, &context, input);
+                    let output = block.process(&params, &model_clock, input);
                     assert_eq!(
                         output.data,
                         [[[<27 $type>], [<8 $type>]], [[<2 $type>], [<16 $type>]]]
@@ -417,7 +417,7 @@ mod test {
                 #[test]
                 fn [<test_and_mixed_scalar_matrix_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<(Matrix<2, 2, $type>, $type, Matrix<2, 2, $type>, Matrix<2, 2, $type>)>::default();
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Operation::And;
                     let input = (
                         &Matrix {
@@ -431,7 +431,7 @@ mod test {
                             data: [[[<27 $type>], [<27 $type>]], [[<27 $type>], [<16 $type>]]],
                         },
                     );
-                    let output = block.process(&params, &context, input);
+                    let output = block.process(&params, &model_clock, input);
                     assert_eq!(
                         output.data,
                         [[[<27 $type>], [<8 $type>]], [[<2 $type>], [<16 $type>]]]

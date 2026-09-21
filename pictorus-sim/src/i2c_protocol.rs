@@ -31,7 +31,7 @@ impl InputBlock for SimI2cProtocol {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         self.buffer.resize(parameters.read_bytes, 0);
         &self.buffer
@@ -45,7 +45,7 @@ impl OutputBlock for SimI2cProtocol {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         self.buffer.clear();

@@ -38,7 +38,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
@@ -146,17 +146,17 @@ mod tests {
     #[test]
     fn test_scalar_input() {
         let mut block = ArgMinMaxBlock::<f64>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let input = 1.0;
         let params = Parameters::new("Min");
-        let output = block.process(&params, &context, input);
+        let output = block.process(&params, &model_clock, input);
         assert_eq!(output, 0.0);
         assert_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_matrix() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = ArgMinMaxBlock::<Matrix<2, 3, f64>>::default();
         // | 11  13  15 |
         // | 12   4  16 |
@@ -165,7 +165,7 @@ mod tests {
             data: [[11.0, 12.0], [13.0, 4.0], [15.0, 16.0]],
         };
         let params = Parameters::new("Min");
-        let output = block.process(&params, &context, &input);
+        let output = block.process(&params, &model_clock, &input);
         assert_eq!(output, 3.0);
         assert_eq!(block.buffer(), output);
 
@@ -176,7 +176,7 @@ mod tests {
             data: [[1.0, 12.0], [3.0, 4.0], [5.0, 6.0]],
         };
         let params = Parameters::new("Max");
-        let output = block.process(&params, &context, &input);
+        let output = block.process(&params, &model_clock, &input);
         assert_eq!(output, 1.0);
         assert_eq!(block.buffer(), output);
     }
@@ -192,17 +192,17 @@ mod tests {
                 #[test]
                 fn [<test_arg_min_max_scalar_ $type>]() {
                     let mut block = ArgMinMaxBlock::<$type>::default();
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Parameters::new("Min");
                     // A scalar input always yields index 0
-                    let output = block.process(&params, &context, 7 as $type);
+                    let output = block.process(&params, &model_clock, 7 as $type);
                     assert_eq!(output, 0 as $type);
                     assert_eq!(block.buffer(), output);
                 }
 
                 #[test]
                 fn [<test_arg_min_max_matrix_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = ArgMinMaxBlock::<Matrix<2, 3, $type>>::default();
                     // | 11  13  15 |
                     // | 12   4  16 |
@@ -215,12 +215,12 @@ mod tests {
                         ],
                     };
                     let params = Parameters::new("Min");
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, 3 as $type);
                     assert_eq!(block.buffer(), output);
 
                     let params = Parameters::new("Max");
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, 5 as $type);
                     assert_eq!(block.buffer(), output);
                 }

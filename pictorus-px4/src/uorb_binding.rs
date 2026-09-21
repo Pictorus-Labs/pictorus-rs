@@ -355,12 +355,12 @@ where
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         let mut protocol = UorbBinding::get_mut();
         let result = protocol.set_message::<T>(T::Message::from_pass_type(
-            context.time().as_micros() as u64,
+            model_clock.time().as_micros() as u64,
             inputs,
         ));
         debug_assert!(
@@ -427,7 +427,7 @@ where
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> PassBy<'_, Self::Output> {
         let protocol = UorbBinding::get();
 

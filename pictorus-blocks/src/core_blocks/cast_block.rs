@@ -397,7 +397,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         I::cast(input, &mut self.buffer)
@@ -419,8 +419,8 @@ mod tests {
         O: Scalar,
     {
         let mut block = CastBlock::<I, O>::default();
-        let context = StubModelClock::default();
-        block.process(&Parameters::new(), &context, input)
+        let model_clock = StubModelClock::default();
+        block.process(&Parameters::new(), &model_clock, input)
     }
 
     /// `cast_scalar` under an explicit overflow and rounding mode.
@@ -432,8 +432,8 @@ mod tests {
         Rnd: RoundingMode,
     {
         let mut block = CastBlock::<I, O, Ovf, Rnd>::default();
-        let context = StubModelClock::default();
-        block.process(&Parameters::new(), &context, input)
+        let model_clock = StubModelClock::default();
+        block.process(&Parameters::new(), &model_clock, input)
     }
 
     #[test]
@@ -511,7 +511,7 @@ mod tests {
     #[test]
     fn test_matrix_cast_is_element_wise() {
         let mut block = CastBlock::<Matrix<2, 2, f64>, Matrix<2, 2, u8>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         let input = Matrix::<2, 2, f64> {
             data: [[1.9, 2.1], [300.0, -1.0]],
@@ -521,7 +521,7 @@ mod tests {
         };
 
         assert_eq!(
-            block.process(&Parameters::new(), &context, &input),
+            block.process(&Parameters::new(), &model_clock, &input),
             &expected
         );
         assert_eq!(block.buffer(), &expected);
@@ -530,12 +530,12 @@ mod tests {
     #[test]
     fn test_matrix_cast_to_bool() {
         let mut block = CastBlock::<Matrix<1, 3, f64>, Matrix<1, 3, bool>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         let input = Matrix::<1, 3, f64> {
             data: [[0.0], [1.0], [-2.5]],
         };
-        let output = block.process(&Parameters::new(), &context, &input);
+        let output = block.process(&Parameters::new(), &model_clock, &input);
 
         assert_eq!(
             output,
@@ -548,10 +548,10 @@ mod tests {
     #[test]
     fn test_non_square_matrix_preserves_shape() {
         let mut block = CastBlock::<Matrix<3, 1, i32>, Matrix<3, 1, f32>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         let input = Matrix::<3, 1, i32> { data: [[-1, 0, 5]] };
-        let output = block.process(&Parameters::new(), &context, &input);
+        let output = block.process(&Parameters::new(), &model_clock, &input);
 
         assert_eq!(
             output,
@@ -753,12 +753,12 @@ mod tests {
     fn test_modes_apply_elementwise_to_matrices() {
         let mut block =
             CastBlock::<Matrix<3, 1, f64>, Matrix<3, 1, u8>, Saturate, Nearest>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         let input = Matrix::<3, 1, f64> {
             data: [[2.5, -1.0, 300.0]],
         };
-        let output = block.process(&Parameters::new(), &context, &input);
+        let output = block.process(&Parameters::new(), &model_clock, &input);
 
         assert_eq!(
             output,

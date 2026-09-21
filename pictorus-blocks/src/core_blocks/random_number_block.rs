@@ -52,7 +52,7 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let mean: F = parameters.mean.cast_element();
         let val: F = self

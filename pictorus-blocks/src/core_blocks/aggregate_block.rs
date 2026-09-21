@@ -29,7 +29,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
@@ -168,11 +168,11 @@ mod tests {
     #[test]
     fn test_aggregate_sum_f32() {
         let mut block = AggregateBlock::<Matrix<4, 7, f32>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let input: Matrix<4, 7, f32> = Matrix {
             data: [[1.0; 4]; 7],
         };
-        let output = block.process(&PARAM_SUM, &context, &input);
+        let output = block.process(&PARAM_SUM, &model_clock, &input);
         assert_relative_eq!(output, 28.0);
         assert_relative_eq!(block.buffer(), output);
     }
@@ -180,11 +180,11 @@ mod tests {
     #[test]
     fn test_aggregate_sum_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let input: Matrix<4, 7, f64> = Matrix {
             data: [[1.0; 4]; 7],
         };
-        let output = block.process(&PARAM_SUM, &context, &input);
+        let output = block.process(&PARAM_SUM, &model_clock, &input);
         assert_relative_eq!(output, 28.0);
         assert_relative_eq!(block.buffer(), output);
     }
@@ -192,12 +192,12 @@ mod tests {
     #[test]
     fn test_aggregate_max_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix {
             data: [[1.0; 4]; 7],
         };
         input.data[5][3] = 42.0;
-        let output = block.process(&PARAM_MAX, &context, &input);
+        let output = block.process(&PARAM_MAX, &model_clock, &input);
         assert_relative_eq!(output, 42.0);
         assert_relative_eq!(block.buffer(), output);
     }
@@ -205,12 +205,12 @@ mod tests {
     #[test]
     fn test_aggregate_min_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix {
             data: [[11.0; 4]; 7],
         };
         input.data[1][2] = 10.99;
-        let output = block.process(&PARAM_MIN, &context, &input);
+        let output = block.process(&PARAM_MIN, &model_clock, &input);
         assert_relative_eq!(output, 10.99);
         assert_relative_eq!(block.buffer(), output);
     }
@@ -218,13 +218,13 @@ mod tests {
     #[test]
     fn test_aggregate_mean_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix::zeroed();
         for (idx, elem) in input.data.as_flattened_mut().iter_mut().enumerate() {
             *elem = idx as f64;
         }
 
-        let output = block.process(&PARAM_MEAN, &context, &input);
+        let output = block.process(&PARAM_MEAN, &model_clock, &input);
         assert_relative_eq!(output, 13.5);
         assert_relative_eq!(block.buffer(), output);
     }
@@ -232,49 +232,49 @@ mod tests {
     #[test]
     fn test_aggregate_median_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix::zeroed();
         for (idx, elem) in input.data.as_flattened_mut().iter_mut().enumerate() {
             *elem = idx as f64;
         }
 
-        let output = block.process(&PARAM_MEDIAN, &context, &input);
+        let output = block.process(&PARAM_MEDIAN, &model_clock, &input);
         assert_relative_eq!(output, 13.5);
         assert_relative_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_smattering_of_types() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = AggregateBlock::<Matrix<2, 2, u8>>::default();
         let input = Matrix {
             data: [[1, 2], [3, 4]],
         };
-        let output = block.process(&PARAM_MEDIAN, &context, &input);
+        let output = block.process(&PARAM_MEDIAN, &model_clock, &input);
         assert_eq!(output, 2);
-        let output = block.process(&PARAM_MEAN, &context, &input);
+        let output = block.process(&PARAM_MEAN, &model_clock, &input);
         assert_eq!(output, 2);
 
         let mut block = AggregateBlock::<Matrix<2, 2, i32>>::default();
         let input = Matrix {
             data: [[-34, 200], [31, 4]],
         };
-        let output = block.process(&PARAM_MIN, &context, &input);
+        let output = block.process(&PARAM_MIN, &model_clock, &input);
         assert_eq!(output, -34);
 
         let mut block = AggregateBlock::<Matrix<2, 2, i8>>::default();
         let input = Matrix {
             data: [[-34, 127], [31, 4]],
         };
-        let output = block.process(&PARAM_MAX, &context, &input);
+        let output = block.process(&PARAM_MAX, &model_clock, &input);
         assert_eq!(output, 127);
 
         let mut block = AggregateBlock::<Matrix<2, 2, u32>>::default();
         let input = Matrix {
             data: [[34, 127], [31, 4]],
         };
-        let output = block.process(&PARAM_SUM, &context, &input);
+        let output = block.process(&PARAM_SUM, &model_clock, &input);
         assert_eq!(output, 196);
     }
 
@@ -285,8 +285,8 @@ mod tests {
         let input = Matrix {
             data: [[34, 127], [128, 4]],
         };
-        let context = StubModelClock::default();
-        let output = block.process(&PARAM_SUM, &context, &input);
+        let model_clock = StubModelClock::default();
+        let output = block.process(&PARAM_SUM, &model_clock, &input);
         assert_eq!(output, 196);
     }
 
@@ -297,8 +297,8 @@ mod tests {
         let input = Matrix {
             data: [[34, 127], [128, 4]],
         };
-        let context = StubModelClock::default();
-        let output = block.process(&PARAM_MEAN, &context, &input);
+        let model_clock = StubModelClock::default();
+        let output = block.process(&PARAM_MEAN, &model_clock, &input);
         assert_eq!(output, 196);
     }
 

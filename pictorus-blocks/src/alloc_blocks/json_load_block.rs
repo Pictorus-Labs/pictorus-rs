@@ -66,15 +66,15 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn ModelClock,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         if T::apply(&mut self.buffer, inputs, parameters).is_ok() {
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
         }
         let valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         T::set_valid(&mut self.buffer, valid);
         T::storage_as_by(&self.buffer)
     }

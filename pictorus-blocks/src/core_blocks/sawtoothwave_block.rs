@@ -44,13 +44,13 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let two = F::one() + F::one();
         let amplitude: F = parameters.amplitude.cast_element();
         let bias: F = parameters.bias.cast_element();
         let time =
-            (parameters.frequency * F::from_duration(context.time()) + parameters.phase) / F::TAU;
+            (parameters.frequency * F::from_duration(model_clock.time()) + parameters.phase) / F::TAU;
         let x = two * (time - num_traits::Float::floor(time)) - F::one();
         let val = amplitude * x + bias;
         self.buffer = val.cast_element();
@@ -101,12 +101,12 @@ mod tests {
 
     #[test]
     fn test_sawtoothwave_block_simple() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -116,35 +116,35 @@ mod tests {
 
         let mut block = SawtoothwaveBlock::default();
 
-        let out = block.generate(&params, &runtime.context()); // T = 0
+        let out = block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
         assert_eq!(block.buffer(), out);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3 * PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3 * PI / 2
         assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2 * PI
+        block.generate(&params, &runtime.model_clock()); // T = 2 * PI
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
     }
 
     #[test]
     fn test_sawtoothwave_block_phase() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -154,34 +154,34 @@ mod tests {
 
         let mut block = SawtoothwaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3 * PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3 * PI / 2
         assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2 * PI
+        block.generate(&params, &runtime.model_clock()); // T = 2 * PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
     }
 
     #[test]
     fn test_sawtoothwave_block_bias() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -191,34 +191,34 @@ mod tests {
 
         let mut block = SawtoothwaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 1.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3 * PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3 * PI / 2
         assert_relative_eq!(block.buffer(), 1.5, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2 * PI
+        block.generate(&params, &runtime.model_clock()); // T = 2 * PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
     }
 
     #[test]
     fn test_sawtoothwave_block_amplitude() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 2.0;
         let frequency = 1.0;
@@ -228,34 +228,34 @@ mod tests {
 
         let mut block = SawtoothwaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -2.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3 * PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3 * PI / 2
         assert_relative_eq!(block.buffer(), 1.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 2 * PI
+        block.generate(&params, &runtime.model_clock()); // T = 2 * PI
         assert_relative_eq!(block.buffer(), -2.0, epsilon = 0.00001);
     }
 
     #[test]
     fn test_sawtoothwave_block_high_time() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -265,32 +265,32 @@ mod tests {
 
         let mut block = SawtoothwaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         // This was a little weird it was just shy of hitting the discontinuity at 2PI so it was just barely less than 1.0,
         // this fudge factor pushes it over the line. Testing on the edge of the discontinuity might not be the best approach
-        runtime.context.time = Duration::from_secs_f64(2.0 * PI + 0.0000001);
-        block.generate(&params, &runtime.context()); // T = 2*PI
+        runtime.model_clock.time = Duration::from_secs_f64(2.0 * PI + 0.0000001);
+        block.generate(&params, &runtime.model_clock()); // T = 2*PI
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
-        runtime.context.time = Duration::from_secs_f64(400.0 * PI);
-        block.generate(&params, &runtime.context()); // T = 400 * PI
+        runtime.model_clock.time = Duration::from_secs_f64(400.0 * PI);
+        block.generate(&params, &runtime.model_clock()); // T = 400 * PI
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
-        runtime.context.time = Duration::from_secs_f64(400.5 * PI);
-        block.generate(&params, &runtime.context()); // T = 400.5 * PI
+        runtime.model_clock.time = Duration::from_secs_f64(400.5 * PI);
+        block.generate(&params, &runtime.model_clock()); // T = 400.5 * PI
         assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
     }
 
     #[test]
     fn test_sawtoothwave_block_frequency() {
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 4.0),
         );
-        let mut runtime = StubRuntime::new(context);
+        let mut runtime = StubRuntime::new(model_clock);
 
         let amplitude = 1.0;
         let frequency = 2.0;
@@ -300,19 +300,19 @@ mod tests {
 
         let mut block = SawtoothwaveBlock::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_relative_eq!(block.buffer(), -1.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = PI / 2
         assert_relative_eq!(block.buffer(), -0.5, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = PI
+        block.generate(&params, &runtime.model_clock()); // T = PI
         assert_relative_eq!(block.buffer(), 0.0, epsilon = 0.00001);
 
         runtime.tick();
-        block.generate(&params, &runtime.context()); // T = 3 * PI / 2
+        block.generate(&params, &runtime.model_clock()); // T = 3 * PI / 2
         assert_relative_eq!(block.buffer(), 0.5, epsilon = 0.00001);
     }
 
@@ -320,17 +320,17 @@ mod tests {
     fn test_sawtoothwave_block_integer_output() {
         // i32 output: computed in f64, cast with `as` semantics at the output. T = 0 is
         // exact (x = -1), so the trough value has no truncation ambiguity.
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
         );
-        let runtime = StubRuntime::new(context);
+        let runtime = StubRuntime::new(model_clock);
 
         let params = Parameters::new(1000i32, 1.0, 0.0, 250i32);
         let mut block = SawtoothwaveBlock::<i32, f64>::default();
 
-        block.generate(&params, &runtime.context()); // T = 0
+        block.generate(&params, &runtime.model_clock()); // T = 0
         assert_eq!(block.buffer(), -750);
     }
 
@@ -345,7 +345,7 @@ mod tests {
         let params = Parameters::new(100i8, 1.0, 0.0, -100i8);
         let mut block = SawtoothwaveBlock::<i8, f64>::default();
 
-        block.generate(&params, &runtime.context());
+        block.generate(&params, &runtime.model_clock());
         assert_eq!(block.buffer(), i8::MIN);
     }
 }

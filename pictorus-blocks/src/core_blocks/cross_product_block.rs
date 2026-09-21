@@ -48,7 +48,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
@@ -130,7 +130,7 @@ mod tests {
                 #[test]
                 fn [<test_vector_cross_unit_1x3_ $type>]() {
                     // x cross y = z, no negative intermediates so valid for unsigned types
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let p = Parameters::new();
                     let mut cross_block =
                         CrossProductBlock::<(Matrix<1, 3, $type>, Matrix<1, 3, $type>)>::default();
@@ -140,14 +140,14 @@ mod tests {
                     let input2: Matrix<1, 3, $type> = Matrix {
                         data: [[0 as $type], [1 as $type], [0 as $type]],
                     };
-                    let output = cross_block.process(&p, &context, (&input1, &input2));
+                    let output = cross_block.process(&p, &model_clock, (&input1, &input2));
                     assert_eq!(output.data, [[0 as $type], [0 as $type], [1 as $type]]);
                     assert_eq!(cross_block.buffer().data, [[0 as $type], [0 as $type], [1 as $type]]);
                 }
 
                 #[test]
                 fn [<test_vector_cross_unit_3x1_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let p = Parameters::new();
                     let mut cross_block =
                         CrossProductBlock::<(Matrix<3, 1, $type>, Matrix<3, 1, $type>)>::default();
@@ -157,7 +157,7 @@ mod tests {
                     let input2: Matrix<3, 1, $type> = Matrix {
                         data: [[0 as $type, 1 as $type, 0 as $type]],
                     };
-                    let output = cross_block.process(&p, &context, (&input1, &input2));
+                    let output = cross_block.process(&p, &model_clock, (&input1, &input2));
                     assert_eq!(output.data, [[0 as $type, 0 as $type, 1 as $type]]);
                     assert_eq!(cross_block.buffer().data, [[0 as $type, 0 as $type, 1 as $type]]);
                 }
@@ -178,7 +178,7 @@ mod tests {
                 #[test]
                 fn [<test_vector_cross_signed_ $type>]() {
                     // (2,3,4) cross (5,6,7) = (-3, 6, -3)
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let p = Parameters::new();
                     let mut cross_block =
                         CrossProductBlock::<(Matrix<1, 3, $type>, Matrix<1, 3, $type>)>::default();
@@ -188,7 +188,7 @@ mod tests {
                     let input2: Matrix<1, 3, $type> = Matrix {
                         data: [[5 as $type], [6 as $type], [7 as $type]],
                     };
-                    let output = cross_block.process(&p, &context, (&input1, &input2));
+                    let output = cross_block.process(&p, &model_clock, (&input1, &input2));
                     assert_eq!(
                         output.data,
                         [[-3 as $type], [6 as $type], [-3 as $type]]
@@ -206,7 +206,7 @@ mod tests {
         // The first output element computes 16 * 16 = 256, which overflows i8 in the
         // multiply step (before any subtraction). Native arithmetic panics in debug
         // builds (wraps in release).
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let p = Parameters::new();
         let mut cross_block = CrossProductBlock::<(Matrix<1, 3, i8>, Matrix<1, 3, i8>)>::default();
         let input1: Matrix<1, 3, i8> = Matrix {
@@ -215,7 +215,7 @@ mod tests {
         let input2: Matrix<1, 3, i8> = Matrix {
             data: [[0], [0], [16]],
         };
-        let output = cross_block.process(&p, &context, (&input1, &input2));
+        let output = cross_block.process(&p, &model_clock, (&input1, &input2));
         assert_eq!(output.data, [[0], [0], [0]]);
     }
 
@@ -224,7 +224,7 @@ mod tests {
     fn underflow_panics_unsigned() {
         // y cross x = -z, which underflows unsigned types and panics in debug builds
         // (wraps in release).
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let p = Parameters::new();
         let mut cross_block = CrossProductBlock::<(Matrix<1, 3, u8>, Matrix<1, 3, u8>)>::default();
         let input1: Matrix<1, 3, u8> = Matrix {
@@ -233,7 +233,7 @@ mod tests {
         let input2: Matrix<1, 3, u8> = Matrix {
             data: [[1], [0], [0]],
         };
-        let output = cross_block.process(&p, &context, (&input1, &input2));
+        let output = cross_block.process(&p, &model_clock, (&input1, &input2));
         assert_eq!(output.data, [[0], [0], [u8::MAX]]);
     }
 }

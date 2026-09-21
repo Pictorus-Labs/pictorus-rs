@@ -65,7 +65,7 @@ impl InputBlock for SpiConnection {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         if !self.is_cache_valid {
             self.is_cache_valid = true;
@@ -113,7 +113,7 @@ impl OutputBlock for SpiConnection {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         // TODO: Error handling?

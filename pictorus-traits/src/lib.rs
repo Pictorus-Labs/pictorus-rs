@@ -41,7 +41,7 @@
 //! (e.g. If you are generating a sine wave and time-step is delayed the output should give the value of that sine function
 //! at the new tick-time not what it would have been if we hadn't been delayed, this avoids drift of a long running system).
 //! Although execution of every block in a model takes a non-zero amount of time, during a given time-step every block that
-//! is called will be passed the same time in the context they are given so that all the computation in a given time-step is
+//! is called will be passed the same time in the [`ModelClock`] they are given so that all the computation in a given time-step is
 //! "atomic" with respect to all the blocks that use timing information in their execution.
 //!
 //! ### The Block Traits
@@ -202,7 +202,7 @@
 //! ```rust ignore
 //! fn process<'b>(
 //!     &'b mut self,
-//!     context: &dyn ModelClock,
+//!     model_clock: &dyn ModelClock,
 //!     inputs: PassBy<'_, Self::Inputs>,
 //! ) -> PassBy<'b, Self::Output>;
 //! ```
@@ -212,7 +212,7 @@
 //! ```rust ignore
 //! fn process<'b>(
 //!     &'b mut self,
-//!     context: &dyn ModelClock,
+//!     model_clock: &dyn ModelClock,
 //!     inputs: &DMatrix<f64>
 //! ) -> u8;
 //! ```
@@ -320,7 +320,7 @@ pub trait ProcessBlock: Default {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn ModelClock,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output>;
 
@@ -345,7 +345,7 @@ pub trait GeneratorBlock: Default {
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn ModelClock,
+        model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output>;
 
     /// A cache of the blocks last output.
@@ -362,7 +362,7 @@ pub trait OutputBlock {
     fn output(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn ModelClock,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     );
 }
@@ -378,11 +378,11 @@ pub trait InputBlock {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn ModelClock,
+        model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output>;
 }
 
-/// The execution context
+/// Provides timing information to blocks during each tick
 // this trait avoids leaking types associated to the "runtime" into the signature of
 // `{Block,Generator}::run`
 pub trait ModelClock {

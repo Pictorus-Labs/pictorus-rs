@@ -48,10 +48,10 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let timestep_s = T::from_duration(context.timestep().unwrap_or(Duration::from_secs(0)));
+        let timestep_s = T::from_duration(model_clock.timestep().unwrap_or(Duration::from_secs(0)));
         let alpha = timestep_s / (timestep_s + parameters.time_constant_s);
         let res = alpha * inputs + ((T::one() - alpha) * self.buffer);
         self.buffer = res;
@@ -75,10 +75,10 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
-        let timestep_s = T::from_duration(context.timestep().unwrap_or(Duration::from_secs(0)));
+        let timestep_s = T::from_duration(model_clock.timestep().unwrap_or(Duration::from_secs(0)));
         let alpha = timestep_s / (timestep_s + parameters.time_constant_s);
         let input = inputs.as_view();
         let res = input * alpha + (self.buffer.as_view() * (T::one() - alpha));

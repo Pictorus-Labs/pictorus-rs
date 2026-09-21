@@ -34,7 +34,7 @@ impl<S: Scalar + num_traits::Float + num_traits::Zero> ProcessBlock for Exponent
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut inputs_local = inputs;
@@ -70,7 +70,7 @@ impl<S: Scalar + num_traits::Float + num_traits::Zero, const NROWS: usize, const
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.output = *inputs;
@@ -142,56 +142,56 @@ mod tests {
 
     #[test]
     fn test_exponent_block_scalar() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = ExponentBlock::<f64>::default();
 
         // Preserve sign is false
         let parameters = Parameters::new(2.0, false);
         let input = 2.0;
-        let output = block.process(&parameters, &context, input.as_by());
+        let output = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, 4.0);
         assert_eq!(block.buffer(), output);
         let input = -2.0;
-        let output = block.process(&parameters, &context, input.as_by());
+        let output = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, 4.0);
 
         // Preserve sign is true
         let parameters = Parameters::new(4.0, true);
         let input = 11.0;
-        let output = block.process(&parameters, &context, input.as_by());
+        let output = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, 14641.0);
         let input = -11.0;
-        let output = block.process(&parameters, &context, input.as_by());
+        let output = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, -14641.0);
 
         // Now try a Root
         let parameters = Parameters::new(0.5, false);
         let input = 4.0;
-        let output = block.process(&parameters, &context, input.as_by());
+        let output = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, 2.0);
 
         // Now try a Root with preserve sign
         let parameters = Parameters::new(0.5, true);
-        let output = block.process(&parameters, &context, input.as_by());
+        let output = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, 2.0);
         let input = -4.0;
-        let output = block.process(&parameters, &context, input.as_by());
+        let output = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, -2.0);
     }
 
     #[test]
     #[should_panic]
     fn test_root_negative_input_no_preserve_sign_panic() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = ExponentBlock::<f64>::default();
         let parameters = Parameters::new(0.5, false);
         let input = -4.0;
-        block.process(&parameters, &context, input.as_by());
+        block.process(&parameters, &model_clock, input.as_by());
     }
 
     #[test]
     fn test_exponent_block_matrix() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = ExponentBlock::<Matrix<2, 2, f32>>::default();
 
         // Preserve sign is false
@@ -199,12 +199,12 @@ mod tests {
         let input = Matrix {
             data: [[1.0, -2.0], [3.0, -4.0]],
         };
-        let output = block.process(&parameters, &context, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.0, 4.0], [9.0, 16.0]]);
 
         // Preserve sign is true
         let parameters = Parameters::new(4.0, true);
-        let output = block.process(&parameters, &context, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.0, -16.0], [81.0, -256.0]]);
 
         // Now try a Root
@@ -212,30 +212,30 @@ mod tests {
         let input = Matrix {
             data: [[1.0, 4.0], [9.0, 16.0]],
         };
-        let output = block.process(&parameters, &context, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.0, 2.0], [3.0, 4.0]]);
 
         // Now try a Root with preserve sign
         let parameters = Parameters::new(0.5, true);
-        let output = block.process(&parameters, &context, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.0, 2.0], [3.0, 4.0]]);
 
         let input = Matrix {
             data: [[1.0, -4.0], [9.0, -16.0]],
         };
-        let output = block.process(&parameters, &context, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.0, -2.0], [3.0, -4.0]]);
     }
 
     #[test]
     #[should_panic]
     fn test_root_matrix_negative_input_no_preserve_sign_panic() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = ExponentBlock::<Matrix<2, 2, f32>>::default();
         let parameters = Parameters::new(0.5, false);
         let input = Matrix {
             data: [[1.0, -4.0], [9.0, -16.0]],
         };
-        block.process(&parameters, &context, &input);
+        block.process(&parameters, &model_clock, &input);
     }
 }

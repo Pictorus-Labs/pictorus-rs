@@ -43,7 +43,7 @@ impl InputBlock for SimGpioPin {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         self.is_high().unwrap_or(false).into()
     }
@@ -56,7 +56,7 @@ impl OutputBlock for SimGpioPin {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         if inputs {

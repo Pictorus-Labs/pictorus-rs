@@ -43,20 +43,20 @@ impl ModelClock for StubModelClock {
 /// A struct that wraps a [`StubModelClock`] and provides a convenient way to simulate the passage of time in a unit test.
 #[derive(Debug, new, Clone, Copy, Default)]
 pub struct StubRuntime {
-    pub context: StubModelClock,
+    pub model_clock: StubModelClock,
 }
 
 impl StubRuntime {
     pub fn tick(&mut self) {
-        self.context.time += self.context.fundamental_timestep;
-        self.context.timestep = Some(self.context.fundamental_timestep);
+        self.model_clock.time += self.model_clock.fundamental_timestep;
+        self.model_clock.timestep = Some(self.model_clock.fundamental_timestep);
     }
 
-    pub fn context(&self) -> StubModelClock {
-        self.context
+    pub fn model_clock(&self) -> StubModelClock {
+        self.model_clock
     }
 
     pub fn set_time(&mut self, time: Duration) {
-        self.context.time = time;
+        self.model_clock.time = time;
     }
 }

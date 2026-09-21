@@ -31,7 +31,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
@@ -88,18 +88,18 @@ mod tests {
     #[test]
     fn test_dot_product_block() {
         let mut block = DotProductBlock::<(Matrix<2, 1, f64>, Matrix<2, 1, f64>)>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new();
         let input = (&Matrix::from_element(2.0), &Matrix::from_element(6.0));
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 24.0);
         assert_eq!(block.buffer(), output);
 
         let mut block = DotProductBlock::<(Matrix<1, 2, u16>, Matrix<1, 2, u16>)>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new();
         let input = (&Matrix { data: [[3], [4]] }, &Matrix { data: [[6], [2]] });
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 26);
     }
 }

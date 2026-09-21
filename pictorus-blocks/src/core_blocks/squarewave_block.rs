@@ -92,9 +92,9 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        let adjusted_time = F::from_duration(context.time()) - parameters.phase;
+        let adjusted_time = F::from_duration(model_clock.time()) - parameters.phase;
         let pulse_time = parameters.on_duration + parameters.off_duration;
         let mut time_since_last_pulse_start: F = adjusted_time % pulse_time;
 
@@ -144,38 +144,38 @@ mod tests {
 
         let mut runtime = StubRuntime::default();
 
-        block.generate(&p, &runtime.context());
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        block.generate(&p, &runtime.model_clock());
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
         assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_millis(500));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f64(1.0));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f64(1.499));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f64(1.5));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         // Off duration
         runtime.set_time(Duration::from_secs_f64(2.5));
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
         assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_secs_f64(3.499));
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
         assert_eq!(block.buffer(), bias);
 
         // Back on
         runtime.set_time(Duration::from_secs_f64(3.5));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
     }
 
@@ -193,38 +193,38 @@ mod tests {
 
         let mut runtime = StubRuntime::default();
 
-        block.generate(&p, &runtime.context());
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        block.generate(&p, &runtime.model_clock());
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
         assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_millis(500));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f32(1.0));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f32(1.499));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f32(1.5));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
 
         // Off duration
         runtime.set_time(Duration::from_secs_f32(2.5));
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
         assert_eq!(block.buffer(), bias);
 
         runtime.set_time(Duration::from_secs_f32(3.499));
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
         assert_eq!(block.buffer(), bias);
 
         // Back on
         runtime.set_time(Duration::from_secs_f32(3.5));
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
         assert_eq!(block.buffer(), bias + amplitude);
     }
 
@@ -244,17 +244,17 @@ mod tests {
         let runtime = StubRuntime::default();
 
         p.phase = 1.5;
-        block.generate(&p, &runtime.context());
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        block.generate(&p, &runtime.model_clock());
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
 
         p.phase = 0.0;
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
 
         p.phase = 0.5;
-        assert_eq!(block.generate(&p, &runtime.context()), bias);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias);
 
         p.phase = 2.5;
-        assert_eq!(block.generate(&p, &runtime.context()), bias + amplitude);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), bias + amplitude);
 
         // No Phase Shift:
         //
@@ -288,11 +288,11 @@ mod tests {
 
         let mut runtime = StubRuntime::default();
 
-        let output = block.generate(&p, &runtime.context());
+        let output = block.generate(&p, &runtime.model_clock());
         assert_eq!(output, bias + amplitude);
 
         runtime.set_time(Duration::from_secs_f32(1.5));
-        let output = block.generate(&p, &runtime.context());
+        let output = block.generate(&p, &runtime.model_clock());
         assert_eq!(output, bias);
     }
 
@@ -305,11 +305,11 @@ mod tests {
         let mut runtime = StubRuntime::default();
 
         // On: amplitude 200 + bias 20
-        assert_eq!(block.generate(&p, &runtime.context()), 220);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), 220);
 
         // Off: bias alone.
         runtime.set_time(Duration::from_secs_f64(1.5));
-        assert_eq!(block.generate(&p, &runtime.context()), 20);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), 20);
     }
 
     #[test]
@@ -319,7 +319,7 @@ mod tests {
         let runtime = StubRuntime::default();
         let p = Parameters::<i8, f64>::new(100, 1.0, 1.0, 0.0, 100);
         let mut block = SquarewaveBlock::<i8, f64>::default();
-        let _ = block.generate(&p, &runtime.context());
+        let _ = block.generate(&p, &runtime.model_clock());
     }
 
     #[test]
@@ -331,7 +331,7 @@ mod tests {
         let p = Parameters::<i8, f64>::new(-100, 1.0, 1.0, 0.0, -100);
         let mut block = SquarewaveBlock::<i8, f64>::default();
         runtime.set_time(Duration::from_secs_f64(0.5));
-        let _ = block.generate(&p, &runtime.context());
+        let _ = block.generate(&p, &runtime.model_clock());
     }
 
     #[test]
@@ -342,7 +342,7 @@ mod tests {
         let mut block = SquarewaveBlock::<f32>::default();
 
         let runtime = StubRuntime::default();
-        assert_eq!(block.generate(&p, &runtime.context()), f32::INFINITY);
+        assert_eq!(block.generate(&p, &runtime.model_clock()), f32::INFINITY);
     }
 
     #[test]
@@ -353,12 +353,12 @@ mod tests {
 
         let mut runtime = StubRuntime::default();
 
-        assert!(block.generate(&p, &runtime.context()));
+        assert!(block.generate(&p, &runtime.model_clock()));
 
         runtime.set_time(Duration::from_secs_f64(1.5));
-        assert!(!block.generate(&p, &runtime.context()));
+        assert!(!block.generate(&p, &runtime.model_clock()));
 
         runtime.set_time(Duration::from_secs_f64(2.5));
-        assert!(block.generate(&p, &runtime.context()));
+        assert!(block.generate(&p, &runtime.model_clock()));
     }
 }

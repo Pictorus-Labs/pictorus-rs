@@ -40,7 +40,7 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         T::apply(&mut self.buffer, parameters)
     }
@@ -104,9 +104,9 @@ mod tests {
     fn test_constant_scalar() {
         let mut block = ConstantBlock::<f64>::default();
         let parameters = Parameters::new(3.0);
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.generate(&parameters, &context);
+        let output = block.generate(&parameters, &model_clock);
         assert_eq!(output, 3.0);
         assert_eq!(block.buffer(), output);
     }
@@ -117,9 +117,9 @@ mod tests {
         let parameters = Parameters::new(Matrix {
             data: [[1.0], [2.0]],
         });
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.generate(&parameters, &context);
+        let output = block.generate(&parameters, &model_clock);
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 2.0);
 
@@ -133,9 +133,9 @@ mod tests {
         let parameters = Parameters::new(Matrix {
             data: [[1.0, 3.0], [2.0, 4.0]],
         });
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.generate(&parameters, &context);
+        let output = block.generate(&parameters, &model_clock);
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 2.0);
         assert_eq!(output.data[0][1], 3.0);
@@ -150,9 +150,9 @@ mod tests {
     fn test_constant_scalar_f32() {
         let mut block = ConstantBlock::<f32>::default();
         let parameters = Parameters::new(3.0_f32);
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.generate(&parameters, &context);
+        let output = block.generate(&parameters, &model_clock);
         assert_eq!(output, 3.0_f32);
         assert_eq!(block.buffer(), output);
     }
@@ -163,9 +163,9 @@ mod tests {
         let parameters = Parameters::new(Matrix {
             data: [[1.0_f32, 3.0_f32], [2.0_f32, 4.0_f32]],
         });
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.generate(&parameters, &context);
+        let output = block.generate(&parameters, &model_clock);
         assert_eq!(output.data[0][0], 1.0_f32);
         assert_eq!(output.data[1][0], 2.0_f32);
         assert_eq!(output.data[0][1], 3.0_f32);

@@ -58,7 +58,7 @@ macro_rules! impl_vector_sort {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 const { assert!(IROWS * ICOLS == OCOLS, "Input matrix dimensions do not match output matrix dimensions in VectorSortBlock"); }
@@ -100,7 +100,7 @@ macro_rules! impl_vector_sort {
             fn process(
                 &mut self,
                 _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 self.buffer = input;

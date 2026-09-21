@@ -26,7 +26,7 @@ impl InputBlock for I2cWrapper<'_> {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let size = parameters.read_bytes;
         self.buffer.resize(size, 0);
@@ -52,7 +52,7 @@ impl OutputBlock for I2cWrapper<'_> {
     fn output(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         let mut tx_buffer = Vec::new();

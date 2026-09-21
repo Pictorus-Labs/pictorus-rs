@@ -126,7 +126,7 @@ impl OutputBlock for CanConnection<'_> {
     fn output(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         let Some(frame) = EmbeddedFrame::new(parameters.frame_id, inputs) else {
@@ -149,7 +149,7 @@ impl InputBlock for CanConnection<'_> {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let frame = self
             .read_frames()

@@ -52,9 +52,9 @@ where
     fn generate(
         &mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
-        let time = F::from_duration(context.time());
+        let time = F::from_duration(model_clock.time());
         self.buffer = time.cast_element();
         self.buffer
     }
@@ -85,8 +85,8 @@ mod tests {
         let parameters = <AppTimeBlock<f64> as GeneratorBlock>::Parameters::new();
 
         for _ in 0..100 {
-            let context = runtime.context();
-            let output = block.generate(&parameters, &context);
+            let model_clock = runtime.model_clock();
+            let output = block.generate(&parameters, &model_clock);
             assert_eq!(output, block.buffer());
             runtime.tick();
         }
@@ -101,7 +101,7 @@ mod tests {
         let parameters = <AppTimeBlock<u32, f64> as GeneratorBlock>::Parameters::new();
 
         runtime.set_time(Duration::from_millis(2500));
-        assert_eq!(block.generate(&parameters, &runtime.context()), 2);
+        assert_eq!(block.generate(&parameters, &runtime.model_clock()), 2);
     }
 
     #[test]
@@ -115,6 +115,6 @@ mod tests {
         let parameters = <AppTimeBlock<u8, f64> as GeneratorBlock>::Parameters::new();
 
         runtime.set_time(Duration::from_secs(300));
-        assert_eq!(block.generate(&parameters, &runtime.context()), u8::MAX);
+        assert_eq!(block.generate(&parameters, &runtime.model_clock()), u8::MAX);
     }
 }

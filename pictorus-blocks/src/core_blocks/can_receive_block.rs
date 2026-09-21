@@ -85,19 +85,19 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         if inputs.len() == parameters.length {
             if let Some(can_decoder) = C::new(parameters.frame_id, inputs) {
                 (self.rx_cb)(&can_decoder, self.cache.as_mut_slice());
-                self.stale_check.mark_updated(context.time());
+                self.stale_check.mark_updated(model_clock.time());
             }
         }
 
         let valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         self.output_buffer = O::to_tuple(&self.cache, valid)
             .expect("parameters.signal_count is shorter than output tuple type");
         self.output_buffer.as_by()
@@ -270,13 +270,13 @@ mod tests {
         let mut block =
             CanReceiveBlock::<1, f64, StubCanParser, f64>::new(stub_can_parser_callback);
 
-        let output = block.process(&parameters, &runtime.context(), &[42, 0, 0, 0, 0, 0, 0, 0]);
+        let output = block.process(&parameters, &runtime.model_clock(), &[42, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(output, (42., true));
 
         runtime.set_time(Duration::from_secs(2));
 
         // Simulate a stale message
-        let output = block.process(&parameters, &runtime.context(), &[]);
+        let output = block.process(&parameters, &runtime.model_clock(), &[]);
         assert_eq!(output, (42., false));
     }
 
@@ -292,13 +292,13 @@ mod tests {
                 stub_can_parser_callback,
             );
 
-        let output = block.process(&parameters, &runtime.context(), &[42, 1, 2, 3, 4, 5, 6, 7]);
+        let output = block.process(&parameters, &runtime.model_clock(), &[42, 1, 2, 3, 4, 5, 6, 7]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., true));
 
         // Simulate stale message
         runtime.set_time(Duration::from_secs(2));
 
-        let output = block.process(&parameters, &runtime.context(), &[]);
+        let output = block.process(&parameters, &runtime.model_clock(), &[]);
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., false));
     }
 

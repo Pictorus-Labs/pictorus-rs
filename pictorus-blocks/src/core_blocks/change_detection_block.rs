@@ -58,7 +58,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters, &mut self.last_input);
@@ -190,59 +190,59 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_scalar_rising_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Parameters::new([<1 $type>], "Rising");
                     let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
-                    let output = block.process(&params, &context, [<1 $type>]);
+                    let output = block.process(&params, &model_clock, [<1 $type>]);
                     assert!(!output.is_truthy());
 
                     //Falling -false
-                    let output = block.process(&params, &context, [<0 $type>]);
+                    let output = block.process(&params, &model_clock, [<0 $type>]);
                     assert!(!output.is_truthy());
 
                     // Rising - true
-                    let output = block.process(&params, &context, [<1 $type>]);
+                    let output = block.process(&params, &model_clock, [<1 $type>]);
                     assert!(output.is_truthy());
                 }
 
                 #[test]
                 fn [<test_scalar_falling_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Parameters::new([<1 $type>], "Falling");
                     let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
-                    let output = block.process(&params, &context, [<1 $type>]);
+                    let output = block.process(&params, &model_clock, [<1 $type>]);
                     assert!(!output.is_truthy());
 
                     //Falling -true
-                    let output = block.process(&params, &context, [<0 $type>]);
+                    let output = block.process(&params, &model_clock, [<0 $type>]);
                     assert!(output.is_truthy());
 
                     // Rising - false
-                    let output = block.process(&params, &context, [<1 $type>]);
+                    let output = block.process(&params, &model_clock, [<1 $type>]);
                     assert!(!output.is_truthy());
                 }
 
 
                 #[test]
                 fn [<test_scalar_any_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Parameters::new([<1 $type>], "Any");
                     let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
                     // No change - false
-                    let output = block.process(&params, &context, [<1 $type>]);
+                    let output = block.process(&params, &model_clock, [<1 $type>]);
                     assert!(!output.is_truthy());
 
                     //Falling -true
-                    let output = block.process(&params, &context, [<0 $type>]);
+                    let output = block.process(&params, &model_clock, [<0 $type>]);
                     assert!(output.is_truthy());
 
                     // Rising - true
-                    let output = block.process(&params, &context, [<1 $type>]);
+                    let output = block.process(&params, &model_clock, [<1 $type>]);
                     assert!(output.is_truthy());
                 }
             }
@@ -263,7 +263,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_matrix_falling_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Falling");
                     let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
@@ -272,14 +272,14 @@ mod tests {
                     };
 
                     // No change
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &Matrix::zeroed());
 
                     // Falling for all values
                     let input = Matrix {
                         data: [[[<1 $type>]; 8]; 11],
                     };
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -291,25 +291,25 @@ mod tests {
                     let mut input = Matrix {
                         data: [[[<11 $type>]; 8]; 11],
                     };
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &Matrix::zeroed());
 
                     // Falling just one element
                     input.data[3][5] = [<4 $type>];
                     let mut expected_output = Matrix::zeroed();
                     expected_output.data[3][5] = 1.0;
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &expected_output);
 
                     // Rising just one element
                     input.data[6][2] = [<42 $type>];
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &Matrix::zeroed());
                 }
 
                 #[test]
                 fn [<test_matrix_rising_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Rising");
                     let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
@@ -318,21 +318,21 @@ mod tests {
                     };
 
                     // No change
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &Matrix::zeroed());
 
                     // Falling for all values
                     let input = Matrix {
                         data: [[[<1 $type>]; 8]; 11],
                     };
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &Matrix::zeroed());
 
                     //Rising all values
                     let mut input = Matrix {
                         data: [[[<11 $type>]; 8]; 11],
                     };
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -342,20 +342,20 @@ mod tests {
 
                     // Falling just one element
                     input.data[3][5] = [<4 $type>];
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &Matrix::zeroed());
 
                     // Rising just one element
                     input.data[6][2] = [<42 $type>];
                     let mut expected_output = Matrix::zeroed();
                     expected_output.data[6][2] = 1.0;
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &expected_output);
                 }
 
                 #[test]
                 fn [<test_matrix_any_ $type>]() {
-                    let context = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Any");
                     let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
@@ -364,14 +364,14 @@ mod tests {
                     };
 
                     // No change
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &Matrix::zeroed());
 
                     // Falling for all values
                     let input = Matrix {
                         data: [[[<1 $type>]; 8]; 11],
                     };
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -383,7 +383,7 @@ mod tests {
                     let mut input = Matrix {
                         data: [[[<11 $type>]; 8]; 11],
                     };
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -395,14 +395,14 @@ mod tests {
                     input.data[3][5] = [<4 $type>];
                     let mut expected_output = Matrix::zeroed();
                     expected_output.data[3][5] = 1.0;
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &expected_output);
 
                     // Rising just one element
                     input.data[6][2] = [<42 $type>];
                     let mut expected_output = Matrix::zeroed();
                     expected_output.data[6][2] = 1.0;
-                    let output = block.process(&params, &context, &input);
+                    let output = block.process(&params, &model_clock, &input);
                     assert_eq!(output, &expected_output);
                 }
             }
@@ -420,84 +420,84 @@ mod tests {
 
     #[test]
     fn test_scalar_bool_any() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(true, "Any");
         let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
-        let output = block.process(&params, &context, false);
+        let output = block.process(&params, &model_clock, false);
         assert!(output.is_truthy());
         assert_eq!(block.buffer(), output);
 
         // Falling for all values
-        let output = block.process(&params, &context, false);
+        let output = block.process(&params, &model_clock, false);
         assert!(!output.is_truthy());
 
         //Rising all values
-        let output = block.process(&params, &context, true);
+        let output = block.process(&params, &model_clock, true);
         assert!(output.is_truthy());
     }
 
     #[test]
     fn test_scalar_bool_rising() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(true, "Rising");
         let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
-        let output = block.process(&params, &context, true);
+        let output = block.process(&params, &model_clock, true);
         assert!(!output.is_truthy());
 
         // Falling for all values
-        let output = block.process(&params, &context, false);
+        let output = block.process(&params, &model_clock, false);
         assert!(!output.is_truthy());
 
         //Rising all values
-        let output = block.process(&params, &context, true);
+        let output = block.process(&params, &model_clock, true);
         assert!(output.is_truthy());
     }
 
     #[test]
     fn test_scalar_bool_falling() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(true, "Falling");
         let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
         // No change
-        let output = block.process(&params, &context, true);
+        let output = block.process(&params, &model_clock, true);
         assert!(!output.is_truthy());
 
         // Falling for all values
-        let output = block.process(&params, &context, false);
+        let output = block.process(&params, &model_clock, false);
         assert!(output.is_truthy());
 
         //Rising all values
-        let output = block.process(&params, &context, true);
+        let output = block.process(&params, &model_clock, true);
         assert!(!output.is_truthy());
     }
 
     #[test]
     fn test_f32_output_type_scalar() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(1.0f64, "Any");
         let mut block: ChangeDetectionBlock<_, f32> = ChangeDetectionBlock::new(&params);
 
         // No change
-        let output = block.process(&params, &context, 1.0);
+        let output = block.process(&params, &model_clock, 1.0);
         assert_eq!(output, 0.0f32);
 
         // Falling for all values
-        let output = block.process(&params, &context, 0.0);
+        let output = block.process(&params, &model_clock, 0.0);
         assert_eq!(output, 1.0f32);
 
         //Rising all values
-        let output = block.process(&params, &context, 2.0);
+        let output = block.process(&params, &model_clock, 2.0);
         assert_eq!(output, 1.0f32);
     }
 
     #[test]
     fn test_f32_output_type_matrix() {
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(
             Matrix {
                 data: [[1u8; 2]; 2],
@@ -508,7 +508,7 @@ mod tests {
         let mut block: ChangeDetectionBlock<_, f32> = ChangeDetectionBlock::new(&params);
 
         // No change
-        let output = block.process(&params, &context, &Matrix { data: [[1; 2]; 2] });
+        let output = block.process(&params, &model_clock, &Matrix { data: [[1; 2]; 2] });
         assert_eq!(
             output,
             &Matrix {

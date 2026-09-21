@@ -41,19 +41,19 @@ impl ProcessBlock for UdpReceiveBlock {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         // Make sure the data is the correct size, if so, update the stale check, otherwise
         // something has gone wrong.
         if !input.is_empty() {
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
             self.buffer = input.to_vec();
         }
 
         self.last_valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         (&self.buffer, self.last_valid)
     }
 

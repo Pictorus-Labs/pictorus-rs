@@ -37,11 +37,11 @@ impl GeneratorBlock for SystemTimeBlock {
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         // Since simulations can run faster than real-time, we'll use the delta between system start
         // and now, as measured by app_time, for system clock.
-        let elapsed_time = context.time();
+        let elapsed_time = model_clock.time();
         let time_now = self.start_time + elapsed_time;
         self.output = get_output_value(time_now, parameters.method);
         self.output
@@ -121,12 +121,12 @@ mod tests {
         assert!(Local::now() <= start_time + chrono::Duration::milliseconds(100));
 
         let params = Parameters::new("Epoch");
-        let context = StubModelClock::new(
+        let model_clock = StubModelClock::new(
             Duration::from_secs(42),
             Some(Duration::from_millis(100)),
             Duration::from_millis(100),
         );
-        let output = block.generate(&params, &context);
+        let output = block.generate(&params, &model_clock);
         assert_eq!(output, start_time.timestamp() as f64 + 42.0);
         assert_eq!(block.buffer(), start_time.timestamp() as f64 + 42.0);
         assert_eq!(block.buffer(), output);

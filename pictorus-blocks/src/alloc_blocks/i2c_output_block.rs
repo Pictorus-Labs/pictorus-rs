@@ -36,7 +36,7 @@ impl ProcessBlock for I2cOutputBlock {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer.clear();
@@ -64,11 +64,11 @@ mod tests {
     fn test_i2c_output_block() {
         let mut block = I2cOutputBlock::default();
         let params = Parameters::new(64., 1.);
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         let input_data: &[u8] = &[0x01, 0x02, 0x03];
 
-        let output_signal = block.process(&params, &context, input_data);
+        let output_signal = block.process(&params, &model_clock, input_data);
 
         assert_eq!(output_signal, input_data);
         assert_eq!(block.buffer(), input_data);

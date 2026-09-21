@@ -29,7 +29,7 @@ impl InputBlock for SimAdc {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         0
     }

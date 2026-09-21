@@ -39,7 +39,7 @@ impl<T: Apply> ProcessBlock for TransposeBlock<T> {
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         T::apply(&mut self.store, input)

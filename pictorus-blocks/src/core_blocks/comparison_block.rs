@@ -71,7 +71,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut tmp: Option<T::Output> = None;

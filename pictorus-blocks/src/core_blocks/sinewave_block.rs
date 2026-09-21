@@ -44,11 +44,11 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::ModelClock,
+        model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let amplitude: F = parameters.amplitude.cast_element();
         let bias: F = parameters.bias.cast_element();
-        let time = F::from_duration(context.time());
+        let time = F::from_duration(model_clock.time());
         let sin_val = amplitude
             * num_traits::Float::sin(parameters.frequency * time + parameters.phase)
             + bias;
@@ -104,13 +104,13 @@ mod tests {
             bias: 0.0,
         };
 
-        let mut context = StubModelClock::default();
+        let mut model_clock = StubModelClock::default();
 
-        assert_eq!(block.generate(&parameters, &context), Float::sin(0.5));
+        assert_eq!(block.generate(&parameters, &model_clock), Float::sin(0.5));
         assert_eq!(block.buffer(), Float::sin(0.5));
-        context.time = Duration::from_secs(1);
+        model_clock.time = Duration::from_secs(1);
 
-        assert_eq!(block.generate(&parameters, &context), Float::sin(1.5));
+        assert_eq!(block.generate(&parameters, &model_clock), Float::sin(1.5));
         assert_eq!(block.buffer(), Float::sin(1.5));
     }
 
@@ -120,18 +120,18 @@ mod tests {
         let mut block = SinewaveBlock::<u8, f64>::default();
         let parameters = Parameters::new(100u8, 1.0, 0.0, 100u8);
 
-        let mut context = StubModelClock::default();
+        let mut model_clock = StubModelClock::default();
 
         // t = 0: 100 * sin(0) + 100 = 100
-        assert_eq!(block.generate(&parameters, &context), 100);
+        assert_eq!(block.generate(&parameters, &model_clock), 100);
 
         // sin peaks near t = pi/2: 100 * ~1.0 + 100 ~= 200 truncated
-        context.time = Duration::from_secs_f64(core::f64::consts::FRAC_PI_2);
-        assert_eq!(block.generate(&parameters, &context), 200);
+        model_clock.time = Duration::from_secs_f64(core::f64::consts::FRAC_PI_2);
+        assert_eq!(block.generate(&parameters, &model_clock), 200);
 
         // trough near t = 3pi/2: 100 * ~-1.0 + 100 ~= 0 (not wrapped)
-        context.time = Duration::from_secs_f64(3.0 * core::f64::consts::FRAC_PI_2);
-        assert_eq!(block.generate(&parameters, &context), 0);
+        model_clock.time = Duration::from_secs_f64(3.0 * core::f64::consts::FRAC_PI_2);
+        assert_eq!(block.generate(&parameters, &model_clock), 0);
     }
 
     #[test]
@@ -140,11 +140,11 @@ mod tests {
         let mut block = SinewaveBlock::<u8, f64>::default();
         let parameters = Parameters::new(100u8, 1.0, 0.0, 0u8);
 
-        let context = StubModelClock {
+        let model_clock = StubModelClock {
             time: Duration::from_secs_f64(3.0 * core::f64::consts::FRAC_PI_2),
             ..Default::default()
         };
-        assert_eq!(block.generate(&parameters, &context), 0);
+        assert_eq!(block.generate(&parameters, &model_clock), 0);
     }
 
     // Limits of the compute-in-float strategy. None of these panic: float arithmetic
@@ -161,8 +161,8 @@ mod tests {
         let mut block = SinewaveBlock::<u64, f64>::default();
         let parameters = Parameters::new((1u64 << 53) + 1, 0.0, core::f64::consts::FRAC_PI_2, 0u64);
 
-        let context = StubModelClock::default();
-        assert_eq!(block.generate(&parameters, &context), 1u64 << 53);
+        let model_clock = StubModelClock::default();
+        assert_eq!(block.generate(&parameters, &model_clock), 1u64 << 53);
     }
 
     #[test]
@@ -172,7 +172,7 @@ mod tests {
         let mut block = SinewaveBlock::<u8, f64>::default();
         let parameters = Parameters::new(100u8, 0.0, f64::NAN, 100u8);
 
-        let context = StubModelClock::default();
-        assert_eq!(block.generate(&parameters, &context), 0);
+        let model_clock = StubModelClock::default();
+        assert_eq!(block.generate(&parameters, &model_clock), 0);
     }
 }

@@ -45,7 +45,7 @@ impl<S: Scalar + PartialOrd<S> + Default + Zero> ProcessBlock for DeadbandBlock<
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let in_deadband = input < parameters.upper_limit && input > parameters.lower_limit;
@@ -68,7 +68,7 @@ impl<S: Scalar + PartialOrd<S> + Default + Zero, const NROWS: usize, const NCOLS
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::ModelClock,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer = Matrix::zeroed();

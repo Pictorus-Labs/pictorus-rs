@@ -19,7 +19,7 @@ where
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         if self.buffer.is_none() {
             self.buffer = Some(self.adc.read(&mut self.channel));

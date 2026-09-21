@@ -45,7 +45,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn ModelClock,
+        _model_clock: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = *input;
@@ -71,9 +71,9 @@ mod tests {
     #[test]
     fn test_dac_block() {
         let mut dac_block = DacBlock::<Matrix<1, 2, f64>>::default();
-        let context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let output =
-            *dac_block.process(&Parameters::new(), &context, &Matrix { data: [[1.], [2.]] });
+            *dac_block.process(&Parameters::new(), &model_clock, &Matrix { data: [[1.], [2.]] });
         assert_eq!(output.data, [[1.], [2.]]);
         assert_eq!(dac_block.buffer(), &output);
     }

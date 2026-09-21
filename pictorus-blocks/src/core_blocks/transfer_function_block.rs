@@ -90,7 +90,7 @@ macro_rules! impl_transfer_function {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
@@ -170,7 +170,7 @@ macro_rules! impl_transfer_function {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::ModelClock,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
