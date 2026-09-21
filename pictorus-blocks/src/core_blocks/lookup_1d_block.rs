@@ -176,78 +176,78 @@ mod tests {
 
     #[test]
     fn test_scalar_linear() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new("Linear", [0.0, 1.0, 2.0], [-1.0, 1.0, 10.0]);
 
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
-        let res = block.process(&params, &ctxt, 0.0);
+        let res = block.process(&params, &model_clock, 0.0);
         assert_eq!(res, -1.0);
         assert_eq!(block.buffer(), res);
 
-        let res = block.process(&params, &ctxt, 1.0);
+        let res = block.process(&params, &model_clock, 1.0);
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
-        let res = block.process(&params, &ctxt, 0.5);
+        let res = block.process(&params, &model_clock, 0.5);
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
 
-        let res = block.process(&params, &ctxt, 1.5);
+        let res = block.process(&params, &model_clock, 1.5);
         let expected = 11.0 / 2.0;
         assert_eq!(res, expected);
         assert_eq!(block.buffer(), expected);
 
         // Verify clamps output
-        let res = block.process(&params, &ctxt, 3.0);
+        let res = block.process(&params, &model_clock, 3.0);
         assert_eq!(res, 10.0);
         assert_eq!(block.buffer(), 10.0);
 
-        let res = block.process(&params, &ctxt, -100.0);
+        let res = block.process(&params, &model_clock, -100.0);
         assert_eq!(res, -1.0);
         assert_eq!(block.buffer(), -1.0);
     }
 
     #[test]
     fn test_scalar_nearest() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let break_points_u1 = [0.0, 1.0, 2.0];
         let data_points = [-1.0, 1.0, 10.0];
         let params = Parameters::new("Nearest", break_points_u1, data_points);
 
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
-        let res = block.process(&params, &ctxt, 0.0);
+        let res = block.process(&params, &model_clock, 0.0);
         assert_eq!(res, -1.0);
         assert_eq!(block.buffer(), -1.0);
 
-        let res = block.process(&params, &ctxt, 0.25);
+        let res = block.process(&params, &model_clock, 0.25);
         assert_eq!(res, -1.0);
         assert_eq!(block.buffer(), -1.0);
 
-        let res = block.process(&params, &ctxt, 0.5);
+        let res = block.process(&params, &model_clock, 0.5);
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
-        let res = block.process(&params, &ctxt, 0.75);
+        let res = block.process(&params, &model_clock, 0.75);
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
-        let res = block.process(&params, &ctxt, 1.75);
+        let res = block.process(&params, &model_clock, 1.75);
         assert_eq!(res, 10.0);
         assert_eq!(block.buffer(), 10.0);
 
         // Verify clamps output
-        let res = block.process(&params, &ctxt, 3.0);
+        let res = block.process(&params, &model_clock, 3.0);
         assert_eq!(res, 10.0);
         assert_eq!(block.buffer(), 10.0);
 
-        let res = block.process(&params, &ctxt, -100.0);
+        let res = block.process(&params, &model_clock, -100.0);
         assert_eq!(res, -1.0);
         assert_eq!(block.buffer(), -1.0);
     }
 
     #[test]
     fn test_matrix_linear() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let break_points_u1 = [0.0, 1.0, 2.0];
         let data_points = [-1.0, 1.0, 10.0];
         let params = Parameters::new("Linear", break_points_u1, data_points);
@@ -256,7 +256,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 1.0], [0.5, 1.5]],
         };
-        let res = block.process(&params, &ctxt, &input);
+        let res = block.process(&params, &model_clock, &input);
         let expected = Matrix {
             data: [[-1.0, 1.0], [0.0, 11.0 / 2.0]],
         };
@@ -267,7 +267,7 @@ mod tests {
         let input = Matrix {
             data: [[3.0, 300.0], [-100.0, -10000.0]],
         };
-        let res = block.process(&params, &ctxt, &input);
+        let res = block.process(&params, &model_clock, &input);
         let expected = Matrix {
             data: [[10.0, 10.0], [-1.0, -1.0]],
         };
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_matrix_nearest() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let break_points_u1 = [0.0, 1.0, 2.0];
         let data_points = [-1.0, 1.0, 10.0];
         let params = Parameters::new("Nearest", break_points_u1, data_points);
@@ -286,7 +286,7 @@ mod tests {
         let input = Matrix {
             data: [[0.0, 0.25], [0.5, 1.75]],
         };
-        let res = block.process(&params, &ctxt, &input);
+        let res = block.process(&params, &model_clock, &input);
         let expected = Matrix {
             data: [[-1.0, -1.0], [1.0, 10.0]],
         };
@@ -297,7 +297,7 @@ mod tests {
         let input = Matrix {
             data: [[3.0, 300.0], [-100.0, -10000.0]],
         };
-        let res = block.process(&params, &ctxt, &input);
+        let res = block.process(&params, &model_clock, &input);
         let expected = Matrix {
             data: [[10.0, 10.0], [-1.0, -1.0]],
         };

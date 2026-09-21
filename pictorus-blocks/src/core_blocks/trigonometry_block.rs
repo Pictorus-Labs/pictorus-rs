@@ -171,11 +171,11 @@ mod tests {
         #[case] input: f64,
         #[case] expected: f64,
     ) {
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = TrigonometryBlock::<f64>::default();
         let p = Parameters::new(function);
 
-        let output = block.process(&p, &c, input);
+        let output = block.process(&p, &model_clock, input);
         assert_relative_eq!(output, expected, max_relative = 0.00001);
         assert_relative_eq!(block.buffer(), expected, max_relative = 0.00001);
         assert_eq!(block.buffer(), output);
@@ -183,14 +183,14 @@ mod tests {
 
     #[test]
     fn test_trigonometry_block_vectorized() {
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut sine_block = TrigonometryBlock::<Matrix<1, 2, f64>>::default();
         let p = Parameters::new("Sine");
         let inputs = Matrix {
             data: [[0.0], [PI / 2.0]],
         };
 
-        let output = sine_block.process(&p, &c, &inputs);
+        let output = sine_block.process(&p, &model_clock, &inputs);
         assert_relative_eq!(
             output.data.as_flattened(),
             [[0.0], [1.0]].as_flattened(),

@@ -174,7 +174,7 @@ mod tests {
         use super::*;
         use crate::testing::StubModelClock;
 
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, f64>::default();
         let parameters = Parameters::new(1., 1.);
 
@@ -187,15 +187,15 @@ mod tests {
             ],
         };
 
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 6.0);
 
         let parameters = Parameters::new(0., 0.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 1.0);
 
         let parameters = Parameters::new(2., 2.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 11.0);
     }
 
@@ -204,7 +204,7 @@ mod tests {
         use super::*;
         use crate::testing::StubModelClock;
 
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<1, 1, f64>>::default();
         let parameters = Parameters::new(1., 1.);
 
@@ -217,15 +217,15 @@ mod tests {
             ],
         };
 
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[6.0]]);
 
         let parameters = Parameters::new(0., 0.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.0]]);
 
         let parameters = Parameters::new(2., 2.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[11.0]]);
     }
 
@@ -234,7 +234,7 @@ mod tests {
         use super::*;
         use crate::testing::StubModelClock;
 
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<2, 2, f64>>::default();
         let parameters = Parameters::new(1., 1.);
 
@@ -247,15 +247,15 @@ mod tests {
             ],
         };
 
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[6.0, 7.0], [10.0, 11.0]]);
 
         let parameters = Parameters::new(0., 0.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.0, 2.0], [5.0, 6.0]]);
 
         let parameters = Parameters::new(2., 2.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[11.0, 12.0], [15.0, 16.0]]);
     }
 
@@ -264,7 +264,7 @@ mod tests {
         use super::*;
         use crate::testing::StubModelClock;
 
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<1, 4, f64>>::default();
         let parameters = Parameters::new(0., 0.);
 
@@ -279,19 +279,19 @@ mod tests {
             ],
         };
 
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1.], [5.], [9.], [13.]]);
 
         let parameters = Parameters::new(1., 0.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[2.], [6.], [10.], [14.]]);
 
         let parameters = Parameters::new(2., 0.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[3.], [7.], [11.], [15.]]);
 
         let parameters = Parameters::new(3., 0.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[4.], [8.], [12.], [16.]]);
     }
 
@@ -300,7 +300,7 @@ mod tests {
         use super::*;
         use crate::testing::StubModelClock;
 
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<4, 1, f64>>::default();
         let parameters = Parameters::new(0., 0.);
 
@@ -315,19 +315,19 @@ mod tests {
             ],
         };
 
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[1., 2., 3., 4.]]);
 
         let parameters = Parameters::new(0., 1.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[5., 6., 7., 8.]]);
 
         let parameters = Parameters::new(0., 2.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[9., 10., 11., 12.]]);
 
         let parameters = Parameters::new(0., 3.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[13., 14., 15., 16.]]);
     }
 
@@ -336,7 +336,7 @@ mod tests {
         use super::*;
         use crate::testing::StubModelClock;
 
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<2, 2, f64>>::default();
 
         // Matrix Data is stored in [[<T>; ROW]; COL] and accessed as [COL][ROW]
@@ -352,12 +352,12 @@ mod tests {
 
         // Test mostly out of bounds
         let parameters = Parameters::new(3., 3.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[16.0, 0.0], [0.0, 0.0]]);
 
         // Test completely
         let parameters = Parameters::new(4., 4.);
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(output.data, [[0.0, 0.0], [0.0, 0.0]]);
     }
 }

@@ -118,29 +118,29 @@ mod tests {
                     const ZERO: $type = 0 as $type;
                     let mut block = DeadbandBlock::<$type>::default();
                     let parameters = Parameters::new(lower_limit, upper_limit);
-                    let ctxt = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
 
                     // Anything exactly at the deadband limits maintains data
                     let input = lower_limit;
-                    let output = block.process(&parameters, &ctxt, input);
+                    let output = block.process(&parameters, &model_clock, input);
                     assert_eq!(output, lower_limit);
                     assert_eq!(block.buffer(), output);
 
                     let input = upper_limit;
-                    let output = block.process(&parameters, &ctxt, input);
+                    let output = block.process(&parameters, &model_clock, input);
                     assert_eq!(output, upper_limit);
 
                     // Anything between the deadband is set to zero.
                     let input = lower_limit + 1 as $type;
-                    let output = block.process(&parameters, &ctxt, input);
+                    let output = block.process(&parameters, &model_clock, input);
                     assert_eq!(output, ZERO);
 
                     let input = ZERO;
-                    let output = block.process(&parameters, &ctxt, input);
+                    let output = block.process(&parameters, &model_clock, input);
                     assert_eq!(output, ZERO);
 
                     let input = upper_limit - 1 as $type;
-                    let output = block.process(&parameters, &ctxt, input);
+                    let output = block.process(&parameters, &model_clock, input);
                     assert_eq!(output, ZERO);
                 }
 
@@ -154,20 +154,20 @@ mod tests {
                     const ZERO: $type = 0 as $type;
                     let mut block = DeadbandBlock::<Matrix<2, 2, $type>>::default();
                     let parameters = Parameters::new(lower_limit, upper_limit);
-                    let ctxt = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
 
                     // Anything exactly at the deadband limits maintains data
                     let input = Matrix {
                         data: [[lower_limit, upper_limit], [upper_limit, lower_limit]],
                     };
-                    let output = block.process(&parameters, &ctxt, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output.data, [[lower_limit, upper_limit], [upper_limit, lower_limit]]);
 
                     // Anything between the deadband is set to zero.
                     let input = Matrix {
                         data: [[lower_limit + 1 as $type, ZERO], [ZERO, upper_limit - 1 as $type]],
                     };
-                    let output = block.process(&parameters, &ctxt, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output.data, [[ZERO, ZERO], [ZERO, ZERO]]);
                 }
             }

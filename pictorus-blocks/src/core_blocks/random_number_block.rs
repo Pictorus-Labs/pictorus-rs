@@ -92,27 +92,27 @@ mod tests {
 
     #[test]
     fn test_random_number_block() {
-        let stub_context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         // Just verify constructor and run method don't panic
 
         //f32
         let mut block = RandomNumberBlock::<f32>::default();
-        let out = block.generate(&Parameters::new(1.0, 2.0), &stub_context);
+        let out = block.generate(&Parameters::new(1.0, 2.0), &model_clock);
         assert_eq!(block.buffer(), out);
 
         //f64
         let mut block = RandomNumberBlock::<f64>::default();
-        block.generate(&Parameters::new(1.0, 2.0), &stub_context);
+        block.generate(&Parameters::new(1.0, 2.0), &model_clock);
     }
 
     #[test]
     fn test_random_number_block_integer_output() {
-        let stub_context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // i32 output: sampled in f64 around an integer mean, cast at the output.
         // With std2 = 0 every sample is exactly the mean.
         let mut block = RandomNumberBlock::<i32, f64>::default();
-        let out = block.generate(&Parameters::new(100i32, 0.0), &stub_context);
+        let out = block.generate(&Parameters::new(100i32, 0.0), &model_clock);
         assert_eq!(out, 100);
         assert_eq!(block.buffer(), out);
     }
@@ -125,35 +125,35 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_infinite_std2_panics() {
-        let stub_context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = RandomNumberBlock::<f64>::default();
-        block.generate(&Parameters::new(0.0, f64::INFINITY), &stub_context);
+        block.generate(&Parameters::new(0.0, f64::INFINITY), &model_clock);
     }
 
     #[test]
     #[should_panic]
     fn test_nan_std2_panics() {
-        let stub_context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = RandomNumberBlock::<f64>::default();
-        block.generate(&Parameters::new(0.0, f64::NAN), &stub_context);
+        block.generate(&Parameters::new(0.0, f64::NAN), &model_clock);
     }
 
     #[test]
     fn test_negative_std2_does_not_panic() {
         // rand_distr accepts a negative std_dev (the distribution just mirrors), so a
         // negative std2 is not a panic site.
-        let stub_context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = RandomNumberBlock::<f64>::default();
-        block.generate(&Parameters::new(0.0, -1.0), &stub_context);
+        block.generate(&Parameters::new(0.0, -1.0), &model_clock);
     }
 
     #[test]
     fn test_random_number_block_mean_beyond_float_precision_rounds() {
         // A u64 mean above 2^53 is not exactly representable in the f64 the sample is
         // drawn in: 2^53 + 1 silently rounds to 2^53 (std2 = 0 isolates the round trip).
-        let stub_context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = RandomNumberBlock::<u64, f64>::default();
-        let out = block.generate(&Parameters::new((1u64 << 53) + 1, 0.0), &stub_context);
+        let out = block.generate(&Parameters::new((1u64 << 53) + 1, 0.0), &model_clock);
         assert_eq!(out, 1u64 << 53);
     }
 
@@ -161,9 +161,9 @@ mod tests {
     fn test_random_number_block_integer_output_saturates() {
         // A sample far outside the output type's range saturates at the type's limits
         // rather than wrapping or panicking — the distribution's tails are clipped.
-        let stub_context = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = RandomNumberBlock::<i8, f64>::default();
-        let out = block.generate(&Parameters::new(0i8, 1e30), &stub_context);
+        let out = block.generate(&Parameters::new(0i8, 1e30), &model_clock);
         assert!(out == i8::MIN || out == i8::MAX);
     }
 }

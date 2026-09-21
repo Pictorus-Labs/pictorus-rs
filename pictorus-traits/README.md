@@ -29,7 +29,7 @@ Blocks can be one of four types:
 
 Any block that has an output edge (i.e. all but `Output` blocks) must store a copy of its output as a member of the block itself (or at the very least somewhere with the same lifetime as the block itself). This is because output from a block is distributed as an immutable reference to that internal copy which is then passed to any block(s) that use that output as input into themselves. ( This is a slight fib, `Scalar` values are returned by value and therefore a block does not technically need to keep a copy of the output value locally)
 
-Every block trait defines a "tick" function (`generate`, `process`, `input`, and `output` respectively for the list above). In a Pictorus application a given model is executed by running the tick function of every block once per time step. Blocks should never assume they will be run at a specific time-step since that is globally configurable. Further, if at all possible, a block should not assume that the application will perfectly maintain consistent time-steps during execution. Blocks are passed a [`Context`] during each tick that gives the true timing of a tick which should be used to ensure that delayed or skipped time-steps don't cause anymore disruption to the output than necessary (e.g. If you are generating a sine wave and time-step is delayed the output should give the value of that sine function at the new tick-time not what it would have been if we hadn't been delayed, this avoids drift of a long running system). Although execution of every block in a model takes a non-zero amount of time, during a given time-step every block that is called will be passed the same time in the context they are given so that all the computation in a given time-step is "atomic" with respect to all the blocks that use timing information in their execution.
+Every block trait defines a "tick" function (`generate`, `process`, `input`, and `output` respectively for the list above). In a Pictorus application a given model is executed by running the tick function of every block once per time step. Blocks should never assume they will be run at a specific time-step since that is globally configurable. Further, if at all possible, a block should not assume that the application will perfectly maintain consistent time-steps during execution. Blocks are passed a [`ModelClock`] during each tick that gives the true timing of a tick which should be used to ensure that delayed or skipped time-steps don't cause anymore disruption to the output than necessary (e.g. If you are generating a sine wave and time-step is delayed the output should give the value of that sine function at the new tick-time not what it would have been if we hadn't been delayed, this avoids drift of a long running system). Although execution of every block in a model takes a non-zero amount of time, during a given time-step every block that is called will be passed the same time in the `ModelClock` they are given so that all the computation in a given time-step is "atomic" with respect to all the blocks that use timing information in their execution.
 
 ### The Block Traits
 
@@ -37,13 +37,13 @@ Every block trait defines a "tick" function (`generate`, `process`, `input`, and
 
 Defines an `Output` associated type that must impl `Pass`.
 
-Defines a "tick" function of `generate` that must be able to generate an output using some combination of the passed in `Context`, the passed in `Parameters` and the block's internal state
+Defines a "tick" function of `generate` that must be able to generate an output using some combination of the passed in `ModelClock`, the passed in `Parameters` and the block's internal state
 
 #### `ProcessBlock`
 
 These make up of the majority of blocks in Pictorus. They must define an `Output` associated type with the same restrictions as described above. They additionally define an `Input` associated type with the same bounds.
 
-The tick function `process` is passed in the blocks parameters, a `Context` and an Input and returns an Output. Blocks may also have internal state that affects the output for a given set of arguments passed into `process`
+The tick function `process` is passed in the blocks parameters, a `ModelClock` and an Input and returns an Output. Blocks may also have internal state that affects the output for a given set of arguments passed into `process`
 
 #### `InputBlock`
 
@@ -75,11 +75,11 @@ Runtime Parameters on the other hand will use the value set during model develop
 
 Alternatives were explored to have Blocks store their own parameters with getter and setter functions, or to have each block be given a mutex guarded pointer to a copy of their parameters at construction. However, the design described above was chosen because it offered the best ergonomics for block writers while still allowing parameters to be changed, saved, etc.
 
-## Context and Runtime
+## ModelClock and Runtime
 
 The `Runtime` is not a formal trait but should be a platform specific way to track and control the flow of time. The `Runtime` is responsible for keeping track of the elapsed time, the timestep increment, and correctly incrementing time. Incrementing the timestep is platform and framework specific and may be a software timer, hardware timer, async method, or another approach to ensure the program time "ticks" in a controlled way.
 
-A `Runtime` should generate a struct implementing the `Context` trait at the start of a "tick" which is an immutable representation of elapsed time and timestep increment of the program for the current "tick" iteration. A `Context` is required to be passed into any `Block` that is runnable, which may or may not use the `Context` internally to process data.
+A `Runtime` should generate a struct implementing the `ModelClock` trait at the start of a "tick" which is an immutable representation of elapsed time and timestep increment of the program for the current "tick" iteration. A `ModelClock` is required to be passed into any `Block` that is runnable, which may or may not use the `ModelClock` internally to process data.
 
 ## Edge Details
 
@@ -160,7 +160,7 @@ Having `PassBy<'_, T>` available for any type that can be used as edge data allo
 ```rust
 fn process<'b>(
     &'b mut self,
-    context: &dyn Context,
+    model_clock: &dyn ModelClock,
     inputs: PassBy<'_, Self::Inputs>,
 ) -> PassBy<'b, Self::Output>;
 ```
@@ -170,7 +170,7 @@ Here you can see that for a block that accepted `DMatrix<f64>` and returned a `B
 ```rust
 fn process<'b>(
     &'b mut self,
-    context: &dyn Context,
+    model_clock: &dyn ModelClock,
     inputs: &DMatrix<f64>
 ) -> u8;
 ```

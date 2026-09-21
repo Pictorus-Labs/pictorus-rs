@@ -59,7 +59,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_runtime_context() {
+    fn test_runtime_model_clock() {
         // Set timestep to 1000us or 1ms
         let mut model_clock = RuntimeModelClock::new(1000);
         assert_eq!(model_clock.fundamental_timestep(), Duration::from_micros(1000));

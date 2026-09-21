@@ -221,119 +221,119 @@ mod tests {
 
     #[test]
     fn test_logical_and_scalar() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new("And");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
         // All zero aka false inputs = false output
-        let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
+        let res = block.process(&params, &model_clock, (0.0, 0.0, 0.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), res);
 
         // Some zero inputs = false output
-        let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 0.0, 1.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
 
         // All non-zero inputs = true output
-        let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 1.0, 1.0));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
         // Even floats and negative data!
-        let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
+        let res = block.process(&params, &model_clock, (1.0, -2.0, 3.5));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
     }
 
     #[test]
     fn test_logical_or_scalar() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new("Or");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
         // All zero aka false inputs = false output
-        let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
+        let res = block.process(&params, &model_clock, (0.0, 0.0, 0.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
 
         // Some zero inputs = true output
-        let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 0.0, 1.0));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
         // All non-zero inputs = true output
-        let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 1.0, 1.0));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
         // Even floats and negative data!
-        let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
+        let res = block.process(&params, &model_clock, (1.0, -2.0, 3.5));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
     }
 
     #[test]
     fn test_logical_nor_scalar() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new("Nor");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
         // These tests should be the opposite results of the OR tests
 
         // All zero aka false inputs = true output
-        let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
+        let res = block.process(&params, &model_clock, (0.0, 0.0, 0.0));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
         // Some zero inputs = false output
-        let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 0.0, 1.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
 
         // All non-zero inputs = false output
-        let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 1.0, 1.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
 
         // Even floats and negative data!
-        let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
+        let res = block.process(&params, &model_clock, (1.0, -2.0, 3.5));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
     }
 
     #[test]
     fn test_logical_nand_scalar() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new("Nand");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
         // These tests should be the opposite results of the AND tests
 
         // All zero aka false inputs = true output
-        let res = block.process(&params, &ctxt, (0.0, 0.0, 0.0));
+        let res = block.process(&params, &model_clock, (0.0, 0.0, 0.0));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
         // Some zero inputs = true output
-        let res = block.process(&params, &ctxt, (1.0, 0.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 0.0, 1.0));
         assert_eq!(res, 1.0);
         assert_eq!(block.buffer(), 1.0);
 
         // All non-zero inputs = false output
-        let res = block.process(&params, &ctxt, (1.0, 1.0, 1.0));
+        let res = block.process(&params, &model_clock, (1.0, 1.0, 1.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
 
         // Even floats and negative data!
-        let res = block.process(&params, &ctxt, (1.0, -2.0, 3.5));
+        let res = block.process(&params, &model_clock, (1.0, -2.0, 3.5));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), 0.0);
     }
 
     #[test]
     fn test_matrix_ops() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut params = Parameters::new("And");
         let mut block =
             LogicalBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, f64>, Matrix<2, 2, f64>)>::default();
@@ -350,7 +350,7 @@ mod tests {
             },
         );
 
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
@@ -358,7 +358,7 @@ mod tests {
         assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Or;
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[1.0, 1.0], [1.0, 1.0]],
         };
@@ -366,7 +366,7 @@ mod tests {
         assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nor;
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
@@ -374,7 +374,7 @@ mod tests {
         assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nand;
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[1.0, 1.0], [1.0, 1.0]],
         };
@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_matrix_scalar_ops() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut params = Parameters::new("And");
         let mut block = LogicalBlock::<(Matrix<2, 2, f64>, f64)>::default();
 
@@ -395,7 +395,7 @@ mod tests {
             1.0,
         );
 
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[1.0, 0.0], [0.0, 1.0]],
         };
@@ -403,7 +403,7 @@ mod tests {
         assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Or;
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[1.0, 1.0], [1.0, 1.0]],
         };
@@ -411,7 +411,7 @@ mod tests {
         assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nor;
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[0.0, 0.0], [0.0, 0.0]],
         };
@@ -419,7 +419,7 @@ mod tests {
         assert_eq!(block.buffer(), &expected);
 
         params.method = LogicalMethod::Nand;
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = Matrix {
             data: [[0.0, 1.0], [1.0, 0.0]],
         };

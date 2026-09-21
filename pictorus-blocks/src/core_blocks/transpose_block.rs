@@ -93,22 +93,22 @@ mod tests {
 
     #[test]
     fn test_tranpose_scalar_input() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::default();
         let mut transpose_block = TransposeBlock::<f64>::default();
 
-        let output = transpose_block.process(&params, &ctxt, 1.0);
+        let output = transpose_block.process(&params, &model_clock, 1.0);
         assert_eq!(output, 1.0);
         assert_eq!(transpose_block.buffer(), output);
 
-        let output = transpose_block.process(&params, &ctxt, 42.0);
+        let output = transpose_block.process(&params, &model_clock, 42.0);
         assert_eq!(output, 42.0);
         assert_eq!(transpose_block.buffer(), 42.0);
     }
 
     #[test]
     fn test_tranpose_matrix_input() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::default();
         let mut transpose_block = TransposeBlock::<Matrix<3, 2, f64>>::default();
 
@@ -118,7 +118,7 @@ mod tests {
         let expected = Matrix {
             data: [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]],
         };
-        let output = transpose_block.process(&params, &ctxt, &input);
+        let output = transpose_block.process(&params, &model_clock, &input);
         assert_eq!(output.data, expected.data);
         assert_eq!(transpose_block.buffer().data, expected.data);
     }

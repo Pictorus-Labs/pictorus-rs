@@ -104,12 +104,12 @@ mod tests {
                 fn [<test_vector_determinant_ $type>]() {
                     let mut det_block = DeterminantBlock::<$type, Matrix<2, 2, $type>>::default();
 
-                    let c = StubModelClock::default();
+                    let model_clock = StubModelClock::default();
                     let p = Parameters::new();
                     let input = Matrix {
                         data: [[1.0, 2.0], [3.0, 4.0]]
                     };
-                    let output = det_block.process(&p, &c, &input);
+                    let output = det_block.process(&p, &model_clock, &input);
 
                     assert!(output == -2.0);
                     assert_eq!(det_block.buffer(), output);
@@ -118,7 +118,7 @@ mod tests {
                     let input_3x3 = Matrix {
                         data: [[2.0, 0.0, 1.0], [3.0, 4.0, 6.0], [1.0, 5.0, 2.0]]
                     };
-                    let output = det_block_3x3.process(&p, &c, &input_3x3);
+                    let output = det_block_3x3.process(&p, &model_clock, &input_3x3);
                     assert!(output == -33.0);
                     assert_eq!(det_block_3x3.buffer(), output);
                 }

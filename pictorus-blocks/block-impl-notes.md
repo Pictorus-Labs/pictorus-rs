@@ -11,7 +11,7 @@ pub trait ProcessBlock: Default {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output>;
 }
@@ -126,7 +126,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         T::apply(&mut self.buffer, input, parameters.gain);

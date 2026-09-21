@@ -167,49 +167,49 @@ mod tests {
 
     #[test]
     fn test_single_scalar() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = MinMaxBlock::<f64>::default();
         let mut parameters = Parameters::new("Min");
         let input = 99.0;
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(block.buffer(), res);
 
         parameters.method = MinMaxMethod::Max;
-        let res = block.process(&parameters, &ctxt, input.as_by());
+        let res = block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(res, 99.0);
     }
 
     #[test]
     fn test_single_matrix() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = MinMaxBlock::<Matrix<2, 2, f64>>::default();
         let mut parameters = Parameters::new("Min");
         let input = Matrix::<2, 2, f64>::from_element(99.0);
-        let res = block.process(&parameters, &ctxt, &input);
+        let res = block.process(&parameters, &model_clock, &input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
         assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
 
         parameters.method = MinMaxMethod::Max;
-        let res = block.process(&parameters, &ctxt, &input);
+        let res = block.process(&parameters, &model_clock, &input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
         assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
     }
 
     #[test]
     fn test_multiple_scalars() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Two inputs
         let mut two_block = MinMaxBlock::<(f64, f64)>::default();
         let mut parameters = Parameters::new("Min");
         let input = (99.0, 100.0);
-        let res = two_block.process(&parameters, &ctxt, input);
+        let res = two_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(two_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
-        let res = two_block.process(&parameters, &ctxt, input);
+        let res = two_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 100.0);
         assert_eq!(two_block.buffer(), 100.0);
 
@@ -217,12 +217,12 @@ mod tests {
         parameters.method = MinMaxMethod::Min;
         let mut three_block = MinMaxBlock::<(f64, f64, f64)>::default();
         let input = (99.0, 100.0, 101.0);
-        let res = three_block.process(&parameters, &ctxt, input);
+        let res = three_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(three_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
-        let res = three_block.process(&parameters, &ctxt, input);
+        let res = three_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 101.0);
         assert_eq!(three_block.buffer(), 101.0);
 
@@ -230,12 +230,12 @@ mod tests {
         parameters.method = MinMaxMethod::Min;
         let mut four_block = MinMaxBlock::<(f64, f64, f64, f64)>::default();
         let input = (99.0, 100.0, 101.0, 102.0);
-        let res = four_block.process(&parameters, &ctxt, input);
+        let res = four_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(four_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
-        let res = four_block.process(&parameters, &ctxt, input);
+        let res = four_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 102.0);
         assert_eq!(four_block.buffer(), 102.0);
 
@@ -243,12 +243,12 @@ mod tests {
         parameters.method = MinMaxMethod::Min;
         let mut five_block = MinMaxBlock::<(f64, f64, f64, f64, f64)>::default();
         let input = (99.0, 100.0, 101.0, 102.0, 103.0);
-        let res = five_block.process(&parameters, &ctxt, input);
+        let res = five_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(five_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
-        let res = five_block.process(&parameters, &ctxt, input);
+        let res = five_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 103.0);
         assert_eq!(five_block.buffer(), 103.0);
 
@@ -256,12 +256,12 @@ mod tests {
         parameters.method = MinMaxMethod::Min;
         let mut six_block = MinMaxBlock::<(f64, f64, f64, f64, f64, f64)>::default();
         let input = (99.0, 100.0, 101.0, 102.0, 103.0, 104.0);
-        let res = six_block.process(&parameters, &ctxt, input);
+        let res = six_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(six_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
-        let res = six_block.process(&parameters, &ctxt, input);
+        let res = six_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 104.0);
         assert_eq!(six_block.buffer(), 104.0);
 
@@ -269,12 +269,12 @@ mod tests {
         parameters.method = MinMaxMethod::Min;
         let mut seven_block = MinMaxBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
         let input = (99.0, 100.0, 101.0, 102.0, 103.0, 104.0, 105.0);
-        let res = seven_block.process(&parameters, &ctxt, input);
+        let res = seven_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(seven_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
-        let res = seven_block.process(&parameters, &ctxt, input);
+        let res = seven_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 105.0);
         assert_eq!(seven_block.buffer(), 105.0);
 
@@ -282,19 +282,19 @@ mod tests {
         parameters.method = MinMaxMethod::Min;
         let mut eight_block = MinMaxBlock::<(f64, f64, f64, f64, f64, f64, f64, f64)>::default();
         let input = (99.0, 100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0);
-        let res = eight_block.process(&parameters, &ctxt, input);
+        let res = eight_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 99.0);
         assert_eq!(eight_block.buffer(), 99.0);
 
         parameters.method = MinMaxMethod::Max;
-        let res = eight_block.process(&parameters, &ctxt, input);
+        let res = eight_block.process(&parameters, &model_clock, input);
         assert_eq!(res, 106.0);
         assert_eq!(eight_block.buffer(), 106.0);
     }
 
     #[test]
     fn test_multiple_matrices() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Two inputs
         let mut two_block = MinMaxBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, f64>)>::default();
@@ -307,12 +307,12 @@ mod tests {
                 data: [[5.0, 2.0], [7.0, 4.0]],
             },
         );
-        let res = two_block.process(&parameters, &ctxt, input);
+        let res = two_block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
         assert_eq!(two_block.buffer().data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
 
         parameters.method = MinMaxMethod::Max;
-        let res = two_block.process(&parameters, &ctxt, input);
+        let res = two_block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [5.0, 6.0, 7.0, 8.0]);
         assert_eq!(two_block.buffer().data.as_flattened(), [5.0, 6.0, 7.0, 8.0]);
 
@@ -331,7 +331,7 @@ mod tests {
                 data: [[9.0, 10.0], [11.0, 12.0]],
             },
         );
-        let res = three_block.process(&parameters, &ctxt, input);
+        let res = three_block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
         assert_eq!(
             three_block.buffer().data.as_flattened(),
@@ -339,7 +339,7 @@ mod tests {
         );
 
         parameters.method = MinMaxMethod::Max;
-        let res = three_block.process(&parameters, &ctxt, input);
+        let res = three_block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [9.0, 10.0, 11.0, 12.0]);
         assert_eq!(
             three_block.buffer().data.as_flattened(),
@@ -368,7 +368,7 @@ mod tests {
                 data: [[13.0, 14.0], [15.0, 16.0]],
             },
         );
-        let res = four_block.process(&parameters, &ctxt, input);
+        let res = four_block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [1.0, 2.0, 3.0, 4.0]);
         assert_eq!(
             four_block.buffer().data.as_flattened(),
@@ -376,7 +376,7 @@ mod tests {
         );
 
         parameters.method = MinMaxMethod::Max;
-        let res = four_block.process(&parameters, &ctxt, input);
+        let res = four_block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [13.0, 14.0, 15.0, 16.0]);
         assert_eq!(
             four_block.buffer().data.as_flattened(),
@@ -386,18 +386,18 @@ mod tests {
 
     #[test]
     fn test_mixed_scalars_and_matrices() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Scalar and matrix
         let mut block = MinMaxBlock::<(f64, Matrix<2, 2, f64>)>::default();
         let mut parameters = Parameters::new("Min");
         let input = (99.0, &Matrix::from_element(1.0));
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
         assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
 
@@ -405,12 +405,12 @@ mod tests {
         let mut block = MinMaxBlock::<(Matrix<2, 2, f64>, f64)>::default();
         let mut parameters = Parameters::new("Min");
         let input = (&Matrix::from_element(1.0), 99.0);
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
         assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
 
@@ -418,12 +418,12 @@ mod tests {
         let mut block = MinMaxBlock::<(f64, Matrix<2, 2, f64>, f64)>::default();
         let mut parameters = Parameters::new("Min");
         let input = (99.0, &Matrix::from_element(1.0), 100.0);
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [100.0, 100.0, 100.0, 100.0]);
         assert_eq!(
             block.buffer().data.as_flattened(),
@@ -434,12 +434,12 @@ mod tests {
         let mut block = MinMaxBlock::<(Matrix<2, 2, f64>, f64, Matrix<2, 2, f64>)>::default();
         let mut parameters = Parameters::new("Min");
         let input = (&Matrix::from_element(1.0), 99.0, &Matrix::from_element(2.0));
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(block.buffer().data.as_flattened(), [1.0, 1.0, 1.0, 1.0]);
 
         parameters.method = MinMaxMethod::Max;
-        let res = block.process(&parameters, &ctxt, input);
+        let res = block.process(&parameters, &model_clock, input);
         assert_eq!(res.data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
         assert_eq!(block.buffer().data.as_flattened(), [99.0, 99.0, 99.0, 99.0]);
     }

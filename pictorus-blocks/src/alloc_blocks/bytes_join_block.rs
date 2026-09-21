@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_bytes_join_block() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new("/ ");
         let mut block = BytesJoinBlock::<(f64, Matrix<2, 3, f64>, ByteSliceSignal)>::default();
 
@@ -210,7 +210,7 @@ mod tests {
         let signal3 = b"hello there";
         let res = block.process(
             &params,
-            &ctxt,
+            &model_clock,
             (signal1.as_by(), signal2.as_by(), signal3.as_by()),
         );
         println!("{}", std::str::from_utf8(res).unwrap());
@@ -222,13 +222,13 @@ mod tests {
 
     #[test]
     fn test_bytes_join_block_non_ascii_input() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new("⚡");
         let mut block = BytesJoinBlock::<(ByteSliceSignal, ByteSliceSignal)>::default();
 
         let signal1 = "привет".as_bytes();
         let signal2 = "こんにちは".as_bytes();
-        let res = block.process(&params, &ctxt, (signal1, signal2));
+        let res = block.process(&params, &model_clock, (signal1, signal2));
 
         let expected_string = "привет⚡こんにちは".to_string();
         assert_eq!(res, expected_string.as_bytes());
@@ -237,13 +237,13 @@ mod tests {
 
     #[test]
     fn test_bytes_join_non_utf8_input() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(r"\x99");
         let mut block = BytesJoinBlock::<(ByteSliceSignal, ByteSliceSignal)>::default();
 
         let signal1 = b"\x80\x81\x82\x83";
         let signal2 = b"\x84\x85\x86\x87";
-        let res = block.process(&params, &ctxt, (signal1, signal2));
+        let res = block.process(&params, &model_clock, (signal1, signal2));
 
         let expected = b"\x80\x81\x82\x83\x99\x84\x85\x86\x87";
         assert_eq!(res, expected);

@@ -118,29 +118,29 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_scalar() {
-        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let parameters = Parameters::new(0.0, time_constants_s);
         let mut block = IirFilterBlock::<f64>::new(&parameters);
 
         // T = 0, timestep = None, therefore `alpha` = 0 and output = IC
-        let res = block.process(&parameters, &ctxt, 1.0);
+        let res = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(res, 0.0, max_relative = 0.01);
 
-        ctxt.time = Duration::from_secs(1);
-        ctxt.timestep = Some(Duration::from_secs(1));
+        model_clock.time = Duration::from_secs(1);
+        model_clock.timestep = Some(Duration::from_secs(1));
 
         // Sending in unity with 1s timestamps should result in filter reaching
         // roughly 50% of final data
-        let res = block.process(&parameters, &ctxt, 1.0);
+        let res = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(res, 0.5, max_relative = 0.01);
         assert_relative_eq!(block.buffer(), 0.5, max_relative = 0.01);
     }
 
     #[test]
     fn test_iir_filter_block_matrix() {
-        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let ic = Matrix {
@@ -153,7 +153,7 @@ mod tests {
         };
 
         // T = 0, timestep = None, therefore `alpha` = 0 and output = IC
-        let res = block.process(&parameters, &ctxt, &input);
+        let res = block.process(&parameters, &model_clock, &input);
         let expected = [[0.0], [0.0]];
         assert_relative_eq!(
             res.data.as_flattened(),
@@ -161,12 +161,12 @@ mod tests {
             max_relative = 0.01
         );
 
-        ctxt.time = Duration::from_secs(1);
-        ctxt.timestep = Some(Duration::from_secs(1));
+        model_clock.time = Duration::from_secs(1);
+        model_clock.timestep = Some(Duration::from_secs(1));
         // Sending in unity with 1s timestamps should result in filter reaching
         // roughly 50% of final data
 
-        let res = block.process(&parameters, &ctxt, &input);
+        let res = block.process(&parameters, &model_clock, &input);
         let expected = [[0.5, 1.0]];
         assert_relative_eq!(
             res.data.as_flattened(),
@@ -182,36 +182,36 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_scalar_w_ic() {
-        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let parameters = Parameters::new(0.0, time_constants_s);
         let mut block = IirFilterBlock::<f64>::new(&parameters);
 
         // T = 0, timestep = None, therefore `alpha` = 0 and output = IC
-        let res = block.process(&parameters, &ctxt, 1.0);
+        let res = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(res, 0.0, max_relative = 0.01);
 
-        ctxt.time = Duration::from_secs(1);
-        ctxt.timestep = Some(Duration::from_secs(1));
+        model_clock.time = Duration::from_secs(1);
+        model_clock.timestep = Some(Duration::from_secs(1));
 
         // Sending in unity with 1s timestamps should result in filter reaching
         // roughly 50% of final data
-        let res = block.process(&parameters, &ctxt, 1.0);
+        let res = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(res, 0.5, max_relative = 0.01);
         assert_relative_eq!(block.buffer(), 0.5, max_relative = 0.01);
 
         // Reset the block with a new initial condition
         let new_ic = 0.5;
         let parameters = Parameters::new(new_ic, time_constants_s);
-        let res = block.process(&parameters, &ctxt, 1.0);
+        let res = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(res, 0.75, max_relative = 0.01);
         assert_relative_eq!(block.buffer(), 0.75, max_relative = 0.01);
     }
 
     #[test]
     fn test_iir_filter_block_matrix_w_ic() {
-        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let ic = Matrix {
@@ -226,7 +226,7 @@ mod tests {
         };
 
         // T = 0, timestep = None, therefore `alpha` = 0 and output = IC
-        let res = block.process(&parameters, &ctxt, &input);
+        let res = block.process(&parameters, &model_clock, &input);
         let expected = [[0.5], [1.0]];
         assert_relative_eq!(
             res.data.as_flattened(),
@@ -234,10 +234,10 @@ mod tests {
             max_relative = 0.01
         );
 
-        ctxt.time = Duration::from_secs(1);
-        ctxt.timestep = Some(Duration::from_secs(1));
+        model_clock.time = Duration::from_secs(1);
+        model_clock.timestep = Some(Duration::from_secs(1));
 
-        let res = block.process(&parameters, &ctxt, &input);
+        let res = block.process(&parameters, &model_clock, &input);
         let expected = [[0.75, 1.5]];
         assert_relative_eq!(
             res.data.as_flattened(),

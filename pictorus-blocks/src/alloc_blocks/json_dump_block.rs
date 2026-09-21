@@ -478,12 +478,12 @@ mod tests {
 
     #[test]
     fn test_writes_object_data_if_has_labels() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Two floats with Default encoding
         let mut block = JsonDumpBlock::<(f64, f32)>::default();
         let parameters = Parameters::new(&["Default:foo".to_owned(), "Default:bar".to_owned()]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0));
         let expected = {
             let mut data = json::Object::new();
             data.insert("foo".to_owned(), Value::Number(Number::F64(1.0)));
@@ -495,7 +495,7 @@ mod tests {
 
         // Two floats with mixed encoding
         let parameters = Parameters::new(&["Utf8:foo".to_owned(), "Default:bar".to_owned()]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0));
         let expected = {
             let mut data = json::Object::new();
             data.insert("foo".to_owned(), Value::String("1.0".to_owned()));
@@ -507,24 +507,24 @@ mod tests {
 
     #[test]
     fn test_array_output_without_labels() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Test single scalar value
         let mut block = JsonDumpBlock::<i8>::default();
         let parameters = Parameters::new(&[]);
-        let output = block.process(&parameters, &ctxt, 42);
+        let output = block.process(&parameters, &model_clock, 42);
         let expected = json::to_string(&42);
         assert_eq!(output, expected.as_bytes());
 
         // Test two scalar values (tuple)
         let mut block = JsonDumpBlock::<(f64, f32)>::default();
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0));
         let expected = json::to_string(&[1.0, 2.0]);
         assert_eq!(output, expected.as_bytes());
 
         // Test byte slice
         let mut block = JsonDumpBlock::<ByteSliceSignal>::default();
-        let output = block.process(&parameters, &ctxt, b"hello".as_ref());
+        let output = block.process(&parameters, &model_clock, b"hello".as_ref());
         let expected = {
             let data: Vec<Value> = b"hello"
                 .iter()
@@ -536,7 +536,7 @@ mod tests {
 
         // Test mixed types
         let mut block = JsonDumpBlock::<(ByteSliceSignal, f64)>::default();
-        let output = block.process(&parameters, &ctxt, (b"hello".as_ref(), 42.0));
+        let output = block.process(&parameters, &model_clock, (b"hello".as_ref(), 42.0));
         let expected = {
             let mut data = json::Array::new();
             data.push(Value::Array(
@@ -552,49 +552,49 @@ mod tests {
 
         // Test with 3 elements
         let mut block = JsonDumpBlock::<(f64, f32, f32)>::default();
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0));
         let expected = json::to_string(&[1.0, 2.0, 3.0]);
         assert_eq!(output, expected.as_bytes());
 
         // Test with 4 elements
         let mut block = JsonDumpBlock::<(f64, f32, f32, f64)>::default();
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0, 4.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0, 4.0));
         let expected = json::to_string(&[1.0, 2.0, 3.0, 4.0]);
         assert_eq!(output, expected.as_bytes());
 
         // Test with 5 elements
         let mut block = JsonDumpBlock::<(f64, f32, f32, f64, f32)>::default();
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0, 4.0, 5.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0, 4.0, 5.0));
         let expected = json::to_string(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         assert_eq!(output, expected.as_bytes());
 
         // Test with 6 elements
         let mut block = JsonDumpBlock::<(f64, f32, f32, f64, f32, f64)>::default();
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0));
         let expected = json::to_string(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         assert_eq!(output, expected.as_bytes());
 
         // Test with 7 elements
         let mut block = JsonDumpBlock::<(f64, f32, f32, f64, f32, f64, f32)>::default();
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0));
         let expected = json::to_string(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]);
         assert_eq!(output, expected.as_bytes());
 
         // Test with 8 elements (maximum supported)
         let mut block = JsonDumpBlock::<(i8, i16, i32, i32, u8, u16, u32, u8)>::default();
-        let output = block.process(&parameters, &ctxt, (1, 2, 3, 4, 5, 6, 7, 8));
+        let output = block.process(&parameters, &model_clock, (1, 2, 3, 4, 5, 6, 7, 8));
         let expected = json::to_string(&[1, 2, 3, 4, 5, 6, 7, 8]);
         assert_eq!(output, expected.as_bytes());
     }
 
     #[test]
     fn test_object_output_with_labels() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Test single scalar value with label
         let mut block = JsonDumpBlock::<i8>::default();
         let parameters = Parameters::new(&["Default:value".to_owned()]);
-        let output = block.process(&parameters, &ctxt, 42);
+        let output = block.process(&parameters, &model_clock, 42);
         let expected = {
             let mut data = json::Object::new();
             data.insert("value".to_owned(), Value::Number(Number::I64(42)));
@@ -605,7 +605,7 @@ mod tests {
         // Test two scalar values with labels
         let mut block = JsonDumpBlock::<(f64, f32)>::default();
         let parameters = Parameters::new(&["Default:foo".to_owned(), "Default:bar".to_owned()]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0));
         let expected = {
             let mut data = json::Object::new();
             data.insert("foo".to_owned(), Value::Number(Number::F64(1.0)));
@@ -616,7 +616,7 @@ mod tests {
 
         // Test with mixed encoding types
         let parameters = Parameters::new(&["Utf8:foo".to_owned(), "Default:bar".to_owned()]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0));
         let expected = {
             let mut data = json::Object::new();
             data.insert("foo".to_owned(), Value::String("1.0".to_owned()));
@@ -627,7 +627,7 @@ mod tests {
 
         // Test with all Utf8 encoding
         let parameters = Parameters::new(&["Utf8:foo".to_owned(), "Utf8:bar".to_owned()]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0));
         let expected = {
             let mut data = json::Object::new();
             data.insert("foo".to_owned(), Value::String("1.0".to_owned()));
@@ -643,7 +643,7 @@ mod tests {
             "Default:bar".to_owned(),
             "Default:baz".to_owned(),
         ]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0));
         let expected = {
             let mut data = json::Object::new();
             data.insert("foo".to_owned(), Value::Number(Number::F64(1.0)));
@@ -661,7 +661,7 @@ mod tests {
             "Default:three".to_owned(),
             "Default:four".to_owned(),
         ]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0, 4));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0, 4));
         let expected = {
             let mut data = json::Object::new();
             data.insert("one".to_owned(), Value::Number(Number::F64(1.0)));
@@ -681,7 +681,7 @@ mod tests {
             "Default:four".to_owned(),
             "Default:five".to_owned(),
         ]);
-        let output = block.process(&parameters, &ctxt, (1.0, 2.0, 3.0, 4, true));
+        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0, 4, true));
         let expected = {
             let mut data = json::Object::new();
             data.insert("one".to_owned(), Value::Number(Number::F64(1.0)));
@@ -705,7 +705,7 @@ mod tests {
         ]);
         let output = block.process(
             &parameters,
-            &ctxt,
+            &model_clock,
             (1.0, 2.0, 3.0, 4, true, b"six".as_ref()),
         );
         let expected = {
@@ -733,7 +733,7 @@ mod tests {
         ]);
         let output = block.process(
             &parameters,
-            &ctxt,
+            &model_clock,
             (1.0, 2.0, 3.0, 4, true, b"six".as_ref(), 7),
         );
         let expected = {
@@ -764,7 +764,7 @@ mod tests {
         ]);
         let output = block.process(
             &parameters,
-            &ctxt,
+            &model_clock,
             (1.0, 2.0, 3.0, 4, true, b"six".as_ref(), 7, 8),
         );
         let expected = {
@@ -784,7 +784,7 @@ mod tests {
 
     #[test]
     fn test_matrix_serialization() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Create a simple 2x2 matrix
         let matrix = Matrix {
@@ -794,7 +794,7 @@ mod tests {
         // Test without labels
         let mut block = JsonDumpBlock::<Matrix<2, 2, f64>>::default();
         let parameters = Parameters::new(&[]);
-        let output = block.process(&parameters, &ctxt, &matrix);
+        let output = block.process(&parameters, &model_clock, &matrix);
         let expected = {
             let mut data = json::Array::new();
             let mut row1 = json::Array::new();
@@ -811,7 +811,7 @@ mod tests {
 
         // Test with label
         let parameters = Parameters::new(&["Default:matrix".to_owned()]);
-        let output = block.process(&parameters, &ctxt, &matrix);
+        let output = block.process(&parameters, &model_clock, &matrix);
         let expected = {
             let mut outer_data = json::Object::new();
             let mut data = json::Array::new();
@@ -830,7 +830,7 @@ mod tests {
 
         // Test with Utf8 encoding
         let parameters = Parameters::new(&["Utf8:matrix".to_owned()]);
-        let output = block.process(&parameters, &ctxt, &matrix);
+        let output = block.process(&parameters, &model_clock, &matrix);
         let expected = {
             let mut outer_data = json::Object::new();
             let mut data = json::Array::new();
@@ -851,12 +851,12 @@ mod tests {
 
     #[test]
     fn test_byte_slice_serialization() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Test byte slice with Utf8 encoding
         let mut block = JsonDumpBlock::<ByteSliceSignal>::default();
         let parameters = Parameters::new(&["Utf8:text".to_owned()]);
-        let output = block.process(&parameters, &ctxt, b"hello".as_ref());
+        let output = block.process(&parameters, &model_clock, b"hello".as_ref());
         let expected = {
             let mut data = json::Object::new();
             data.insert("text".to_owned(), Value::String("hello".to_owned()));
@@ -866,7 +866,7 @@ mod tests {
 
         // Test byte slice with Default encoding
         let parameters = Parameters::new(&["Default:bytes".to_owned()]);
-        let output = block.process(&parameters, &ctxt, b"abc".as_ref());
+        let output = block.process(&parameters, &model_clock, b"abc".as_ref());
         let expected = {
             let mut data = json::Object::new();
             let bytes_array = b"abc"
@@ -881,7 +881,7 @@ mod tests {
         // Test non-UTF8 byte slice with Utf8 encoding (should produce empty string)
         let invalid_utf8 = &[0xFF, 0xFE, 0xFD];
         let parameters = Parameters::new(&["Utf8:text".to_owned()]);
-        let output = block.process(&parameters, &ctxt, invalid_utf8.as_ref());
+        let output = block.process(&parameters, &model_clock, invalid_utf8.as_ref());
         let expected = {
             let mut data = json::Object::new();
             data.insert("text".to_owned(), Value::String("".to_owned()));
@@ -892,7 +892,7 @@ mod tests {
 
     #[test]
     fn test_tuple_combinations() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Test 3-tuple
         let mut block = JsonDumpBlock::<(i32, f64, ByteSliceSignal)>::default();
@@ -901,7 +901,7 @@ mod tests {
             "Default:value".to_owned(),
             "Utf8:message".to_owned(),
         ]);
-        let output = block.process(&parameters, &ctxt, (42, 3.1, b"test".as_ref()));
+        let output = block.process(&parameters, &model_clock, (42, 3.1, b"test".as_ref()));
         let expected = {
             let mut data = json::Object::new();
             data.insert("id".to_owned(), Value::Number(Number::I64(42)));
@@ -919,7 +919,7 @@ mod tests {
             "Default:data".to_owned(),
             "Default:flag".to_owned(),
         ]);
-        let output = block.process(&parameters, &ctxt, (42, 3.1, b"test".as_ref(), true));
+        let output = block.process(&parameters, &model_clock, (42, 3.1, b"test".as_ref(), true));
         let expected = {
             let mut data = json::Object::new();
             data.insert("id".to_owned(), Value::Number(Number::I64(42)));
@@ -958,7 +958,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn test_parameter_count_mismatch() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         // Test with more labels than inputs
         let mut block = JsonDumpBlock::<(f64, f32)>::default();
         let parameters = Parameters::new(&[
@@ -966,6 +966,6 @@ mod tests {
             "Default:bar".to_owned(),
             "Default:extra".to_owned(),
         ]);
-        block.process(&parameters, &ctxt, (1.0, 2.0));
+        block.process(&parameters, &model_clock, (1.0, 2.0));
     }
 }

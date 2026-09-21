@@ -66,17 +66,17 @@ mod tests {
 
     #[test]
     fn test_passthrough_block_scalar() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters;
         let mut block = FixNonFiniteBlock::<f64>::default();
 
         let input = 99.999;
-        let output = block.process(&params, &ctxt, input.as_by());
+        let output = block.process(&params, &model_clock, input.as_by());
         assert_eq!(output, input);
         assert_eq!(block.buffer(), output);
 
         let input = f64::NAN;
-        let output = block.process(&params, &ctxt, input.as_by());
+        let output = block.process(&params, &model_clock, input.as_by());
         assert_eq!(output, 0.0);
         assert_eq!(block.buffer(), 0.0);
     }

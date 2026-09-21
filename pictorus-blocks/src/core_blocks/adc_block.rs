@@ -79,20 +79,20 @@ mod test {
 
     #[test]
     fn test_adc_block_f64() {
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = AdcBlock::<u16, f64>::default();
         let input = 42u16;
-        let output = block.process(&Parameters::new(), &c, input);
+        let output = block.process(&Parameters::new(), &model_clock, input);
         assert_eq!(output, 42.0);
         assert_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_adc_block_f32() {
-        let c = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let mut block = AdcBlock::<u16, f32>::default();
         let input = 42u16;
-        let output = block.process(&Parameters::new(), &c, input);
+        let output = block.process(&Parameters::new(), &model_clock, input);
         assert_eq!(output, 42.0);
     }
 }

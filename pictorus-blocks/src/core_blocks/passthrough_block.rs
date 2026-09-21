@@ -65,12 +65,12 @@ mod tests {
 
     #[test]
     fn test_passthrough_block_scalar() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters;
         let mut block = PassthroughBlock::<f64>::default();
 
         let input = 99.999;
-        let output = block.process(&params, &ctxt, input.as_by());
+        let output = block.process(&params, &model_clock, input.as_by());
         assert_eq!(output, input);
         assert_eq!(block.buffer(), output);
     }
@@ -82,31 +82,31 @@ mod tests {
     #[cfg(feature = "alloc")]
     #[test]
     fn test_passthrough_block_bytes() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters;
         let mut block = PassthroughBlock::<ByteSliceSignal>::default();
 
         let input = b"hello world";
-        let output = block.process(&params, &ctxt, input.as_slice());
+        let output = block.process(&params, &model_clock, input.as_slice());
         assert_eq!(output, input);
         assert_eq!(block.buffer(), input);
 
         let input = b"";
-        let output = block.process(&params, &ctxt, input.as_slice());
+        let output = block.process(&params, &model_clock, input.as_slice());
         assert_eq!(output, input);
         assert_eq!(block.buffer(), input);
     }
 
     #[test]
     fn test_passthrough_block_matrix() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters;
         let mut block = PassthroughBlock::<Matrix<2, 2, f64>>::default();
 
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let output = block.process(&params, &ctxt, input.as_by());
+        let output = block.process(&params, &model_clock, input.as_by());
         assert_eq!(output, &input);
         assert_eq!(block.buffer(), &input);
     }

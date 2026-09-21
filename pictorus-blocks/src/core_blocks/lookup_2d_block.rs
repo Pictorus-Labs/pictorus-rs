@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_scalar_linear() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Create a 3x3 lookup table
         // X breakpoints: [0.0, 1.0, 2.0]
@@ -307,32 +307,32 @@ mod tests {
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
         // Test exact corner points
-        let res = block.process(&params, &ctxt, (0.0, 0.0));
+        let res = block.process(&params, &model_clock, (0.0, 0.0));
         assert_eq!(res, 0.0);
         assert_eq!(block.buffer(), res);
 
-        let res = block.process(&params, &ctxt, (0.0, 20.0));
+        let res = block.process(&params, &model_clock, (0.0, 20.0));
         assert_eq!(res, 20.0);
 
-        let res = block.process(&params, &ctxt, (2.0, 0.0));
+        let res = block.process(&params, &model_clock, (2.0, 0.0));
         assert_eq!(res, 20.0);
 
-        let res = block.process(&params, &ctxt, (2.0, 20.0));
+        let res = block.process(&params, &model_clock, (2.0, 20.0));
         assert_eq!(res, 40.0);
 
         // Test midpoints along edges
-        let res = block.process(&params, &ctxt, (1.0, 0.0));
+        let res = block.process(&params, &model_clock, (1.0, 0.0));
         assert_eq!(res, 10.0);
 
-        let res = block.process(&params, &ctxt, (0.0, 10.0));
+        let res = block.process(&params, &model_clock, (0.0, 10.0));
         assert_eq!(res, 10.0);
 
         // Test center point
-        let res = block.process(&params, &ctxt, (1.0, 10.0));
+        let res = block.process(&params, &model_clock, (1.0, 10.0));
         assert_eq!(res, 20.0);
 
         // Test arbitrary point for bilinear interpolation
-        let res = block.process(&params, &ctxt, (0.5, 5.0));
+        let res = block.process(&params, &model_clock, (0.5, 5.0));
         // For point (0.5, 5.0) with surrounding values:
         // (0,0)=0.0, (0,10)=10.0, (1,0)=10.0, (1,10)=20.0
         // First interpolate along X:
@@ -343,16 +343,16 @@ mod tests {
         assert_eq!(res, 10.0);
 
         // Test clamping at boundaries
-        let res = block.process(&params, &ctxt, (-1.0, -5.0));
+        let res = block.process(&params, &model_clock, (-1.0, -5.0));
         assert_eq!(res, 0.0);
 
-        let res = block.process(&params, &ctxt, (3.0, 25.0));
+        let res = block.process(&params, &model_clock, (3.0, 25.0));
         assert_eq!(res, 40.0);
     }
 
     #[test]
     fn test_scalar_nearest() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Create the same lookup table as above but with nearest neighbor interpolation
         let break_points_u1 = [0.0, 1.0, 2.0];
@@ -367,33 +367,33 @@ mod tests {
         let mut block = Lookup2DBlock::<3, 3, f64, f64>::default();
 
         // Test exact corner points
-        let res = block.process(&params, &ctxt, (0.0, 0.0));
+        let res = block.process(&params, &model_clock, (0.0, 0.0));
         assert_eq!(res, 0.0);
 
         // Test points closer to specific grid points
-        let res = block.process(&params, &ctxt, (0.4, 4.9));
+        let res = block.process(&params, &model_clock, (0.4, 4.9));
         assert_eq!(res, 0.0); // Closest to (0,0)
 
-        let res = block.process(&params, &ctxt, (0.6, 4.9));
+        let res = block.process(&params, &model_clock, (0.6, 4.9));
         assert_eq!(res, 10.0); // Closest to (1,0)
 
-        let res = block.process(&params, &ctxt, (0.4, 5.1));
+        let res = block.process(&params, &model_clock, (0.4, 5.1));
         assert_eq!(res, 10.0); // Closest to (0,10)
 
-        let res = block.process(&params, &ctxt, (0.6, 5.1));
+        let res = block.process(&params, &model_clock, (0.6, 5.1));
         assert_eq!(res, 20.0); // Closest to (1,10)
 
         // Test clamping at boundaries
-        let res = block.process(&params, &ctxt, (-1.0, -5.0));
+        let res = block.process(&params, &model_clock, (-1.0, -5.0));
         assert_eq!(res, 0.0);
 
-        let res = block.process(&params, &ctxt, (3.0, 25.0));
+        let res = block.process(&params, &model_clock, (3.0, 25.0));
         assert_eq!(res, 40.0);
     }
 
     #[test]
     fn test_matrix_linear() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Create the same lookup table as previous tests
         let break_points_u1 = [0.0, 1.0, 2.0];
@@ -416,7 +416,7 @@ mod tests {
             data: [[0.0, 10.0], [5.0, 20.0]],
         };
 
-        let res = block.process(&params, &ctxt, (&x_input, &y_input));
+        let res = block.process(&params, &model_clock, (&x_input, &y_input));
 
         // Expected results based on the lookup table:
         // (0.0, 0.0) -> 0.0
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_matrix_nearest() {
-        let ctxt = StubModelClock::default();
+        let model_clock = StubModelClock::default();
 
         // Create the same lookup table but with nearest neighbor interpolation
         let break_points_u1 = [0.0, 1.0, 2.0];
@@ -456,7 +456,7 @@ mod tests {
             data: [[4.9, 5.1], [14.9, 15.1]],
         };
 
-        let res = block.process(&params, &ctxt, (&x_input, &y_input));
+        let res = block.process(&params, &model_clock, (&x_input, &y_input));
 
         // Expected results based on nearest neighbors:
         // (0.4, 4.9) -> closest to (0,0) -> 0.0
