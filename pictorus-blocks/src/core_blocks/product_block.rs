@@ -35,7 +35,7 @@ impl<T: Apply<M>, M: ProductMethod> ProcessBlock for ProductBlock<T, M> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut tmp: Option<T::Output> = None;
@@ -99,7 +99,7 @@ impl ProductMethod for MatrixMultiply {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use component::ParametersComponentWise;
     use paste::paste;
     use pictorus_traits::Matrix;
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_component_wise_scalar() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         // Scalars only
         let mut block = ProductBlock::<(f64, f64), ComponentWise>::default();
@@ -131,7 +131,7 @@ mod tests {
     }
     #[test]
     fn test_component_wise_scalar_matrix_mixed() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         // Mixed Scalars and Matrices
         let mut block = ProductBlock::<(f64, Matrix<2, 2, f64>, f64), ComponentWise>::default();
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_component_wise_matrix() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         // Matrices only
         let mut block =
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_matrix_mult() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let p = ParametersMatrixMult {};
 
         let mut block =
@@ -250,7 +250,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_component_wise_scalar_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let mut block = ProductBlock::<($type, $type), ComponentWise>::default();
 
                     // Multiply only
@@ -268,7 +268,7 @@ mod tests {
 
                 #[test]
                 fn [<test_component_wise_matrix_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let mut block = ProductBlock::<
                         (Matrix<2, 2, $type>, Matrix<2, 2, $type>),
                         ComponentWise,
@@ -295,7 +295,7 @@ mod tests {
 
                 #[test]
                 fn [<test_component_wise_mixed_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let mut block =
                         ProductBlock::<($type, Matrix<2, 2, $type>), ComponentWise>::default();
                     let parameters = ParametersComponentWise::new([1.0, 1.0]);
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_matrix_mult_int() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let p = ParametersMatrixMult {};
 
         // [[1, 2, 3], [4, 5, 6]] * [[7, 8], [9, 10], [11, 12]] = [[58, 64], [139, 154]]
@@ -372,7 +372,7 @@ mod tests {
     #[test]
     fn test_component_wise_int_division_truncates() {
         // Integer division truncates toward zero
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ProductBlock::<(i32, i32), ComponentWise>::default();
         let parameters = ParametersComponentWise::new([1.0, -1.0]);
         let output = block.process(&parameters, &context, (7, 2));
@@ -383,7 +383,7 @@ mod tests {
     fn test_component_wise_int_leading_divide() {
         // The accumulator starts at one, so a leading divide computes 1 / x,
         // which truncates to zero for any integer input > 1
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ProductBlock::<(i32, i32), ComponentWise>::default();
         let parameters = ParametersComponentWise::new([-1.0, 1.0]);
         let output = block.process(&parameters, &context, (5, 10));
@@ -394,7 +394,7 @@ mod tests {
     #[should_panic]
     fn int_division_by_zero_panics() {
         // Integer division by zero panics in all build profiles (unlike float inf)
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ProductBlock::<(i32, i32), ComponentWise>::default();
         let parameters = ParametersComponentWise::new([1.0, -1.0]);
         let output = block.process(&parameters, &context, (4, 0));
@@ -405,7 +405,7 @@ mod tests {
     #[should_panic]
     fn int_multiply_overflow_panics() {
         // 16 * 16 overflows u8; native arithmetic panics in debug builds (wraps in release).
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ProductBlock::<(u8, u8), ComponentWise>::default();
         let parameters = ParametersComponentWise::new([1.0, 1.0]);
         let output = block.process(&parameters, &context, (16u8, 16u8));
@@ -417,7 +417,7 @@ mod tests {
     fn int_multiply_negative_overflow_panics() {
         // -100 * 2 = -200 underflows i8::MIN; native integer multiplication panics in
         // debug builds (wraps in release).
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ProductBlock::<(i8, i8), ComponentWise>::default();
         let parameters = ParametersComponentWise::new([1.0, 1.0]);
         let output = block.process(&parameters, &context, (-100i8, 2i8));
@@ -429,7 +429,7 @@ mod tests {
     fn matrix_mult_overflow_panics() {
         // Each output element is 16*16 + 16*16 = 512, which overflows u8;
         // panics in debug builds (wraps in release).
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let p = ParametersMatrixMult {};
         let mut block =
             ProductBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, u8>), MatrixMultiply>::default();

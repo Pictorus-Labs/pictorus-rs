@@ -3,7 +3,7 @@ use core::time::Duration;
 use core::{cmp::min, str};
 
 use log::debug;
-use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, PassBy, ProcessBlock};
 
 use crate::{
     byte_data::{
@@ -207,7 +207,7 @@ impl ProcessBlock for SerialReceiveBlock {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         // Inputs is a Vec<u8> copying into a Vec<u8>
@@ -248,7 +248,7 @@ mod tests {
     use core::time::Duration;
 
     use super::*;
-    use crate::testing::{StubContext, StubRuntime};
+    use crate::testing::{StubModelClock, StubRuntime};
 
     #[test]
     fn test_serial_receive_default_buffer_no_panic() {
@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_serial_receive_block() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = SerialReceiveBlock::default();
         let parameters = Parameters::new("$", "\r\n", 0.0, 1000.0);
 
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_serial_receive_block_lots_of_nothing_then_data() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = SerialReceiveBlock::default();
         let parameters = Parameters::new("STX", "ETX", 0.0, 1000.0);
 

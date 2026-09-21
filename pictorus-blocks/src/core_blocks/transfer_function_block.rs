@@ -90,7 +90,7 @@ macro_rules! impl_transfer_function {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
@@ -170,7 +170,7 @@ macro_rules! impl_transfer_function {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
@@ -244,7 +244,7 @@ impl_transfer_function!(f32);
 #[cfg(test)]
 mod tests {
     use super::Parameters;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
     use pictorus_traits::{Matrix, ProcessBlock};
 
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_scalar_unity() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0];
         let parameters = Parameters::new_arr(&num, &denom);
@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_scalar_delay() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [0.0, 1.0];
         let denom = [1.0];
 
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn test_transfer_function_block_scalar_exp_decay() {
         // Divide by 2 each call to process
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -0.5];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_scalar_integrator() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_scalar_differentiator() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [1.0, -1.0];
         let denom = [1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -362,7 +362,7 @@ mod tests {
     #[test]
     fn test_transfer_function_block_matrix_exp_decay() {
         // Divide by 2 each call to process
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -0.5];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_matrix_integrator() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_matrix_differentiator() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [1.0, -1.0];
         let denom = [1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_matrix_delay() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let num = [0.0, 1.0];
         let denom = [1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);

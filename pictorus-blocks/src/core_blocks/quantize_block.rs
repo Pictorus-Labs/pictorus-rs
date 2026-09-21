@@ -54,7 +54,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let res = T::apply(inputs, parameters.interval, &mut self.buffer);
@@ -113,7 +113,7 @@ impl<const R: usize, const C: usize, I: Scalar + Float + ClosedDivAssign + MulAs
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     use super::*;
@@ -129,7 +129,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_quantize_block_scalar _$type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new(0.5);
                     let mut block = QuantizeBlock::<$type, $type>::default();
                     let input = 0.51;
@@ -141,7 +141,7 @@ mod tests {
 
                 #[test]
                 fn [<test_quantize_block_matrix _$type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new(0.5);
                     let mut block = QuantizeBlock::<$type, Matrix<4, 1, $type>>::default();
                     let input = Matrix {

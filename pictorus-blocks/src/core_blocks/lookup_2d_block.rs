@@ -28,7 +28,7 @@ impl<const NX: usize, const NY: usize, S: Float, T: Apply<NX, NY, S>> ProcessBlo
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters);
@@ -268,7 +268,7 @@ fn nearest_interpolation<const NX: usize, const NY: usize, S: Float>(
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_scalar_linear() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Create a 3x3 lookup table
         // X breakpoints: [0.0, 1.0, 2.0]
@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_scalar_nearest() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Create the same lookup table as above but with nearest neighbor interpolation
         let break_points_u1 = [0.0, 1.0, 2.0];
@@ -393,7 +393,7 @@ mod tests {
 
     #[test]
     fn test_matrix_linear() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Create the same lookup table as previous tests
         let break_points_u1 = [0.0, 1.0, 2.0];
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_matrix_nearest() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Create the same lookup table but with nearest neighbor interpolation
         let break_points_u1 = [0.0, 1.0, 2.0];

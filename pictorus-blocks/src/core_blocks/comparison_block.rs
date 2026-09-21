@@ -71,7 +71,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut tmp: Option<T::Output> = None;
@@ -186,7 +186,7 @@ mod tests {
     use core::str::FromStr;
 
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_comparison_default_buffer_no_panic() {
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_comparison_block_scalar() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = ComparisonBlock::<(f64, f64)>::default();
         let output = block.process(&Parameters::new("Equal"), &c, (1., 1.));
         assert_eq!(output, 1.0);
@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_comparison_block_matrix() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = ComparisonBlock::<(Matrix<1, 3, f64>, Matrix<1, 3, f64>)>::default();
         let output = block.process(
             &Parameters::new("Equal"),
@@ -404,7 +404,7 @@ mod tests {
 
     #[test]
     fn test_comparison_block_scalar_matrix() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = ComparisonBlock::<(f64, Matrix<1, 3, f64>)>::default();
         let output = block.process(
             &Parameters::new("Equal"),

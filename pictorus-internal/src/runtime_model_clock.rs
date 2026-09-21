@@ -1,24 +1,24 @@
 use core::time::Duration;
-use pictorus_traits::Context;
+use pictorus_traits::ModelClock;
 
 use crate::utils::us_to_s;
 
-/// RuntimeContext is a small struct that implements the pictorus_traits::Context trait.
+/// RuntimeModelClock is a small struct that implements the pictorus_traits::ModelClock trait.
 /// It is used to keep track of time in the application and can be copied and cloned as
 /// needed.
 ///
-/// This is currently used in `context_module.py` to build out a codegen Context that is
+/// This is currently used in `context_module.py` to build out a codegen ModelClock that is
 /// passed to each state.
 #[derive(Clone, Copy)]
-pub struct RuntimeContext {
+pub struct RuntimeModelClock {
     app_time_us: u64,
     fundamental_timestep_us: u64,
     last_app_time_us: Option<u64>,
 }
 
-impl RuntimeContext {
+impl RuntimeModelClock {
     pub fn new(fundamental_timestep_us: u64) -> Self {
-        RuntimeContext {
+        RuntimeModelClock {
             app_time_us: 0,
             fundamental_timestep_us,
             last_app_time_us: None,
@@ -39,7 +39,7 @@ impl RuntimeContext {
     }
 }
 
-impl Context for RuntimeContext {
+impl ModelClock for RuntimeModelClock {
     fn fundamental_timestep(&self) -> Duration {
         Duration::from_micros(self.fundamental_timestep_us)
     }
@@ -61,7 +61,7 @@ mod tests {
     #[test]
     fn test_runtime_context() {
         // Set timestep to 1000us or 1ms
-        let mut context = RuntimeContext::new(1000);
+        let mut context = RuntimeModelClock::new(1000);
         assert_eq!(context.fundamental_timestep(), Duration::from_micros(1000));
 
         context.update_app_time(1000);

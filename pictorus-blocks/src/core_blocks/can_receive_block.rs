@@ -85,7 +85,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         if inputs.len() == parameters.length {

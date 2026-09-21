@@ -45,7 +45,7 @@ impl<S: Scalar + PartialOrd<S> + Default + Zero> ProcessBlock for DeadbandBlock<
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let in_deadband = input < parameters.upper_limit && input > parameters.lower_limit;
@@ -68,7 +68,7 @@ impl<S: Scalar + PartialOrd<S> + Default + Zero, const NROWS: usize, const NCOLS
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer = Matrix::zeroed();
@@ -87,7 +87,7 @@ impl<S: Scalar + PartialOrd<S> + Default + Zero, const NROWS: usize, const NCOLS
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     #[test]
@@ -118,7 +118,7 @@ mod tests {
                     const ZERO: $type = 0 as $type;
                     let mut block = DeadbandBlock::<$type>::default();
                     let parameters = Parameters::new(lower_limit, upper_limit);
-                    let ctxt = StubContext::default();
+                    let ctxt = StubModelClock::default();
 
                     // Anything exactly at the deadband limits maintains data
                     let input = lower_limit;
@@ -154,7 +154,7 @@ mod tests {
                     const ZERO: $type = 0 as $type;
                     let mut block = DeadbandBlock::<Matrix<2, 2, $type>>::default();
                     let parameters = Parameters::new(lower_limit, upper_limit);
-                    let ctxt = StubContext::default();
+                    let ctxt = StubModelClock::default();
 
                     // Anything exactly at the deadband limits maintains data
                     let input = Matrix {

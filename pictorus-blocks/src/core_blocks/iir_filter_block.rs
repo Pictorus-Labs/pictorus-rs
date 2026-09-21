@@ -48,7 +48,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let timestep_s = T::from_duration(context.timestep().unwrap_or(Duration::from_secs(0)));
@@ -75,7 +75,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let timestep_s = T::from_duration(context.timestep().unwrap_or(Duration::from_secs(0)));
@@ -113,12 +113,12 @@ mod tests {
     use core::time::Duration;
 
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
 
     #[test]
     fn test_iir_filter_block_scalar() {
-        let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let parameters = Parameters::new(0.0, time_constants_s);
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_matrix() {
-        let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let ic = Matrix {
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_scalar_w_ic() {
-        let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let parameters = Parameters::new(0.0, time_constants_s);
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_matrix_w_ic() {
-        let mut ctxt = StubContext::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut ctxt = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let ic = Matrix {

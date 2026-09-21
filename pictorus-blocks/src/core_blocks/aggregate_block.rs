@@ -29,7 +29,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
@@ -139,7 +139,7 @@ impl Parameters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use alloc::str::FromStr;
     use approx::assert_relative_eq;
 
@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn test_aggregate_sum_f32() {
         let mut block = AggregateBlock::<Matrix<4, 7, f32>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let input: Matrix<4, 7, f32> = Matrix {
             data: [[1.0; 4]; 7],
         };
@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn test_aggregate_sum_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let input: Matrix<4, 7, f64> = Matrix {
             data: [[1.0; 4]; 7],
         };
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn test_aggregate_max_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix {
             data: [[1.0; 4]; 7],
         };
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_aggregate_min_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix {
             data: [[11.0; 4]; 7],
         };
@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn test_aggregate_mean_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix::zeroed();
         for (idx, elem) in input.data.as_flattened_mut().iter_mut().enumerate() {
             *elem = idx as f64;
@@ -232,7 +232,7 @@ mod tests {
     #[test]
     fn test_aggregate_median_f64() {
         let mut block = AggregateBlock::<Matrix<4, 7, f64>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut input: Matrix<4, 7, f64> = Matrix::zeroed();
         for (idx, elem) in input.data.as_flattened_mut().iter_mut().enumerate() {
             *elem = idx as f64;
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_smattering_of_types() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         let mut block = AggregateBlock::<Matrix<2, 2, u8>>::default();
         let input = Matrix {
@@ -285,7 +285,7 @@ mod tests {
         let input = Matrix {
             data: [[34, 127], [128, 4]],
         };
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let output = block.process(&PARAM_SUM, &context, &input);
         assert_eq!(output, 196);
     }
@@ -297,7 +297,7 @@ mod tests {
         let input = Matrix {
             data: [[34, 127], [128, 4]],
         };
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let output = block.process(&PARAM_MEAN, &context, &input);
         assert_eq!(output, 196);
     }

@@ -1,6 +1,6 @@
 use pictorus_blocks::AdcBlockParams;
 use pictorus_internal::protocols::Flush;
-use pictorus_traits::{Context, InputBlock, PassBy};
+use pictorus_traits::{ModelClock, InputBlock, PassBy};
 
 pub struct SimAdc {}
 
@@ -29,7 +29,7 @@ impl InputBlock for SimAdc {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         0
     }

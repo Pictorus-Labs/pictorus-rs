@@ -28,7 +28,7 @@ impl<T: Apply> ProcessBlock for JsonDumpBlock<T> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         T::apply(&mut self.buffer, inputs, parameters);
@@ -465,7 +465,7 @@ mod tests {
     use std::borrow::ToOwned;
 
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use alloc::vec;
     use miniserde::json::{self, Number};
     use pictorus_traits::Matrix;
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_writes_object_data_if_has_labels() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Two floats with Default encoding
         let mut block = JsonDumpBlock::<(f64, f32)>::default();
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn test_array_output_without_labels() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Test single scalar value
         let mut block = JsonDumpBlock::<i8>::default();
@@ -589,7 +589,7 @@ mod tests {
 
     #[test]
     fn test_object_output_with_labels() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Test single scalar value with label
         let mut block = JsonDumpBlock::<i8>::default();
@@ -784,7 +784,7 @@ mod tests {
 
     #[test]
     fn test_matrix_serialization() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Create a simple 2x2 matrix
         let matrix = Matrix {
@@ -851,7 +851,7 @@ mod tests {
 
     #[test]
     fn test_byte_slice_serialization() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Test byte slice with Utf8 encoding
         let mut block = JsonDumpBlock::<ByteSliceSignal>::default();
@@ -892,7 +892,7 @@ mod tests {
 
     #[test]
     fn test_tuple_combinations() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Test 3-tuple
         let mut block = JsonDumpBlock::<(i32, f64, ByteSliceSignal)>::default();
@@ -958,7 +958,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn test_parameter_count_mismatch() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         // Test with more labels than inputs
         let mut block = JsonDumpBlock::<(f64, f32)>::default();
         let parameters = Parameters::new(&[

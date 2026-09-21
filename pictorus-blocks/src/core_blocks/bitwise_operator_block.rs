@@ -36,7 +36,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let result = T::apply(inputs, *parameters, &mut self.store);
@@ -348,7 +348,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     macro_rules! test_bitwise_operator {
@@ -363,7 +363,7 @@ mod test {
                 #[test]
                 fn [<test_and_scalar_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<($type, $type, $type, $type, $type, $type, $type, $type)>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Operation::And;
                     let output = block.process(&params, &context, ([<255 $type>], [<27 $type>], [<8 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>], [<27 $type>]));
                     assert_eq!(output, [<8 $type>]);
@@ -373,7 +373,7 @@ mod test {
                 #[test]
                 fn [<test_or_scalar_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<($type, $type, $type, $type)>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Operation::Or;
                     let output = block.process(&params, &context, ([<0 $type>], [<8 $type>], [<1 $type>], [<1 $type>]));
                     assert_eq!(output, [<9 $type>]);
@@ -382,7 +382,7 @@ mod test {
                 #[test]
                 fn [<test_xor_scalar_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<($type, $type)>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Operation::Xor;
                     let output = block.process(&params, &context, ([<1 $type>], [<1 $type>]));
                     assert_eq!(output, [<0 $type>]);
@@ -391,7 +391,7 @@ mod test {
                 #[test]
                 fn [<test_and_matrix_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<(Matrix<2, 2, $type>, Matrix<2, 2, $type>, Matrix<2, 2, $type>, Matrix<2, 2, $type>)>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Operation::And;
                     let input = (
                         &Matrix {
@@ -417,7 +417,7 @@ mod test {
                 #[test]
                 fn [<test_and_mixed_scalar_matrix_ $type>]() {
                     let mut block = BitwiseOperatorBlock::<(Matrix<2, 2, $type>, $type, Matrix<2, 2, $type>, Matrix<2, 2, $type>)>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Operation::And;
                     let input = (
                         &Matrix {

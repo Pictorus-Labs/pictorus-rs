@@ -37,7 +37,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.method);
@@ -148,7 +148,7 @@ impl_not_apply!(i16);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use num_traits::{One, Zero};
     use paste::paste;
 
@@ -167,7 +167,7 @@ mod tests {
                 #[test]
                 fn [<test_not_block_logical_scalar_ $type>]() {
                     let mut block = NotBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let parameters = Parameters::new("Logical");
 
                     let res = block.process(&parameters, &context, $type::one());
@@ -182,7 +182,7 @@ mod tests {
                 #[test]
                 fn [<test_not_block_logical_matrix_ $type>]() {
                     let mut block = NotBlock::<Matrix<4, 1, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let parameters = Parameters::new("Logical");
 
                     let input = Matrix {
@@ -196,7 +196,7 @@ mod tests {
                 #[test]
                 fn [<test_not_block_bitwise_scalar_ $type>]() {
                     let mut block = NotBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let parameters = Parameters::new("Bitwise");
 
                     let res = block.process(&parameters, &context, 0b1 as $type);
@@ -219,7 +219,7 @@ mod tests {
                 #[test]
                 fn [<test_not_block_bitwise_matrix_ $type>]() {
                     let mut block = NotBlock::<Matrix<2, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let parameters = Parameters::new("Bitwise");
 
                     let input = Matrix {
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn test_scalar_bool() {
         let mut block = NotBlock::<bool>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("Logical");
 
         let res = block.process(&parameters, &context, true);
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn test_matrix_bool() {
         let mut block = NotBlock::<Matrix<2, 2, bool>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("Logical");
 
         let input = Matrix {

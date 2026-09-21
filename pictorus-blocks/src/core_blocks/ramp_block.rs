@@ -44,7 +44,7 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let time = F::from_duration(context.time());
         let ramp_val =
@@ -74,7 +74,7 @@ impl<F: Float> Parameters<F> {
 mod tests {
     use super::*;
 
-    use crate::testing::{StubContext, StubRuntime};
+    use crate::testing::{StubModelClock, StubRuntime};
     use core::time::Duration;
 
     #[test]
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_ramp_block() {
         let mut block = RampBlock::<f64>::default();
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::from_secs_f64(0.0),
             None,
             Duration::from_secs_f64(1.0),
@@ -130,7 +130,7 @@ mod tests {
         // u16 output with a fractional rate: computed in f64, truncated by the output
         // cast — a staircase that steps up every 2 seconds.
         let mut block = RampBlock::<u16, f64>::default();
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::from_secs_f64(0.0),
             None,
             Duration::from_secs_f64(1.0),
@@ -159,7 +159,7 @@ mod tests {
         // has no arithmetic panic sites. A ramp past an integer type's ceiling just
         // flatlines there.
         let mut block = RampBlock::<u8, f64>::default();
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::from_secs_f64(0.0),
             None,
             Duration::from_secs_f64(1.0),

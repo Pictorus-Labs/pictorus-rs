@@ -52,7 +52,7 @@ where
     fn generate(
         &mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let time = F::from_duration(context.time());
         self.buffer = time.cast_element();

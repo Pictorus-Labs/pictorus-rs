@@ -58,7 +58,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters, &mut self.last_input);
@@ -182,7 +182,7 @@ impl<T> Parameters<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     macro_rules! test_scalars {
@@ -190,7 +190,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_scalar_rising_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new([<1 $type>], "Rising");
                     let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
@@ -209,7 +209,7 @@ mod tests {
 
                 #[test]
                 fn [<test_scalar_falling_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new([<1 $type>], "Falling");
                     let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
@@ -229,7 +229,7 @@ mod tests {
 
                 #[test]
                 fn [<test_scalar_any_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new([<1 $type>], "Any");
                     let mut block = ChangeDetectionBlock::<$type>::new(&params);
 
@@ -263,7 +263,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_matrix_falling_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Falling");
                     let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
@@ -309,7 +309,7 @@ mod tests {
 
                 #[test]
                 fn [<test_matrix_rising_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Rising");
                     let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
@@ -355,7 +355,7 @@ mod tests {
 
                 #[test]
                 fn [<test_matrix_any_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new(Matrix{data: [[[<42 $type>]; 8]; 11],}, "Any");
                     let mut block = ChangeDetectionBlock::<Matrix<8, 11, $type>>::new(&params);
 
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_scalar_bool_any() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new(true, "Any");
         let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
@@ -440,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_scalar_bool_rising() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new(true, "Rising");
         let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
@@ -459,7 +459,7 @@ mod tests {
 
     #[test]
     fn test_scalar_bool_falling() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new(true, "Falling");
         let mut block = ChangeDetectionBlock::<bool>::new(&params);
 
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_f32_output_type_scalar() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new(1.0f64, "Any");
         let mut block: ChangeDetectionBlock<_, f32> = ChangeDetectionBlock::new(&params);
 
@@ -497,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_f32_output_type_matrix() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new(
             Matrix {
                 data: [[1u8; 2]; 2],

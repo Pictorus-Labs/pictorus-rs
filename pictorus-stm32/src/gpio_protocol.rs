@@ -1,6 +1,6 @@
 use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
 use pictorus_blocks::{GpioInputBlockParams, GpioOutputBlockParams};
-use pictorus_traits::{Context, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
 
 pub struct Stm32InputPin<'d>(embassy_stm32::gpio::Input<'d>);
 impl<'d> Stm32InputPin<'d> {
@@ -51,7 +51,7 @@ impl InputBlock for Stm32InputPin<'_> {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         self.is_high().unwrap_or(false).into()
     }
@@ -64,7 +64,7 @@ impl OutputBlock for Stm32OutputPin<'_> {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         if inputs {

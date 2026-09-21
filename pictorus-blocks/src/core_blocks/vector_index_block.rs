@@ -61,7 +61,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         // Linear array Index (i) -> Matrix Linear Index (x)
@@ -92,7 +92,7 @@ where
 mod tests {
     use super::*;
     use crate::std::string::ToString;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::{Matrix, ProcessBlock};
     use std::string::String;
     use std::vec;
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_vector_index_block_scalar() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut index_block = VectorIndexBlock::<1, f64, Matrix<3, 1, f64>>::default();
         let input = Matrix {
             data: [[1.0, 2.0, 3.0]],
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_vector_index_block_matrix() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut index_block = VectorIndexBlock::<2, f64, Matrix<2, 2, f64>>::default();
         let input = Matrix {
             data: [[5.0, 7.0], [6.0, 8.0]],
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_vector_index_block_input_too_short() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut index_block = VectorIndexBlock::<2, f64, Matrix<2, 2, f64>>::default();
         let input = Matrix {
             data: [[5.0, 7.0], [6.0, 8.0]],

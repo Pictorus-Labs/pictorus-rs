@@ -82,7 +82,7 @@ impl<T: Scalar, O: Float> ProcessBlock for TimerBlock<T, O> {
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let time = O::from_duration(context.time());

@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
 
@@ -44,7 +44,7 @@ impl<T: ToBool> ProcessBlock for GpioOutputBlock<T> {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let res = T::to_bool(input);
@@ -88,7 +88,7 @@ impl<const NROWS: usize, const NCOLS: usize, S: Scalar> ToBool for Matrix<NROWS,
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::{ByteSliceSignal, Matrix};
 
     use super::*;
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn test_gpio_output_block_scalar() {
         let mut block = GpioOutputBlock::<f64>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         let output = block.process(&Parameters::new(), &context, 1.0);
         assert!(output);
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn test_gpio_output_block_matrix() {
         let mut block = GpioOutputBlock::<Matrix<2, 2, f64>>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let input = Matrix {
             data: [[0.0, 0.0], [0.0, 1.0]],
         };
@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn test_gpio_output_block_bytes() {
         let mut block = GpioOutputBlock::<ByteSliceSignal>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new();
 
         let output = block.process(&params, &context, b"hello world");

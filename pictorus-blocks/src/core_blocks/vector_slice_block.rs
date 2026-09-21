@@ -87,7 +87,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         // Attempt some static assertions for sizing
@@ -135,7 +135,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         // Zero the buffer each time or out of bounds access will return the last copied values
@@ -172,9 +172,9 @@ mod tests {
     #[test]
     fn test_vector_slice_block_1x1_scalar() {
         use super::*;
-        use crate::testing::StubContext;
+        use crate::testing::StubModelClock;
 
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, f64>::default();
         let parameters = Parameters::new(1., 1.);
 
@@ -202,9 +202,9 @@ mod tests {
     #[test]
     fn test_vector_slice_block_1x1_matrix() {
         use super::*;
-        use crate::testing::StubContext;
+        use crate::testing::StubModelClock;
 
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<1, 1, f64>>::default();
         let parameters = Parameters::new(1., 1.);
 
@@ -232,9 +232,9 @@ mod tests {
     #[test]
     fn test_vector_slice_block_2x2() {
         use super::*;
-        use crate::testing::StubContext;
+        use crate::testing::StubModelClock;
 
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<2, 2, f64>>::default();
         let parameters = Parameters::new(1., 1.);
 
@@ -262,9 +262,9 @@ mod tests {
     #[test]
     fn test_vector_slice_block_1x4() {
         use super::*;
-        use crate::testing::StubContext;
+        use crate::testing::StubModelClock;
 
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<1, 4, f64>>::default();
         let parameters = Parameters::new(0., 0.);
 
@@ -298,9 +298,9 @@ mod tests {
     #[test]
     fn test_vector_slice_block_4x1() {
         use super::*;
-        use crate::testing::StubContext;
+        use crate::testing::StubModelClock;
 
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<4, 1, f64>>::default();
         let parameters = Parameters::new(0., 0.);
 
@@ -334,9 +334,9 @@ mod tests {
     #[test]
     fn test_vector_slice_block_out_of_bounds() {
         use super::*;
-        use crate::testing::StubContext;
+        use crate::testing::StubModelClock;
 
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = VectorSliceBlock::<Matrix<4, 4, f64>, Matrix<2, 2, f64>>::default();
 
         // Matrix Data is stored in [[<T>; ROW]; COL] and accessed as [COL][ROW]

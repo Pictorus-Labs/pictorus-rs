@@ -2,7 +2,7 @@ use embedded_can::{Frame as EmbeddedFrame, nb::Can};
 use log::debug;
 use pictorus_blocks::CanReceiveBlockParams;
 use pictorus_blocks::CanTransmitBlockParams;
-use pictorus_traits::{ByteSliceSignal, Context, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ByteSliceSignal, ModelClock, InputBlock, OutputBlock, PassBy};
 use socketcan::{CanFrame, CanSocket, Socket};
 
 use pictorus_internal::protocols::CanProtocol;
@@ -87,7 +87,7 @@ impl OutputBlock for CanConnection {
     fn output(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         let Some(frame) = EmbeddedFrame::new(parameters.frame_id, inputs) else {
@@ -110,7 +110,7 @@ impl InputBlock for CanConnection {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let frame = self
             .read_frames()

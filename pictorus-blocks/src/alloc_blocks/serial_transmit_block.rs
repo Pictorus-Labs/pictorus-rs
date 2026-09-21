@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 use log::debug;
-use pictorus_traits::{ByteSliceSignal, Context, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, Pass, PassBy, ProcessBlock};
 
 use crate::byte_data::{parse_string_to_bytes, BUFF_SIZE_BYTES};
 use crate::traits::Serialize;
@@ -55,7 +55,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let write_val = [
@@ -76,7 +76,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::Matrix;
 
     use super::*;
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_write_byteslicesignal_no_delimiters() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("", "");
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_write_byteslicesignal_delimited_data() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_write_matrix() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<Matrix<2, 3, f64>>::default();
 
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_write_scalar() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<f64>::default();
 
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_write_vector() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<Matrix<1, 3, f64>>::default();
 
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_write_hex() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new("", "");
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 

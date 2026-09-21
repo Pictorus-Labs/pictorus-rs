@@ -51,7 +51,7 @@ macro_rules! impl_compare_to_value_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 let val = match parameters.comparison_type {
@@ -81,7 +81,7 @@ macro_rules! impl_compare_to_value_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 for r in 0..ROWS {
@@ -122,7 +122,7 @@ impl_compare_to_value_block!(bool);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use num_traits::{One, Zero};
     use paste::paste;
 
@@ -149,7 +149,7 @@ mod tests {
                         Compares an input of 1 to a scalar value of 1 for all comparison types.
                     */
                     let mut parameters = Parameter::new("Equal", <$type>::one());
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
 
                     let mut block = CompareToValueBlock::<$type>::default();
 
@@ -189,7 +189,7 @@ mod tests {
                         Compares an input [[1, 0], [0, 2]] to a scalar value of 1 for all comparison types.
                     */
                     let mut parameters = Parameter::new("Equal", <$type>::one());
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
 
                     let mut block = CompareToValueBlock::<Matrix<2, 2, $type>>::default();
                     let input = Matrix {
@@ -253,7 +253,7 @@ mod tests {
     #[allow(clippy::bool_assert_comparison)]
     fn test_compare_to_value_bool() {
         let mut parameters = Parameter::new("Equal", true);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         let mut block = CompareToValueBlock::<bool>::default();
 

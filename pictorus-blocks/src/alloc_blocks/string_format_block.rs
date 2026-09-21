@@ -43,7 +43,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let formatted_string = T::apply(inputs, parameters);
@@ -282,7 +282,7 @@ macro_rules! build_string_format_closure {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use alloc::format;
 
     #[test]
@@ -298,7 +298,7 @@ mod tests {
         let mut block = StringFormatBlock::<(f64, ByteSliceSignal, Matrix<2, 2, f64>)>::default();
 
         let input = (42.0, "Foo".as_bytes(), &Matrix::zeroed());
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let output = block.process(&parameters, &context, input).to_vec();
 
         assert_eq!(
@@ -318,7 +318,7 @@ mod tests {
             // Input data is col-major. We expect the output to be row-major.
             data: [[1.0, 3.0], [2.0, 4.0]],
         };
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let output = block.process(&parameters, &context, &input);
 
         assert_eq!(

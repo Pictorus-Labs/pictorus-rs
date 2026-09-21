@@ -44,7 +44,7 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let two = F::one() + F::one();
         let amplitude: F = parameters.amplitude.cast_element();
@@ -87,7 +87,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::{StubContext, StubRuntime};
+    use crate::testing::{StubModelClock, StubRuntime};
     use approx::assert_relative_eq;
     use core::time::Duration;
 
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_sawtoothwave_block_simple() {
-        let context = StubContext::new(
+        let context = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_sawtoothwave_block_phase() {
-        let context = StubContext::new(
+        let context = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_sawtoothwave_block_bias() {
-        let context = StubContext::new(
+        let context = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_sawtoothwave_block_amplitude() {
-        let context = StubContext::new(
+        let context = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
@@ -250,7 +250,7 @@ mod tests {
 
     #[test]
     fn test_sawtoothwave_block_high_time() {
-        let context = StubContext::new(
+        let context = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),
@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_sawtoothwave_block_frequency() {
-        let context = StubContext::new(
+        let context = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 4.0),
@@ -320,7 +320,7 @@ mod tests {
     fn test_sawtoothwave_block_integer_output() {
         // i32 output: computed in f64, cast with `as` semantics at the output. T = 0 is
         // exact (x = -1), so the trough value has no truncation ambiguity.
-        let context = StubContext::new(
+        let context = StubModelClock::new(
             Duration::from_secs(0),
             None,
             Duration::from_secs_f64(PI / 2.0),

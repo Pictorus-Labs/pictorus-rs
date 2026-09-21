@@ -55,7 +55,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters);
@@ -141,7 +141,7 @@ impl_bit_shift_apply!(u64);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     macro_rules! test_bit_shift {
@@ -163,7 +163,7 @@ mod tests {
                 #[test]
                 fn [<test_left_shift_scalar_ $type>]() {
                     let mut block = BitShiftBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new("Left", 2);
                     let output = block.process(&params, &context, [<1 $type>]);
                     assert_eq!(output, [<4 $type>]);
@@ -173,7 +173,7 @@ mod tests {
                 #[test]
                 fn [<test_right_shift_scalar_ $type>]() {
                     let mut block = BitShiftBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new("Right", 2);
                     let output = block.process(&params, &context, [<8 $type>]);
                     assert_eq!(output, [<2 $type>]);
@@ -187,7 +187,7 @@ mod tests {
                 #[test]
                 fn [<test_left_shift_matrix_ $type>]() {
                     let mut block = BitShiftBlock::<Matrix<2, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new("Left", 2);
                     let input = Matrix {
                         data: [[[<1 $type>], [<2 $type>]], [[<3 $type>], [<4 $type>]]],
@@ -200,7 +200,7 @@ mod tests {
                 #[test]
                 fn [<test_right_shift_matrix_ $type>]() {
                     let mut block = BitShiftBlock::<Matrix<2, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new("Right", 2);
                     let input = Matrix {
                         data: [[[<4 $type>], [<8 $type>]], [[<12 $type>], [<16 $type>]]],
@@ -221,7 +221,7 @@ mod tests {
         // Shifting by an amount >= the type's bit width panics in debug builds
         // (the shift amount wraps in release).
         let mut block = BitShiftBlock::<u8>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new("Left", 8);
         let output = block.process(&params, &context, 1u8);
         assert_eq!(output, 0);
@@ -234,7 +234,7 @@ mod tests {
         // is the *cast* integer type's bit width — 32 for f32 — not anything about the
         // float itself. Panics in debug builds, wraps in release.
         let mut block = BitShiftBlock::<f32>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let params = Parameters::new("Left", 32);
         let output = block.process(&params, &context, 1.0f32);
         assert_eq!(output, 0.0);

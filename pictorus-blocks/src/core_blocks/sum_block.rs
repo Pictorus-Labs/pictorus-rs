@@ -26,7 +26,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let mut tmp: Option<T::Output> = None;
@@ -456,7 +456,7 @@ impl<const NUM_INPUTS: usize> Parameters<NUM_INPUTS> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
     use paste::paste;
 
@@ -470,7 +470,7 @@ mod tests {
     fn test_one_scalar() {
         let mut block = SumBlock::<f64>::default();
         let input = 3.0;
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {
             operations: [SumType::Addition],
         };
@@ -485,7 +485,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {
             operations: [SumType::Addition],
         };
@@ -498,7 +498,7 @@ mod tests {
 
     #[test]
     fn test_multiple_scalars() {
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
 
         // Two Inputs
         let mut two_block = SumBlock::<(f64, f64)>::default();
@@ -625,7 +625,7 @@ mod tests {
 
     #[test]
     fn test_multiple_matrices() {
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
 
         // Two Inputs
         let mut two_block = SumBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, f64>)>::default();
@@ -734,7 +734,7 @@ mod tests {
 
     #[test]
     fn test_mixed_scalars_and_matrices() {
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
 
         // Two Inputs
         let mut two_block = SumBlock::<(f64, Matrix<2, 2, f64>)>::default();
@@ -801,7 +801,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_sum_scalars_ $type>]() {
-                    let stub_context = StubContext::default();
+                    let stub_context = StubModelClock::default();
                     let mut block = SumBlock::<($type, $type)>::default();
                     let input = (7 as $type, 3 as $type);
 
@@ -822,7 +822,7 @@ mod tests {
 
                 #[test]
                 fn [<test_sum_matrices_ $type>]() {
-                    let stub_context = StubContext::default();
+                    let stub_context = StubModelClock::default();
                     let mut block =
                         SumBlock::<(Matrix<2, 2, $type>, Matrix<2, 2, $type>)>::default();
                     let input = (
@@ -855,7 +855,7 @@ mod tests {
 
                 #[test]
                 fn [<test_sum_mixed_ $type>]() {
-                    let stub_context = StubContext::default();
+                    let stub_context = StubModelClock::default();
                     let mut block = SumBlock::<($type, Matrix<2, 2, $type>)>::default();
                     let input = (
                         3 as $type,
@@ -883,7 +883,7 @@ mod tests {
     #[should_panic]
     fn unsigned_subtraction_underflow_panics() {
         // 3 - 7 underflows u8; native arithmetic panics in debug builds (wraps in release).
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let mut block = SumBlock::<(u8, u8)>::default();
         let parameters = Parameters {
             operations: [SumType::Addition, SumType::Subtraction],
@@ -897,7 +897,7 @@ mod tests {
     fn signed_subtraction_negative_overflow_panics() {
         // -100 - 100 = -200 underflows i8::MIN; native integer subtraction panics in
         // debug builds (wraps in release).
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let mut block = SumBlock::<(i8, i8)>::default();
         let parameters = Parameters {
             operations: [SumType::Addition, SumType::Subtraction],
@@ -910,7 +910,7 @@ mod tests {
     #[should_panic]
     fn addition_overflow_panics() {
         // 200 + 100 overflows u8; native arithmetic panics in debug builds (wraps in release).
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let mut block = SumBlock::<(u8, u8)>::default();
         let parameters = Parameters {
             operations: [SumType::Addition, SumType::Addition],

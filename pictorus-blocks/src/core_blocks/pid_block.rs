@@ -100,7 +100,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let integrator_params = Self::integrator_params(parameters);
@@ -195,12 +195,12 @@ mod tests {
     use core::time::Duration;
 
     use super::*;
-    use crate::testing::{StubContext, StubRuntime};
+    use crate::testing::{StubModelClock, StubRuntime};
     use approx::assert_relative_eq;
 
     #[test]
     fn test_p_scalar() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs(1),
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_i_scalar() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs(1),
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_d_scalar() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(0.5),
@@ -278,7 +278,7 @@ mod tests {
     }
     #[test]
     fn test_pid_scalar() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_pid_scalar_with_ic() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),
@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn test_pid_f32_scalar_with_ic() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),
@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_p_matrix() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),
@@ -376,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_i_matrix() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),
@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     fn test_d_matrix() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(0.5),
@@ -473,7 +473,7 @@ mod tests {
 
     #[test]
     fn test_pid_matrix() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_pid_matrix_f32() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn test_pid_matrix_with_ic() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs_f64(1.0),

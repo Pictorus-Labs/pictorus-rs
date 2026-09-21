@@ -39,7 +39,7 @@ impl<T: Apply> ProcessBlock for TransposeBlock<T> {
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         T::apply(&mut self.store, input)
@@ -78,7 +78,7 @@ impl<const NROWS: usize, const NCOLS: usize, S: Scalar> Apply for Matrix<NROWS, 
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn test_tranpose_scalar_input() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::default();
         let mut transpose_block = TransposeBlock::<f64>::default();
 
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_tranpose_matrix_input() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::default();
         let mut transpose_block = TransposeBlock::<Matrix<3, 2, f64>>::default();
 

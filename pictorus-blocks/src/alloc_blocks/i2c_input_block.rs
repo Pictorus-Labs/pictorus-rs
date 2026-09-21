@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use alloc::vec::Vec;
-use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, PassBy, ProcessBlock};
 
 use crate::stale_tracker::{duration_from_ms_f64, StaleTracker};
 
@@ -49,7 +49,7 @@ impl ProcessBlock for I2cInputBlock {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         // Make sure the data is the correct size, if so, update the stale check, otherwise

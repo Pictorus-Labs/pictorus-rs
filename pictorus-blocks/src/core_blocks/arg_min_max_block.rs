@@ -38,7 +38,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters.method);
@@ -132,7 +132,7 @@ impl Parameters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     #[test]
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn test_scalar_input() {
         let mut block = ArgMinMaxBlock::<f64>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let input = 1.0;
         let params = Parameters::new("Min");
         let output = block.process(&params, &context, input);
@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_matrix() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ArgMinMaxBlock::<Matrix<2, 3, f64>>::default();
         // | 11  13  15 |
         // | 12   4  16 |
@@ -192,7 +192,7 @@ mod tests {
                 #[test]
                 fn [<test_arg_min_max_scalar_ $type>]() {
                     let mut block = ArgMinMaxBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let params = Parameters::new("Min");
                     // A scalar input always yields index 0
                     let output = block.process(&params, &context, 7 as $type);
@@ -202,7 +202,7 @@ mod tests {
 
                 #[test]
                 fn [<test_arg_min_max_matrix_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let mut block = ArgMinMaxBlock::<Matrix<2, 3, $type>>::default();
                     // | 11  13  15 |
                     // | 12   4  16 |

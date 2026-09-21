@@ -42,7 +42,7 @@ macro_rules! impl_clamp_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 self.buffer = input.clamp(parameters.min, parameters.max);
@@ -64,7 +64,7 @@ macro_rules! impl_clamp_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 for r in 0..ROWS {
@@ -96,7 +96,7 @@ impl_clamp_block!(f64);
 
 #[cfg(test)]
 mod test {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use num_traits::{One, Zero};
     use paste::paste;
 
@@ -113,7 +113,7 @@ mod test {
 
     #[test]
     fn test_clamp_block_original() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let lower_limit: f64 = -1.5;
         let upper_limit: f64 = -0.5;
         let input = Matrix {
@@ -138,7 +138,7 @@ mod test {
                 #[test]
                 fn [<test_clamp_block_scalar_negative_ $name>]() {
                     /* Clamp -1 to 1, test -2, 2, 0 */
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = ClampBlock::<$type>::default();
                     let parameters = Parameters::new(-$type::one(), $type::one());
 
@@ -158,7 +158,7 @@ mod test {
                 #[test]
                 fn [<test_clamp_block_matrix_negative_ $name>]() {
                     /* Clamp -1, 1, test [[2, 0], [1, -2]] */
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = ClampBlock::<Matrix<2, 2, $type>>::default();
                     let parameters = Parameters::new(-$type::one(), $type::one());
 
@@ -192,7 +192,7 @@ mod test {
                 #[test]
                 fn [<test_clamp_block_scalar_positive_ $name>]() {
                     /* Clamp 1 to 2, test 0, 2, 3 */
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = ClampBlock::<$type>::default();
 
                     let pos_2 = $type::one() + $type::one();
@@ -216,7 +216,7 @@ mod test {
                 #[test]
                 fn [<test_clamp_block_matrix_positive_ $name>]() {
                     /* Clamp 1 to 2, test [[3, 0], [1, 2]] */
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = ClampBlock::<Matrix<2, 2, $type>>::default();
 
                     let pos_2 = $type::one() + $type::one();

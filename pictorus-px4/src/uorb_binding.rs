@@ -355,7 +355,7 @@ where
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         let mut protocol = UorbBinding::get_mut();
@@ -427,7 +427,7 @@ where
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
     ) -> PassBy<'_, Self::Output> {
         let protocol = UorbBinding::get();
 

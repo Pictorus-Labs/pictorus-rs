@@ -1,6 +1,6 @@
 use crate::traits::Scalar;
 use core::time::Duration;
-use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ModelClock, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Debounce or throttle an input signal.
 ///
@@ -32,7 +32,7 @@ impl<T: Apply<O>, O: Scalar> ProcessBlock for DelayControlBlock<T, O> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(
@@ -61,7 +61,7 @@ pub trait Apply<O>: Pass {
         input: PassBy<Self>,
         state: &mut Self::State,
         parameters: &Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
     ) -> PassBy<'s, Self::Output>;
 }
 
@@ -78,7 +78,7 @@ impl<S: Scalar, O: Scalar> Apply<O> for S {
         input: PassBy<Self>,
         state: &mut Option<Duration>,
         parameters: &Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
     ) -> PassBy<'s, Self::Output> {
         let is_true = input.is_truthy();
         match parameters.method {
@@ -109,7 +109,7 @@ impl<S: Scalar, const NROWS: usize, const NCOLS: usize, O: Scalar> Apply<O>
         input: PassBy<Self>,
         state: &mut Self::State,
         parameters: &Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
     ) -> PassBy<'s, Self::Output> {
         let input_flat = input.data.as_flattened();
         let state_flat = state.as_flattened_mut();

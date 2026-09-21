@@ -26,7 +26,7 @@ impl<const N: usize, S: Float, T: Apply<N, S>> ProcessBlock for Lookup1DBlock<N,
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs, parameters);
@@ -164,7 +164,7 @@ fn nearest_interpolation<const N: usize, S: Float>(
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_scalar_linear() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new("Linear", [0.0, 1.0, 2.0], [-1.0, 1.0, 10.0]);
 
         let mut block = Lookup1DBlock::<3, f64, f64>::default();
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_scalar_nearest() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let break_points_u1 = [0.0, 1.0, 2.0];
         let data_points = [-1.0, 1.0, 10.0];
         let params = Parameters::new("Nearest", break_points_u1, data_points);
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_matrix_linear() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let break_points_u1 = [0.0, 1.0, 2.0];
         let data_points = [-1.0, 1.0, 10.0];
         let params = Parameters::new("Linear", break_points_u1, data_points);
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_matrix_nearest() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let break_points_u1 = [0.0, 1.0, 2.0];
         let data_points = [-1.0, 1.0, 10.0];
         let params = Parameters::new("Nearest", break_points_u1, data_points);

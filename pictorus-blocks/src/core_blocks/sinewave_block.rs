@@ -44,7 +44,7 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let amplitude: F = parameters.amplitude.cast_element();
         let bias: F = parameters.bias.cast_element();
@@ -84,7 +84,7 @@ impl<T: Scalar, F: Float> Parameters<T, F> {
 mod tests {
     use super::*;
 
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use core::time::Duration;
     use num_traits::Float;
 
@@ -104,7 +104,7 @@ mod tests {
             bias: 0.0,
         };
 
-        let mut context = StubContext::default();
+        let mut context = StubModelClock::default();
 
         assert_eq!(block.generate(&parameters, &context), Float::sin(0.5));
         assert_eq!(block.buffer(), Float::sin(0.5));
@@ -120,7 +120,7 @@ mod tests {
         let mut block = SinewaveBlock::<u8, f64>::default();
         let parameters = Parameters::new(100u8, 1.0, 0.0, 100u8);
 
-        let mut context = StubContext::default();
+        let mut context = StubModelClock::default();
 
         // t = 0: 100 * sin(0) + 100 = 100
         assert_eq!(block.generate(&parameters, &context), 100);
@@ -140,7 +140,7 @@ mod tests {
         let mut block = SinewaveBlock::<u8, f64>::default();
         let parameters = Parameters::new(100u8, 1.0, 0.0, 0u8);
 
-        let context = StubContext {
+        let context = StubModelClock {
             time: Duration::from_secs_f64(3.0 * core::f64::consts::FRAC_PI_2),
             ..Default::default()
         };
@@ -161,7 +161,7 @@ mod tests {
         let mut block = SinewaveBlock::<u64, f64>::default();
         let parameters = Parameters::new((1u64 << 53) + 1, 0.0, core::f64::consts::FRAC_PI_2, 0u64);
 
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         assert_eq!(block.generate(&parameters, &context), 1u64 << 53);
     }
 
@@ -172,7 +172,7 @@ mod tests {
         let mut block = SinewaveBlock::<u8, f64>::default();
         let parameters = Parameters::new(100u8, 0.0, f64::NAN, 100u8);
 
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         assert_eq!(block.generate(&parameters, &context), 0);
     }
 }

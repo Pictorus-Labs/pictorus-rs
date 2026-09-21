@@ -36,7 +36,7 @@
 //! In a Pictorus application a given model is executed by running the tick function of every block once per time step.
 //! Blocks should never assume they will be run at a specific time-step since that is globally configurable.
 //! Further, if at all possible, a block should not assume that the application will perfectly maintain consistent
-//! time-steps during execution. Blocks are passed a [`Context`] during each tick that gives the true timing of a tick which
+//! time-steps during execution. Blocks are passed a [`ModelClock`] during each tick that gives the true timing of a tick which
 //! should be used to ensure that delayed or skipped time-steps don't cause anymore disruption to the output than necessary
 //! (e.g. If you are generating a sine wave and time-step is delayed the output should give the value of that sine function
 //! at the new tick-time not what it would have been if we hadn't been delayed, this avoids drift of a long running system).
@@ -48,14 +48,14 @@
 //! #### `GeneratorBlock`
 //! Defines an `Output` associated type that must impl `Pass`.
 //!
-//! Defines a "tick" function of `generate` that must be able to generate an output using some combination of the passed in `Context`,
+//! Defines a "tick" function of `generate` that must be able to generate an output using some combination of the passed in `ModelClock`,
 //! the passed in `Parameters` and the block's internal state
 //!
 //! #### `ProcessBlock`
 //! These make up of the majority of blocks in Pictorus. They must define an `Output` associated type with the same restrictions as
 //! described above. They additionally define an `Input` associated type with the same bounds.
 //!
-//! The tick function `process` is passed in the blocks parameters, a `Context` and an Input and returns an Output.
+//! The tick function `process` is passed in the blocks parameters, a `ModelClock` and an Input and returns an Output.
 //! Blocks may also have internal state that affects the output for a given set of arguments passed into `process`
 //!
 //! #### `InputBlock`
@@ -99,15 +99,15 @@
 //! However, the design described above was chosen because it offered the best ergonomics for block writers while still allowing
 //! parameters to be changed, saved, etc.
 //!
-//! ## Context and Runtime
+//! ## ModelClock and Runtime
 //! The `Runtime` is not a formal trait but should be a platform specific way to track and control the flow of time.
 //! The `Runtime` is responsible for keeping track of the elapsed time, the timestep increment, and correctly incrementing time.
 //! Incrementing the timestep is platform and framework specific and may be a software timer, hardware timer, async method,
 //! or another approach to ensure the program time "ticks" in a controlled way.
 //!
-//! A `Runtime` should generate a struct implementing the `Context` trait at the start of a "tick" which is an immutable
+//! A `Runtime` should generate a struct implementing the `ModelClock` trait at the start of a "tick" which is an immutable
 //! representation of elapsed time and timestep increment of the program for the current "tick" iteration.
-//! A `Context` is required to be passed into any `Block` that is runnable, which may or may not use the `Context` internally
+//! A `ModelClock` is required to be passed into any `Block` that is runnable, which may or may not use the `ModelClock` internally
 //! to process data.
 //!
 //! ## Edge Details
@@ -202,7 +202,7 @@
 //! ```rust ignore
 //! fn process<'b>(
 //!     &'b mut self,
-//!     context: &dyn Context,
+//!     context: &dyn ModelClock,
 //!     inputs: PassBy<'_, Self::Inputs>,
 //! ) -> PassBy<'b, Self::Output>;
 //! ```
@@ -212,7 +212,7 @@
 //! ```rust ignore
 //! fn process<'b>(
 //!     &'b mut self,
-//!     context: &dyn Context,
+//!     context: &dyn ModelClock,
 //!     inputs: &DMatrix<f64>
 //! ) -> u8;
 //! ```
@@ -320,7 +320,7 @@ pub trait ProcessBlock: Default {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output>;
 
@@ -345,7 +345,7 @@ pub trait GeneratorBlock: Default {
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output>;
 
     /// A cache of the blocks last output.
@@ -362,7 +362,7 @@ pub trait OutputBlock {
     fn output(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     );
 }
@@ -378,14 +378,14 @@ pub trait InputBlock {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output>;
 }
 
 /// The execution context
 // this trait avoids leaking types associated to the "runtime" into the signature of
 // `{Block,Generator}::run`
-pub trait Context {
+pub trait ModelClock {
     // This is defined as the actual elapsed time since the last tick, Will return None if the
     // model is on its first tick
     fn timestep(&self) -> Option<Duration>;

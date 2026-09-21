@@ -68,7 +68,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(input);
@@ -153,7 +153,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_abs_diff_eq;
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn test_matrix_inverse_scalar() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut block = MatrixInverseBlock::<f64, Inverse>::default();
         let res = block.process(&params, &ctxt, 99.0);
         assert_eq!(res, (99.0, true));
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn test_matrix_inverse_matrix() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut block = MatrixInverseBlock::<Matrix<2, 2, f64>, Inverse>::default();
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn test_svd_robustness_compared_to_inverse() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let det_zero_input = Matrix {
             data: [[1.0, 2.0, 3.0], [2.0, 4.0, 6.0], [3.0, 6.0, 8.0]],
         };
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn test_pseudo_inverse_square_nonsingular() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut block = MatrixInverseBlock::<Matrix<3, 3, f64>, Svd>::default();
         let matrix = Matrix {
             data: [[4.0, 7.0, 2.0], [1.0, 6.0, 9.0], [5.0, 3.0, 8.0]],
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn test_pseudo_inverse_nonsquare() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut block = MatrixInverseBlock::<Matrix<2, 3, f64>, Svd>::default();
         let matrix = Matrix {
             data: [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]],

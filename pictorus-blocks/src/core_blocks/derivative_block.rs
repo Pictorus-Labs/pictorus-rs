@@ -28,7 +28,7 @@ impl<T: Float, const N: usize> ProcessBlock for DerivativeBlock<T, N> {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         // store the current input in the sample buffer
@@ -79,7 +79,7 @@ impl<T: Float, const N: usize, const NCOLS: usize, const NROWS: usize> ProcessBl
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         // store the current input in the sample buffer

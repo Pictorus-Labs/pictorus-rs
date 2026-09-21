@@ -13,12 +13,12 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 /// use core::time::Duration;
 /// use pictorus_blocks::SwitchBlock;
 /// use pictorus_traits::ProcessBlock;
-/// use pictorus_traits::Context;
+/// use pictorus_traits::ModelClock;
 ///
 /// #[derive(Default)]
-/// struct StubContext {}
+/// struct StubModelClock {}
 ///
-/// impl Context for StubContext {
+/// impl ModelClock for StubModelClock {
 ///     fn time(&self) -> Duration {
 ///         Duration::from_secs(0)
 ///     }
@@ -32,7 +32,7 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 ///     }
 /// }
 ///
-/// let ctxt = StubContext::default();
+/// let ctxt = StubModelClock::default();
 /// let mut block = SwitchBlock::<(f64, f64, f64)>::default();
 /// // If condition is 0, output the signal at index 0
 /// // If condition is 1, output the signal at index 1
@@ -74,7 +74,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         T::apply(inputs, parameters, &mut self.buffer);
@@ -303,7 +303,7 @@ mod tests {
     use crate::traits::MatrixOps;
 
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_switch_default_buffer_no_panic() {
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_2_scalars() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_7_scalars() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64, f64, f64, f64, f64, f64)>::default();
         let parameters = Parameters::new([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
@@ -339,7 +339,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_scalar_default() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_2_matrices() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, Matrix<3, 3, f64>, Matrix<3, 3, f64>)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
@@ -367,7 +367,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_7_matrices() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(
             f64,
@@ -399,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_matrix_default() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, Matrix<3, 3, f64>, Matrix<3, 3, f64>)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
@@ -418,7 +418,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_bool_condition_scalars() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(bool, f32, f32)>::default();
         let parameters = Parameters::new([true, false]);
@@ -436,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_int_condition_scalars() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(u8, f64, f64, f64)>::default();
         let parameters = Parameters::new([10u8, 20u8, 30u8]);
@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_int_condition_matrices() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(i32, Matrix<2, 2, f32>, Matrix<2, 2, f32>)>::default();
         let parameters = Parameters::new([-1, 1]);
@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_int_condition_bytes() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(u16, ByteSliceSignal, ByteSliceSignal)>::default();
         let parameters = Parameters::new([100u16, 200u16]);
@@ -482,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_2_bytes() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, ByteSliceSignal, ByteSliceSignal)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
@@ -495,7 +495,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_2_bytes_default() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, ByteSliceSignal, ByteSliceSignal)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
@@ -509,7 +509,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_7_bytes() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         let mut block = SwitchBlock::<(
             f64,

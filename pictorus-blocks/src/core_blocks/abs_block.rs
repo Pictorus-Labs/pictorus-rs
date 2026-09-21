@@ -40,7 +40,7 @@ impl<T: Scalar + Signed> ProcessBlock for AbsBlock<T> {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = Signed::abs(&inputs);
@@ -63,7 +63,7 @@ impl<const ROWS: usize, const COLS: usize, T: Scalar + Signed> ProcessBlock
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         for (elem, &val) in self
@@ -86,7 +86,7 @@ impl<const ROWS: usize, const COLS: usize, T: Scalar + Signed> ProcessBlock
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use num_traits::One;
     use paste::paste;
 
@@ -112,7 +112,7 @@ mod tests {
                 fn [<test_abs_block_scalar_ $type>]()
                 {
                     let mut block = AbsBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
 
                     let output = block.process(&Parameter::new(), &context, <$type>::one());
                     assert_eq!(output, <$type>::one());
@@ -126,7 +126,7 @@ mod tests {
                 #[test]
                 fn [<test_abs_block_vector_1x2_ $type>]() {
                     let mut block = AbsBlock::<Matrix<1, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let input = Matrix {
                         data: [[<$type>::one()], [-<$type>::one()]],
                     };
@@ -142,7 +142,7 @@ mod tests {
                 #[test]
                 fn [<test_abs_block_vector_2x1_ $type>]() {
                     let mut block = AbsBlock::<Matrix<2, 1, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let input = Matrix {
                         data: [[<$type>::one(), -<$type>::one()]],
                     };
@@ -158,7 +158,7 @@ mod tests {
                 #[test]
                 fn [<test_abs_block_matrix_ $type>]() {
                     let mut block = AbsBlock::<Matrix<2, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let input = Matrix {
                         data: [
                             [<$type>::one(), -<$type>::one()],
@@ -200,7 +200,7 @@ mod tests {
                 #[should_panic]
                 fn [<overflow_quirk_min_ $type>]() {
                     let mut block = AbsBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
 
                     let output = block.process(&Parameter::new(), &context, <$type>::MIN);
                     assert_eq!(output, <$type>::MIN);
@@ -209,7 +209,7 @@ mod tests {
                 #[test]
                 fn [<abs_max_works_ $type>]() {
                     let mut block = AbsBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
 
                     let output = block.process(&Parameter::new(), &context, <$type>::MAX);
                     assert_eq!(output, <$type>::MAX);

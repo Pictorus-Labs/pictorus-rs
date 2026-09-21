@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 use pictorus_blocks::{SpiReceiveBlockParams, SpiTransmitBlockParams};
-use pictorus_traits::{ByteSliceSignal, Context, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ByteSliceSignal, ModelClock, InputBlock, OutputBlock, PassBy};
 
 use pictorus_internal::protocols::Flush;
 
@@ -22,7 +22,7 @@ impl InputBlock for SimSpi {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         self.cache.resize(parameters.read_bytes, 0);
         &self.cache
@@ -36,7 +36,7 @@ impl OutputBlock for SimSpi {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
         _inputs: PassBy<'_, Self::Inputs>,
     ) {
         // Do nothing

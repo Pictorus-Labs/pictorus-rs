@@ -157,7 +157,7 @@ impl OutputBlock for PwmConnection {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         let (frequency, duty_cycle) = inputs;

@@ -34,7 +34,7 @@ impl<S: Scalar + num_traits::Float + num_traits::Zero> ProcessBlock for Exponent
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut inputs_local = inputs;
@@ -70,7 +70,7 @@ impl<S: Scalar + num_traits::Float + num_traits::Zero, const NROWS: usize, const
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.output = *inputs;
@@ -129,7 +129,7 @@ impl<T: Scalar + num_traits::Float> Parameters<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_exponent_default_buffer_no_panic() {
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_exponent_block_scalar() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ExponentBlock::<f64>::default();
 
         // Preserve sign is false
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_root_negative_input_no_preserve_sign_panic() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ExponentBlock::<f64>::default();
         let parameters = Parameters::new(0.5, false);
         let input = -4.0;
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_exponent_block_matrix() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ExponentBlock::<Matrix<2, 2, f32>>::default();
 
         // Preserve sign is false
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_root_matrix_negative_input_no_preserve_sign_panic() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut block = ExponentBlock::<Matrix<2, 2, f32>>::default();
         let parameters = Parameters::new(0.5, false);
         let input = Matrix {

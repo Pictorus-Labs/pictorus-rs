@@ -53,7 +53,7 @@ macro_rules! impl_rate_limit_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                context: &dyn pictorus_traits::Context,
+                context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if let Some(timestep_duration) = context.timestep() {
@@ -91,7 +91,7 @@ macro_rules! impl_rate_limit_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                context: &dyn pictorus_traits::Context,
+                context: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if let Some(timestep_duration) = context.timestep() {

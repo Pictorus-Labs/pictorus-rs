@@ -87,7 +87,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         // Initialize the memory with the initial condition
@@ -144,7 +144,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         const {
@@ -190,12 +190,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::{Matrix, ProcessBlock};
 
     #[test]
     fn test_sliding_window_block() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
 
         let initial_condition = Matrix {
             data: [[-1.0], [-1.0], [-1.0]],
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_sliding_window_block_vectors() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
 
         let ic = Matrix {
             data: [
@@ -343,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_sliding_window_block_matrix() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
 
         let ic = Matrix {
             data: [

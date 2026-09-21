@@ -35,7 +35,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         T::apply(&mut self.buffer, input, parameters.gain)
@@ -99,7 +99,7 @@ impl<G: Scalar> Parameters<G> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     #[test]
@@ -122,7 +122,7 @@ mod tests {
                 #[test]
                 fn [<test_gain_scalar_ $type>]() {
                     let mut block = GainBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let input = 3 as $type;
                     let parameters = Parameters::new(2 as $type);
                     let output = block.process(&parameters, &context, input);
@@ -133,7 +133,7 @@ mod tests {
                 #[test]
                 fn [<test_gain_matrix_ $type>]() {
                     let mut block = GainBlock::<Matrix<2, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let input = Matrix {
                         data: [[1 as $type, 2 as $type], [3 as $type, 4 as $type]],
                     };
@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn test_gain_negative() {
         let mut block = GainBlock::<i32>::default();
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(-3);
         let output = block.process(&parameters, &context, 7);
         assert_eq!(output, -21);
@@ -168,7 +168,7 @@ mod tests {
         // Native integer multiplication overflow panics in debug builds (wraps in release).
         let mut block = GainBlock::<u8>::default();
         let parameters = Parameters::new(2u8);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         let output = block.process(&parameters, &context, 128u8);
         assert_eq!(output, 0);
@@ -181,7 +181,7 @@ mod tests {
         // debug builds (wraps in release).
         let mut block = GainBlock::<i8>::default();
         let parameters = Parameters::new(2i8);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         let output = block.process(&parameters, &context, -100i8);
         assert_eq!(output, 56);

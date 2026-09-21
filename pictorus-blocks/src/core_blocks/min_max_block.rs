@@ -49,7 +49,7 @@ impl<T: Apply<Parameters>> ProcessBlock for MinMaxBlock<T> {
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let mut tmp: Option<T::Output> = None;
@@ -152,7 +152,7 @@ impl<const R: usize, const C: usize, S: Scalar> ApplyInto<Matrix<R, C, S>, Param
 #[cfg(test)]
 mod tests {
 
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_single_scalar() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut block = MinMaxBlock::<f64>::default();
         let mut parameters = Parameters::new("Min");
         let input = 99.0;
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_single_matrix() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut block = MinMaxBlock::<Matrix<2, 2, f64>>::default();
         let mut parameters = Parameters::new("Min");
         let input = Matrix::<2, 2, f64>::from_element(99.0);
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_multiple_scalars() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Two inputs
         let mut two_block = MinMaxBlock::<(f64, f64)>::default();
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn test_multiple_matrices() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Two inputs
         let mut two_block = MinMaxBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, f64>)>::default();
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_mixed_scalars_and_matrices() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
 
         // Scalar and matrix
         let mut block = MinMaxBlock::<(f64, Matrix<2, 2, f64>)>::default();

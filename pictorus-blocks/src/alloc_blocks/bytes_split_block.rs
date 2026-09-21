@@ -78,7 +78,7 @@ impl<T: Apply> ProcessBlock for BytesSplitBlock<T> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let parsed_deliminator = parse_string_to_read_delimiter(&parameters.delimiter);
@@ -757,13 +757,13 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     // TODO: We have tests for each impl of Apply, but don't yet test their handling of the stale_age parameter
 
     #[test]
     fn test_bytes_split_block_data() {
-        let mut context = StubContext::default();
+        let mut context = StubModelClock::default();
         let params = Parameters::new(":", &["scalar:0", "scalar:3", "BytesArray:1"], 1000.0);
         let mut block = BytesSplitBlock::<(f64, f64, ByteSliceSignal)>::default();
         let input = br#"123:4.56:78.9:42.0"#;
@@ -792,7 +792,7 @@ mod tests {
 
     #[test]
     fn test_wildcard_delim() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let delim = r"\xAA\x**\xAB";
         let parameters = Parameters::new(delim, &["BytesArray:0", "BytesArray:2"], 1000.0);
         let mut block = BytesSplitBlock::<(ByteSliceSignal, ByteSliceSignal)>::default();
@@ -805,7 +805,7 @@ mod tests {
 
     #[test]
     fn test_1_output() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(":", &["scalar:3"], 1000.0);
         let mut block = BytesSplitBlock::<f64>::default();
 
@@ -817,7 +817,7 @@ mod tests {
 
     #[test]
     fn test_2_outputs() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(":", &["scalar:0", "BytesArray:3"], 1000.0);
         let mut block = BytesSplitBlock::<(f64, ByteSliceSignal)>::default();
 
@@ -829,7 +829,7 @@ mod tests {
 
     #[test]
     fn test_3_outputs() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(":", &["scalar:0", "scalar:3", "BytesArray:1"], 1000.0);
         let mut block = BytesSplitBlock::<(f64, f64, ByteSliceSignal)>::default();
 
@@ -841,7 +841,7 @@ mod tests {
 
     #[test]
     fn test_4_outputs() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &["scalar:0", "scalar:3", "scalar:1", "BytesArray:2"],
@@ -860,7 +860,7 @@ mod tests {
 
     #[test]
     fn test_5_outputs() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &[
@@ -885,7 +885,7 @@ mod tests {
 
     #[test]
     fn test_6_outputs() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &[
@@ -914,7 +914,7 @@ mod tests {
 
     #[test]
     fn test_7_outputs() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &[

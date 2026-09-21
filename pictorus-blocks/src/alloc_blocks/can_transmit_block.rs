@@ -66,7 +66,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let mut tmp = Vec::<S>::new();
@@ -171,7 +171,7 @@ impl<S: Float> ToVec<S> for (S, S, S, S, S, S, S, S) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use crate::CanTransmitBlockParams as Parameters;
 
     extern crate alloc;
@@ -183,7 +183,7 @@ mod tests {
         // Test a single CAN input signal
 
         let id = embedded_can::Id::Standard(StandardId::new(0x123).expect("Could not create ID"));
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(id);
 
         struct StubCanParser {
@@ -225,7 +225,7 @@ mod tests {
         // Test a CAN tuple signal with byte and a "boolean"
 
         let id = embedded_can::Id::Standard(StandardId::new(0x123).expect("Could not create ID"));
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(id);
 
         struct StubCanParser {
@@ -277,7 +277,7 @@ mod tests {
         // Test a 7 input CAN signal
 
         let id = embedded_can::Id::Standard(StandardId::new(0x123).expect("Could not create ID"));
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let parameters = Parameters::new(id);
 
         struct StubCanParser {

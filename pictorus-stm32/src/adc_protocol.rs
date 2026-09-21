@@ -1,7 +1,7 @@
 use embassy_stm32::adc::{Adc, AnyAdcChannel};
 use pictorus_blocks::AdcBlockParams;
 use pictorus_internal::protocols::Flush;
-use pictorus_traits::{Context, InputBlock, PassBy};
+use pictorus_traits::{ModelClock, InputBlock, PassBy};
 
 pub struct AdcWrapper<'a, T: embassy_stm32::adc::Instance> {
     adc: Adc<'a, T>,
@@ -19,7 +19,7 @@ where
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         if self.buffer.is_none() {
             self.buffer = Some(self.adc.read(&mut self.channel));

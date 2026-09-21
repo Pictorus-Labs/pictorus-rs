@@ -41,7 +41,7 @@ impl<T: Apply> ProcessBlock for BytesJoinBlock<T> {
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer = T::apply(inputs, parameters);
@@ -179,7 +179,7 @@ mod tests {
     use std::println;
 
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use alloc::string::ToString;
     use pictorus_traits::Matrix;
 
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_bytes_join_block() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new("/ ");
         let mut block = BytesJoinBlock::<(f64, Matrix<2, 3, f64>, ByteSliceSignal)>::default();
 
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_bytes_join_block_non_ascii_input() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new("⚡");
         let mut block = BytesJoinBlock::<(ByteSliceSignal, ByteSliceSignal)>::default();
 
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_bytes_join_non_utf8_input() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new(r"\x99");
         let mut block = BytesJoinBlock::<(ByteSliceSignal, ByteSliceSignal)>::default();
 

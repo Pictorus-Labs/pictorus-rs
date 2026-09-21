@@ -16,7 +16,7 @@ impl<P: InputPin> InputBlock for RenesasInputPin<P> {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         self.0.is_high().unwrap_or(false).into()
     }
@@ -37,7 +37,7 @@ impl<P: OutputPin> OutputBlock for RenesasOutputPin<P> {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         if inputs {

@@ -1,5 +1,5 @@
 use alloc::vec::Vec;
-use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, PassBy, ProcessBlock};
 
 /// Parameters for I2C Output Block
 #[doc(hidden)]
@@ -36,7 +36,7 @@ impl ProcessBlock for I2cOutputBlock {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer.clear();
@@ -52,7 +52,7 @@ impl ProcessBlock for I2cOutputBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_i2c_output_default_buffer_no_panic() {
@@ -64,7 +64,7 @@ mod tests {
     fn test_i2c_output_block() {
         let mut block = I2cOutputBlock::default();
         let params = Parameters::new(64., 1.);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         let input_data: &[u8] = &[0x01, 0x02, 0x03];
 

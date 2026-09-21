@@ -1,6 +1,6 @@
 use crate::traits::Scalar;
 use core::ops::{Mul, Sub};
-use pictorus_traits::{Context, Matrix, Pass, PassBy};
+use pictorus_traits::{ModelClock, Matrix, Pass, PassBy};
 
 pub struct Parameters {
     // No parameters needed for this block
@@ -48,7 +48,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(&mut self.buffer, inputs);
@@ -107,7 +107,7 @@ impl_cross_product!(3, 1);
 #[cfg(test)]
 mod tests {
 
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
     use pictorus_traits::ProcessBlock;
 
@@ -130,7 +130,7 @@ mod tests {
                 #[test]
                 fn [<test_vector_cross_unit_1x3_ $type>]() {
                     // x cross y = z, no negative intermediates so valid for unsigned types
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let p = Parameters::new();
                     let mut cross_block =
                         CrossProductBlock::<(Matrix<1, 3, $type>, Matrix<1, 3, $type>)>::default();
@@ -147,7 +147,7 @@ mod tests {
 
                 #[test]
                 fn [<test_vector_cross_unit_3x1_ $type>]() {
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let p = Parameters::new();
                     let mut cross_block =
                         CrossProductBlock::<(Matrix<3, 1, $type>, Matrix<3, 1, $type>)>::default();
@@ -178,7 +178,7 @@ mod tests {
                 #[test]
                 fn [<test_vector_cross_signed_ $type>]() {
                     // (2,3,4) cross (5,6,7) = (-3, 6, -3)
-                    let context = StubContext::default();
+                    let context = StubModelClock::default();
                     let p = Parameters::new();
                     let mut cross_block =
                         CrossProductBlock::<(Matrix<1, 3, $type>, Matrix<1, 3, $type>)>::default();
@@ -206,7 +206,7 @@ mod tests {
         // The first output element computes 16 * 16 = 256, which overflows i8 in the
         // multiply step (before any subtraction). Native arithmetic panics in debug
         // builds (wraps in release).
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let p = Parameters::new();
         let mut cross_block = CrossProductBlock::<(Matrix<1, 3, i8>, Matrix<1, 3, i8>)>::default();
         let input1: Matrix<1, 3, i8> = Matrix {
@@ -224,7 +224,7 @@ mod tests {
     fn underflow_panics_unsigned() {
         // y cross x = -z, which underflows unsigned types and panics in debug builds
         // (wraps in release).
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let p = Parameters::new();
         let mut cross_block = CrossProductBlock::<(Matrix<1, 3, u8>, Matrix<1, 3, u8>)>::default();
         let input1: Matrix<1, 3, u8> = Matrix {

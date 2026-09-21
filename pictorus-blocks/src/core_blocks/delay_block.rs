@@ -41,7 +41,7 @@ impl<T: Pass + Default + Copy + CopyInto<T>, const N: usize> ProcessBlock for De
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         // Calculate effective delay based on whether input is already delayed
@@ -99,7 +99,7 @@ impl<T: Pass + Default + Copy + CopyInto<T>> Parameters<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::Matrix;
 
     #[test]
@@ -109,7 +109,7 @@ mod tests {
             is_delayed: false,
         };
         let mut block = DelayBlock::<f64, 3>::new(&parameters);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
         assert_eq!(block.process(&parameters, &context, 1.0), 0.0);
@@ -142,7 +142,7 @@ mod tests {
             is_delayed: true,
         };
         let mut block = DelayBlock::<f64, 3>::new(&parameters);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
         assert_eq!(block.process(&parameters, &context, 1.0), 0.0);
@@ -162,7 +162,7 @@ mod tests {
             is_delayed: false,
         };
         let mut block = DelayBlock::<Matrix<2, 2, f64>, 3>::new(&parameters);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
         assert_eq!(
@@ -246,7 +246,7 @@ mod tests {
             is_delayed: false,
         };
         let mut block = DelayBlock::<f64, 6>::new(&parameters);
-        let context = StubContext::default();
+        let context = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
         assert_eq!(block.process(&parameters, &context, 1.0), 42.0);

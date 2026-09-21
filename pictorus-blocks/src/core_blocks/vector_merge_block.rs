@@ -59,7 +59,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let mut offset = 0;
@@ -336,7 +336,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_vector_merge_default_buffer_no_panic() {
@@ -348,7 +348,7 @@ mod tests {
     fn test_vector_merge_block_scalar_original_test() {
         // Should be able to pass in scalars, vectors, or matrices,
         // and get back a flattened vector
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let mut block = VectorMergeBlock::<
             Matrix<1, 8, f64>,
@@ -388,7 +388,7 @@ mod tests {
         let input = Matrix {
             data: [[1., 2., 3.], [4., 5., 6.], [7., 8., 9.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(&parameters, &stub_context, &input);
         assert_eq!(
@@ -402,7 +402,7 @@ mod tests {
     #[test]
     fn test_one_scalars() {
         let mut block = VectorMergeBlock::<Matrix<1, 1, f64>, f64>::default();
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = *block.process(&parameters, &stub_context, 1.);
         assert_eq!(result, Matrix { data: [[1.]] });
@@ -421,7 +421,7 @@ mod tests {
         let input_b = Matrix {
             data: [[10., 11., 12.], [13., 14., 15.], [16., 17., 18.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(&parameters, &stub_context, (&input_a, &input_b));
         assert_eq!(
@@ -462,7 +462,7 @@ mod tests {
         let input_b = Matrix {
             data: [[4.], [5.], [6.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(&parameters, &stub_context, (&input_a, &input_b));
         assert_eq!(
@@ -476,7 +476,7 @@ mod tests {
     #[test]
     fn test_two_scalars() {
         let mut block = VectorMergeBlock::<Matrix<1, 2, f64>, (f64, f64)>::default();
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(&parameters, &stub_context, (1., 2.));
         assert_eq!(result, &Matrix { data: [[1.], [2.]] });
@@ -485,7 +485,7 @@ mod tests {
     #[test]
     fn test_scalar_matrix() {
         let mut block = VectorMergeBlock::<Matrix<1, 5, f64>, (f64, Matrix<2, 2, f64>)>::default();
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let input = Matrix {
             data: [[1., 2.], [3., 4.]],
@@ -502,7 +502,7 @@ mod tests {
     #[test]
     fn test_matrix_scalar() {
         let mut block = VectorMergeBlock::<Matrix<1, 5, f64>, (Matrix<2, 2, f64>, f64)>::default();
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let input = Matrix {
             data: [[1., 2.], [3., 4.]],
@@ -528,7 +528,7 @@ mod tests {
         let input_b = Matrix {
             data: [[10., 11., 12.], [13., 14., 15.], [16., 17., 18.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(&parameters, &stub_context, (&input_a, &input_b, &input_a));
         assert_eq!(
@@ -574,7 +574,7 @@ mod tests {
         let input_b = Matrix {
             data: [[4., 3.], [2., 1.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(
             &parameters,
@@ -627,7 +627,7 @@ mod tests {
         let input_c = Matrix {
             data: [[10., 11.], [12., 13.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(
             &parameters,
@@ -688,7 +688,7 @@ mod tests {
         let input_d = Matrix {
             data: [[14., 15.], [16., 17.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(
             &parameters,
@@ -757,7 +757,7 @@ mod tests {
         let input_e = Matrix {
             data: [[20., 21., 22.], [23., 24., 25.], [26., 27., 28.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(
             &parameters,
@@ -841,7 +841,7 @@ mod tests {
         let input_f = Matrix {
             data: [[26., 27., 28., 29., 30., 31.]],
         };
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(
             &parameters,
@@ -926,7 +926,7 @@ mod tests {
             data: [[20.], [21.], [22.], [23.], [24.], [25.]],
         };
         let input_h = 4.;
-        let stub_context = StubContext::default();
+        let stub_context = StubModelClock::default();
         let parameters = Parameters {};
         let result = block.process(
             &parameters,

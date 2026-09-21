@@ -47,7 +47,7 @@ macro_rules! impl_determinant_block {
             fn process<'b>(
                 &'b mut self,
                 _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'b, Self::Output> {
                 self.buffer =
@@ -68,7 +68,7 @@ macro_rules! impl_determinant_block {
             fn process<'b>(
                 &'b mut self,
                 _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'b, Self::Output> {
                 self.buffer = inputs;
@@ -88,7 +88,7 @@ impl_determinant_block!(f64);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     #[test]
@@ -104,7 +104,7 @@ mod tests {
                 fn [<test_vector_determinant_ $type>]() {
                     let mut det_block = DeterminantBlock::<$type, Matrix<2, 2, $type>>::default();
 
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let p = Parameters::new();
                     let input = Matrix {
                         data: [[1.0, 2.0], [3.0, 4.0]]

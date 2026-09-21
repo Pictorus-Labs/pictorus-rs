@@ -48,7 +48,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         const {
@@ -82,7 +82,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer.data[0][0] = input;
@@ -97,14 +97,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     /// This test should fail to compile due to the assertion test for the input and output matrix dimensions.
     /// ```compile_fail,E0080
     /// #[test]
     /// fn static_assert() {
-    ///      let c = StubContext::default();
+    ///      let c = StubModelClock::default();
     ///      let mut block = VectorReshapeBlock::<Matrix<3, 3, f64>, Matrix<4, 4, f64>>::default();
     ///      let parameters = Parameters::new();
     ///
@@ -125,7 +125,7 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_vector_sort_scalar_ $type>]() {
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<$type, Matrix<1, 1, $type>>::default();
                     let parameters = Parameters::new();
 
@@ -138,7 +138,7 @@ mod tests {
 
                 #[test]
                 fn [<test_vector_reshape_3x3_1x9 $type>]() {
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<Matrix<3, 3, $type>, Matrix<1, 9, $type>>::default();
                     let parameters = Parameters::new();
 
@@ -170,7 +170,7 @@ mod tests {
 
                 #[test]
                 fn [<test_vector_reshape_3x2_2x3_ $type>]() {
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<Matrix<3, 2, $type>, Matrix<2, 3, $type>>::default();
                     let parameters = Parameters::new();
 
@@ -197,7 +197,7 @@ mod tests {
                 #[test]
                 fn [<test_vector_reshape_4x4_8x2 $type>]() {
                     // Matlab documentation example
-                    let c = StubContext::default();
+                    let c = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<Matrix<4, 4, $type>, Matrix<8, 2, $type>>::default();
                     let parameters = Parameters::new();
 

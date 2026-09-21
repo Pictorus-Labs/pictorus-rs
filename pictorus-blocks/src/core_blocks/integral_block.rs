@@ -38,7 +38,7 @@ impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
@@ -102,7 +102,7 @@ impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
@@ -201,7 +201,7 @@ impl<T: Apply> Parameters<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::{StubContext, StubRuntime};
+    use crate::testing::{StubModelClock, StubRuntime};
     use crate::SinewaveBlock;
     use approx::assert_relative_eq;
     use pictorus_traits::GeneratorBlock;
@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_integral_matrix() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs(1),
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_integral_ic_scalar() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs(1),
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_integral_ic_matrix() {
-        let mut runtime = StubRuntime::new(StubContext::new(
+        let mut runtime = StubRuntime::new(StubModelClock::new(
             Duration::ZERO,
             None,
             Duration::from_secs(1),

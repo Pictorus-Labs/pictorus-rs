@@ -51,7 +51,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut new_buffer = [O::zero(); N];
@@ -149,12 +149,12 @@ where
 mod tests {
     use super::super::bytes_pack_block::{BytesPackBlock, Parameters as PackParameters};
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
 
     #[test]
     fn test_bytes_unpack_1_output() {
-        let mut context = StubContext::default();
+        let mut context = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<f64>::default();
         let mut block = BytesUnpackBlock::<2>::default();
         let spec_strings = &["I8:BigEndian"];
@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_bytes_unpack_2_outputs() {
-        let mut context = StubContext::default();
+        let mut context = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<(f64, f64)>::default();
         let mut block = BytesUnpackBlock::<3>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_bytes_unpack_7_outputs() {
-        let mut context = StubContext::default();
+        let mut context = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
         let mut block = BytesUnpackBlock::<8>::default();
         let spec_strings = &[
@@ -265,7 +265,7 @@ mod tests {
 
     #[test]
     fn test_bytes_unpack_12_outputs() {
-        let context = StubContext::default();
+        let context = StubModelClock::default();
         let mut pack_block_1 = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
         let mut pack_block_2 = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
         let mut block = BytesUnpackBlock::<13>::default();
@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_bytes_unpack_3_output_f32() {
-        let mut context = StubContext::default();
+        let mut context = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<(f32, f32)>::default();
         let mut block = BytesUnpackBlock::<3, f32>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];

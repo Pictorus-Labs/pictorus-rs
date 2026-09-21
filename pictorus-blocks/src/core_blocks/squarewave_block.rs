@@ -92,7 +92,7 @@ where
     fn generate(
         &mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        context: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let adjusted_time = F::from_duration(context.time()) - parameters.phase;
         let pulse_time = parameters.on_duration + parameters.off_duration;

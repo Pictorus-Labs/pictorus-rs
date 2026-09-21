@@ -57,7 +57,7 @@ macro_rules! impl_trig_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 let output = match parameters.function {
@@ -93,7 +93,7 @@ macro_rules! impl_trig_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _context: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 inputs.for_each(|input, c, r| {
@@ -130,7 +130,7 @@ impl_trig_block!(f32);
 mod tests {
     extern crate std;
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
     use core::f64::consts::PI;
     use rstest::rstest;
@@ -171,7 +171,7 @@ mod tests {
         #[case] input: f64,
         #[case] expected: f64,
     ) {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut block = TrigonometryBlock::<f64>::default();
         let p = Parameters::new(function);
 
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_trigonometry_block_vectorized() {
-        let c = StubContext::default();
+        let c = StubModelClock::default();
         let mut sine_block = TrigonometryBlock::<Matrix<1, 2, f64>>::default();
         let p = Parameters::new("Sine");
         let inputs = Matrix {

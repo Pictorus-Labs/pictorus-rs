@@ -42,7 +42,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _context: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut tmp: Option<T::Output> = None;
@@ -209,7 +209,7 @@ impl Parameters {
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_logical_and_scalar() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new("And");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_logical_or_scalar() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new("Or");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_logical_nor_scalar() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new("Nor");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
@@ -304,7 +304,7 @@ mod tests {
 
     #[test]
     fn test_logical_nand_scalar() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let params = Parameters::new("Nand");
         let mut block = LogicalBlock::<(f64, f64, f64)>::default();
 
@@ -333,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_matrix_ops() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut params = Parameters::new("And");
         let mut block =
             LogicalBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, f64>, Matrix<2, 2, f64>)>::default();
@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_matrix_scalar_ops() {
-        let ctxt = StubContext::default();
+        let ctxt = StubModelClock::default();
         let mut params = Parameters::new("And");
         let mut block = LogicalBlock::<(Matrix<2, 2, f64>, f64)>::default();
 

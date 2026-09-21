@@ -2,7 +2,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use fmu_runner::{fmi2Type, model_description::ScalarVariable, Fmu, FmuInstance, FmuLibrary};
-use pictorus_traits::{Context, ProcessBlock};
+use pictorus_traits::{ModelClock, ProcessBlock};
 use std::collections::HashMap;
 
 /// The FMU block is a wrapper around an FMU file that allows it to be used as a block in a simulation.
@@ -26,7 +26,7 @@ impl<const N_IN: usize, const N_OUT: usize> FmuBlock<N_IN, N_OUT> {
     fn run_time_step(
         &mut self,
         params: &Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
         inputs: &[f64; N_IN],
     ) -> [f64; N_OUT] {
         let fmu = self.fm_cs.get_or_insert_with(|| {
@@ -147,7 +147,7 @@ impl<const N_IN: usize, const N_OUT: usize> ProcessBlock for FmuBlock<N_IN, N_OU
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        context: &dyn ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         self.buffer = self.run_time_step(parameters, context, inputs);
