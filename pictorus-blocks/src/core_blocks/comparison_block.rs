@@ -71,7 +71,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut tmp: Option<T::Output> = None;
@@ -186,7 +186,7 @@ mod tests {
     use core::str::FromStr;
 
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_comparison_default_buffer_no_panic() {
@@ -227,69 +227,69 @@ mod tests {
 
     #[test]
     fn test_comparison_block_scalar() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = ComparisonBlock::<(f64, f64)>::default();
-        let output = block.process(&Parameters::new("Equal"), &c, (1., 1.));
+        let output = block.process(&Parameters::new("Equal"), &model_clock, (1., 1.));
         assert_eq!(output, 1.0);
         assert_eq!(block.buffer(), output);
 
-        let output = block.process(&Parameters::new("Equal"), &c, (0., 1.));
+        let output = block.process(&Parameters::new("Equal"), &model_clock, (0., 1.));
         assert_eq!(output, 0.0);
 
-        let output = block.process(&Parameters::new("NotEqual"), &c, (1., 0.));
+        let output = block.process(&Parameters::new("NotEqual"), &model_clock, (1., 0.));
         assert_eq!(output, 1.0);
 
-        let output = block.process(&Parameters::new("NotEqual"), &c, (1., 1.));
+        let output = block.process(&Parameters::new("NotEqual"), &model_clock, (1., 1.));
         assert_eq!(output, 0.0);
 
         // GreaterThan
-        let output = block.process(&Parameters::new("GreaterThan"), &c, (1., 0.));
+        let output = block.process(&Parameters::new("GreaterThan"), &model_clock, (1., 0.));
         assert_eq!(output, 1.0);
 
-        let output = block.process(&Parameters::new("GreaterThan"), &c, (1., 1.));
+        let output = block.process(&Parameters::new("GreaterThan"), &model_clock, (1., 1.));
         assert_eq!(output, 0.0);
 
-        let output = block.process(&Parameters::new("GreaterThan"), &c, (0., 1.));
+        let output = block.process(&Parameters::new("GreaterThan"), &model_clock, (0., 1.));
         assert_eq!(output, 0.0);
 
         // GreaterOrEqual
-        let output = block.process(&Parameters::new("GreaterOrEqual"), &c, (1., 0.));
+        let output = block.process(&Parameters::new("GreaterOrEqual"), &model_clock, (1., 0.));
         assert_eq!(output, 1.0);
 
-        let output = block.process(&Parameters::new("GreaterOrEqual"), &c, (1., 1.));
+        let output = block.process(&Parameters::new("GreaterOrEqual"), &model_clock, (1., 1.));
         assert_eq!(output, 1.0);
 
-        let output = block.process(&Parameters::new("GreaterOrEqual"), &c, (0., 1.));
+        let output = block.process(&Parameters::new("GreaterOrEqual"), &model_clock, (0., 1.));
         assert_eq!(output, 0.0);
 
         // LessThan
-        let output = block.process(&Parameters::new("LessThan"), &c, (0., 1.));
+        let output = block.process(&Parameters::new("LessThan"), &model_clock, (0., 1.));
         assert_eq!(output, 1.0);
 
-        let output = block.process(&Parameters::new("LessThan"), &c, (1., 1.));
+        let output = block.process(&Parameters::new("LessThan"), &model_clock, (1., 1.));
         assert_eq!(output, 0.0);
 
-        let output = block.process(&Parameters::new("LessThan"), &c, (1., 0.));
+        let output = block.process(&Parameters::new("LessThan"), &model_clock, (1., 0.));
         assert_eq!(output, 0.0);
 
         // LessOrEqual
-        let output = block.process(&Parameters::new("LessOrEqual"), &c, (0., 1.));
+        let output = block.process(&Parameters::new("LessOrEqual"), &model_clock, (0., 1.));
         assert_eq!(output, 1.0);
 
-        let output = block.process(&Parameters::new("LessOrEqual"), &c, (1., 1.));
+        let output = block.process(&Parameters::new("LessOrEqual"), &model_clock, (1., 1.));
         assert_eq!(output, 1.0);
 
-        let output = block.process(&Parameters::new("LessOrEqual"), &c, (1., 0.));
+        let output = block.process(&Parameters::new("LessOrEqual"), &model_clock, (1., 0.));
         assert_eq!(output, 0.0);
     }
 
     #[test]
     fn test_comparison_block_matrix() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = ComparisonBlock::<(Matrix<1, 3, f64>, Matrix<1, 3, f64>)>::default();
         let output = block.process(
             &Parameters::new("Equal"),
-            &c,
+            &model_clock,
             (
                 &Matrix {
                     data: [[1.], [0.], [-1.]],
@@ -308,7 +308,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("NotEqual"),
-            &c,
+            &model_clock,
             (
                 &Matrix {
                     data: [[1.], [0.], [-1.]],
@@ -327,7 +327,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("GreaterThan"),
-            &c,
+            &model_clock,
             (
                 &Matrix {
                     data: [[1.], [1.], [-2.]],
@@ -346,7 +346,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("GreaterOrEqual"),
-            &c,
+            &model_clock,
             (
                 &Matrix {
                     data: [[1.], [1.], [-2.]],
@@ -365,7 +365,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("LessThan"),
-            &c,
+            &model_clock,
             (
                 &Matrix {
                     data: [[1.], [1.], [-2.]],
@@ -384,7 +384,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("LessOrEqual"),
-            &c,
+            &model_clock,
             (
                 &Matrix {
                     data: [[1.], [1.], [-2.]],
@@ -404,11 +404,11 @@ mod tests {
 
     #[test]
     fn test_comparison_block_scalar_matrix() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = ComparisonBlock::<(f64, Matrix<1, 3, f64>)>::default();
         let output = block.process(
             &Parameters::new("Equal"),
-            &c,
+            &model_clock,
             (
                 1.,
                 &Matrix {
@@ -425,7 +425,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("NotEqual"),
-            &c,
+            &model_clock,
             (
                 1.,
                 &Matrix {
@@ -442,7 +442,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("GreaterThan"),
-            &c,
+            &model_clock,
             (
                 1.,
                 &Matrix {
@@ -459,7 +459,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("GreaterOrEqual"),
-            &c,
+            &model_clock,
             (
                 1.,
                 &Matrix {
@@ -476,7 +476,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("LessThan"),
-            &c,
+            &model_clock,
             (
                 1.,
                 &Matrix {
@@ -493,7 +493,7 @@ mod tests {
 
         let output = block.process(
             &Parameters::new("LessOrEqual"),
-            &c,
+            &model_clock,
             (
                 1.,
                 &Matrix {

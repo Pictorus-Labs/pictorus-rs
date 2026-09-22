@@ -1,6 +1,6 @@
 use crate::traits::Scalar;
 use core::time::Duration;
-use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ModelClock, Matrix, Pass, PassBy, ProcessBlock};
 
 /// Debounce or throttle an input signal.
 ///
@@ -32,7 +32,7 @@ impl<T: Apply<O>, O: Scalar> ProcessBlock for DelayControlBlock<T, O> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let output = T::apply(
@@ -40,7 +40,7 @@ impl<T: Apply<O>, O: Scalar> ProcessBlock for DelayControlBlock<T, O> {
             inputs,
             &mut self.state,
             parameters,
-            context,
+            model_clock,
         );
         output
     }
@@ -61,7 +61,7 @@ pub trait Apply<O>: Pass {
         input: PassBy<Self>,
         state: &mut Self::State,
         parameters: &Parameters,
-        context: &dyn Context,
+        model_clock: &dyn ModelClock,
     ) -> PassBy<'s, Self::Output>;
 }
 
@@ -78,16 +78,16 @@ impl<S: Scalar, O: Scalar> Apply<O> for S {
         input: PassBy<Self>,
         state: &mut Option<Duration>,
         parameters: &Parameters,
-        context: &dyn Context,
+        model_clock: &dyn ModelClock,
     ) -> PassBy<'s, Self::Output> {
         let is_true = input.is_truthy();
         match parameters.method {
             DelayControlMethod::Debounce => {
-                *store = O::from_bool(debounce(is_true, state, parameters.delay, context.time()));
+                *store = O::from_bool(debounce(is_true, state, parameters.delay, model_clock.time()));
             }
 
             DelayControlMethod::Throttle => {
-                *store = O::from_bool(throttle(is_true, state, parameters.delay, context.time()));
+                *store = O::from_bool(throttle(is_true, state, parameters.delay, model_clock.time()));
             }
         }
         store.as_by()
@@ -109,7 +109,7 @@ impl<S: Scalar, const NROWS: usize, const NCOLS: usize, O: Scalar> Apply<O>
         input: PassBy<Self>,
         state: &mut Self::State,
         parameters: &Parameters,
-        context: &dyn Context,
+        model_clock: &dyn ModelClock,
     ) -> PassBy<'s, Self::Output> {
         let input_flat = input.data.as_flattened();
         let state_flat = state.as_flattened_mut();
@@ -122,7 +122,7 @@ impl<S: Scalar, const NROWS: usize, const NCOLS: usize, O: Scalar> Apply<O>
                         is_true,
                         &mut state_flat[i],
                         parameters.delay,
-                        context.time(),
+                        model_clock.time(),
                     ));
                 }
 
@@ -131,7 +131,7 @@ impl<S: Scalar, const NROWS: usize, const NCOLS: usize, O: Scalar> Apply<O>
                         is_true,
                         &mut state_flat[i],
                         parameters.delay,
-                        context.time(),
+                        model_clock.time(),
                     ));
                 }
             }
@@ -227,32 +227,32 @@ mod tests {
         let mut block = DelayControlBlock::<f64>::default();
         let parameters = Parameters::new(0.3, "Throttle");
 
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), output);
 
         runtime.tick(); // Time is 100ms
-        let output = block.process(&parameters, &runtime.context(), 0.5);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.5);
         assert!(output.is_truthy());
         assert_eq!(block.buffer(), 1.0);
 
         runtime.tick(); // Time is 200ms
-        let output = block.process(&parameters, &runtime.context(), 1.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 1.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // Time is 300ms
-        let output = block.process(&parameters, &runtime.context(), 1.5);
+        let output = block.process(&parameters, &runtime.model_clock(), 1.5);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // Time is 400ms
-        let output = block.process(&parameters, &runtime.context(), 2.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 2.0);
         assert!(output.is_truthy());
         assert_eq!(block.buffer(), 1.0);
 
         runtime.tick(); // Time is 500ms
-        let output = block.process(&parameters, &runtime.context(), 2.5);
+        let output = block.process(&parameters, &runtime.model_clock(), 2.5);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
     }
@@ -264,59 +264,59 @@ mod tests {
         let parameters = Parameters::new(0.3, "Debounce");
 
         // T= 0  we receive false
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.1s we receive true but still expect false
-        let output = block.process(&parameters, &runtime.context(), -2.0);
+        let output = block.process(&parameters, &runtime.model_clock(), -2.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.2s we receive false but still expect false until the delay cooldown is over
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.3s we receive false but still expect false until the delay cooldown is over
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.4s we receive false but expect true because delay cooldown is over
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(output.is_truthy());
         assert_eq!(block.buffer(), 1.0);
 
         runtime.tick(); // T = 0.5s we receive false and expect false since we already emitted true
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.6s we receive false and expect false since we already emitted true
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         // Show we can do it again
         runtime.tick(); // T = 0.7s we receive true but still expect false
-        let output = block.process(&parameters, &runtime.context(), 1.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 1.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         runtime.tick(); // T = 0.8s we receive false setting the debounce cooldown in motion
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
 
         // Fast forward to 0.3 seconds after the last true input
-        runtime.context.time += Duration::from_secs_f64(0.3);
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        runtime.model_clock.time += Duration::from_secs_f64(0.3);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(output.is_truthy());
         assert_eq!(block.buffer(), 1.0);
 
         runtime.tick();
-        let output = block.process(&parameters, &runtime.context(), 0.0);
+        let output = block.process(&parameters, &runtime.model_clock(), 0.0);
         assert!(!output.is_truthy());
         assert_eq!(block.buffer(), 0.0);
     }

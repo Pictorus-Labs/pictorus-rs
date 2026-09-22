@@ -41,7 +41,7 @@ impl<T: Apply<O>, O: Scalar + num_traits::Zero + num_traits::One> ProcessBlock
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         T::apply(&mut self.counter, inputs)
@@ -124,7 +124,7 @@ impl<
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -138,7 +138,7 @@ mod tests {
     fn test_counter_block_simple_f64() {
         let p = Parameters::new();
         let mut block = CounterBlock::<(Matrix<1, 1, bool>, Matrix<1, 1, bool>)>::default();
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut increment = Matrix::<1, 1, bool>::zeroed();
         increment.data[0][0] = true;
@@ -146,15 +146,15 @@ mod tests {
         let mut reset = Matrix::<1, 1, bool>::zeroed();
         reset.data[0][0] = false;
 
-        let output = *block.process(&p, &c, (&increment, &reset));
+        let output = *block.process(&p, &model_clock, (&increment, &reset));
         assert!(output.data[0][0] == 1.0);
         assert_eq!(block.buffer(), &output);
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert!(output.data[0][0] == 2.0);
 
         reset.data[0][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert!(output.data[0][0] == 0.0);
     }
 
@@ -162,7 +162,7 @@ mod tests {
     fn test_counter_block_1x2_f64() {
         let p = Parameters::new();
         let mut block = CounterBlock::<(Matrix<1, 2, bool>, Matrix<1, 2, bool>), f64>::default();
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut increment = Matrix::<1, 2, bool>::zeroed();
         increment.data[0][0] = true;
@@ -170,16 +170,16 @@ mod tests {
         let mut reset = Matrix::<1, 2, bool>::zeroed();
         reset.data[0][0] = false;
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 0.0);
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 2.0);
         assert_eq!(output.data[1][0], 0.0);
 
         reset.data[0][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 0.0);
         assert_eq!(output.data[1][0], 0.0);
     }
@@ -188,7 +188,7 @@ mod tests {
     fn test_counter_block_2x2_f64() {
         let p = Parameters::new();
         let mut block = CounterBlock::<(Matrix<2, 2, f64>, Matrix<2, 2, bool>), f64>::default();
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut increment = Matrix::<2, 2, f64>::zeroed();
         increment.data[0][0] = 1.0;
@@ -198,20 +198,20 @@ mod tests {
 
         let mut reset = Matrix::<2, 2, bool>::zeroed();
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 1.0);
         assert_eq!(output.data[0][1], 1.0);
         assert_eq!(output.data[1][1], 1.0);
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 2.0);
         assert_eq!(output.data[1][0], 2.0);
         assert_eq!(output.data[0][1], 2.0);
         assert_eq!(output.data[1][1], 2.0);
 
         reset.data[0][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 0.0);
         assert_eq!(output.data[1][0], 3.0);
         assert_eq!(output.data[0][1], 3.0);
@@ -219,7 +219,7 @@ mod tests {
 
         reset.data[0][0] = false;
         reset.data[1][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 0.0);
         assert_eq!(output.data[0][1], 4.0);
@@ -228,7 +228,7 @@ mod tests {
         reset.data[0][0] = false;
         reset.data[1][0] = false;
         reset.data[0][1] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 2.0);
         assert_eq!(output.data[1][0], 1.0);
         assert_eq!(output.data[0][1], 0.0);
@@ -239,7 +239,7 @@ mod tests {
     fn test_counter_block_2x2_single_reset_f64() {
         let p = Parameters::new();
         let mut block = CounterBlock::<(Matrix<2, 2, f64>, bool), f64>::default();
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut increment = Matrix::<2, 2, f64>::zeroed();
         increment.data[0][0] = 1.0;
@@ -249,33 +249,33 @@ mod tests {
 
         let mut reset = false;
 
-        let output = block.process(&p, &c, (&increment, reset));
+        let output = block.process(&p, &model_clock, (&increment, reset));
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 1.0);
         assert_eq!(output.data[0][1], 1.0);
         assert_eq!(output.data[1][1], 1.0);
 
-        let output = block.process(&p, &c, (&increment, reset));
+        let output = block.process(&p, &model_clock, (&increment, reset));
         assert_eq!(output.data[0][0], 2.0);
         assert_eq!(output.data[1][0], 2.0);
         assert_eq!(output.data[0][1], 2.0);
         assert_eq!(output.data[1][1], 2.0);
 
         reset = true;
-        let output = block.process(&p, &c, (&increment, reset));
+        let output = block.process(&p, &model_clock, (&increment, reset));
         assert_eq!(output.data[0][0], 0.0);
         assert_eq!(output.data[1][0], 0.0);
         assert_eq!(output.data[0][1], 0.0);
         assert_eq!(output.data[1][1], 0.0);
 
         reset = false;
-        let output = block.process(&p, &c, (&increment, reset));
+        let output = block.process(&p, &model_clock, (&increment, reset));
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 1.0);
         assert_eq!(output.data[0][1], 1.0);
         assert_eq!(output.data[1][1], 1.0);
 
-        let output = block.process(&p, &c, (&increment, reset));
+        let output = block.process(&p, &model_clock, (&increment, reset));
         assert_eq!(output.data[0][0], 2.0);
         assert_eq!(output.data[1][0], 2.0);
         assert_eq!(output.data[0][1], 2.0);
@@ -286,7 +286,7 @@ mod tests {
     fn test_counter_block_2x2_u8() {
         let p = Parameters::new();
         let mut block = CounterBlock::<(Matrix<2, 2, u8>, Matrix<2, 2, bool>), f32>::default();
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut increment = Matrix::<2, 2, u8>::zeroed();
         increment.data[0][0] = 1;
@@ -296,20 +296,20 @@ mod tests {
 
         let mut reset = Matrix::<2, 2, bool>::zeroed();
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 1.0);
         assert_eq!(output.data[0][1], 1.0);
         assert_eq!(output.data[1][1], 1.0);
 
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 2.0);
         assert_eq!(output.data[1][0], 2.0);
         assert_eq!(output.data[0][1], 2.0);
         assert_eq!(output.data[1][1], 2.0);
 
         reset.data[0][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 0.0);
         assert_eq!(output.data[1][0], 3.0);
         assert_eq!(output.data[0][1], 3.0);
@@ -317,7 +317,7 @@ mod tests {
 
         reset.data[0][0] = false;
         reset.data[1][0] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 1.0);
         assert_eq!(output.data[1][0], 0.0);
         assert_eq!(output.data[0][1], 4.0);
@@ -326,7 +326,7 @@ mod tests {
         reset.data[0][0] = false;
         reset.data[1][0] = false;
         reset.data[0][1] = true;
-        let output = block.process(&p, &c, (&increment, &reset));
+        let output = block.process(&p, &model_clock, (&increment, &reset));
         assert_eq!(output.data[0][0], 2.0);
         assert_eq!(output.data[1][0], 1.0);
         assert_eq!(output.data[0][1], 0.0);

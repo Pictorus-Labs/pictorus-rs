@@ -70,7 +70,7 @@ impl InputBlock for SerialConnection {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         if let Ok(len) = self.read(&mut []) {
             self.cache.resize(len, 0);
@@ -136,7 +136,7 @@ impl pictorus_traits::OutputBlock for SerialConnection {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         self.write(inputs).ok();

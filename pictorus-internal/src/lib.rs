@@ -13,8 +13,8 @@ extern crate std;
 pub mod execution_controller;
 pub use execution_controller::ExecutionController;
 
-pub mod runtime_context;
-pub use runtime_context::RuntimeContext;
+pub mod runtime_model_clock;
+pub use runtime_model_clock::RuntimeModelClock;
 
 pub mod encoders;
 pub mod loggers;

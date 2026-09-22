@@ -13,7 +13,7 @@ use embassy_stm32::can::{Can, Fifo, Frame, filter::Mask32};
 use embedded_can::{ErrorKind, Frame as EmbeddedFrame, nb::Can as EmbeddedCan};
 use pictorus_blocks::CanReceiveBlockParams;
 use pictorus_blocks::CanTransmitBlockParams;
-use pictorus_traits::{ByteSliceSignal, Context, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ByteSliceSignal, ModelClock, InputBlock, OutputBlock, PassBy};
 
 pub struct CanConnection<'a> {
     can: Can<'a>,
@@ -126,7 +126,7 @@ impl OutputBlock for CanConnection<'_> {
     fn output(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         let Some(frame) = EmbeddedFrame::new(parameters.frame_id, inputs) else {
@@ -149,7 +149,7 @@ impl InputBlock for CanConnection<'_> {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         let frame = self
             .read_frames()

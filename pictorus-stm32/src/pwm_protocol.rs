@@ -175,7 +175,7 @@ impl<T: timer::GeneralInstance4Channel> OutputBlock for PwmWrapper<'_, T> {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         let (frequency, duty_cycle1, duty_cycle2, duty_cycle3, duty_cycle4) = inputs;

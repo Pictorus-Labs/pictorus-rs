@@ -61,7 +61,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         // Linear array Index (i) -> Matrix Linear Index (x)
@@ -92,7 +92,7 @@ where
 mod tests {
     use super::*;
     use crate::std::string::ToString;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::{Matrix, ProcessBlock};
     use std::string::String;
     use std::vec;
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_vector_index_block_scalar() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut index_block = VectorIndexBlock::<1, f64, Matrix<3, 1, f64>>::default();
         let input = Matrix {
             data: [[1.0, 2.0, 3.0]],
@@ -115,38 +115,38 @@ mod tests {
         // Codegen passes in index values like this:
         let vec_string_indexes: Vec<String> = vec![String::from("Scalar:2")];
         let parameters = Parameters::<1>::new(&vec_string_indexes);
-        let output = index_block.process(&parameters, &c, &input);
+        let output = index_block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 3.0);
         assert_eq!(index_block.buffer(), output);
 
         // This also works:
         let vec_string_indexes = vec!["2".to_string()];
         let parameters = Parameters::<1>::new(&vec_string_indexes);
-        let output = index_block.process(&parameters, &c, &input);
+        let output = index_block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 3.0);
 
         // And this:
         let vec_string_indexes = vec!["2"];
         let parameters = Parameters::<1>::new(&vec_string_indexes);
-        let output = index_block.process(&parameters, &c, &input);
+        let output = index_block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 3.0);
 
         // And this:
         let array_string_indexes = ["2"];
         let parameters = Parameters::<1>::new(&array_string_indexes);
-        let output = index_block.process(&parameters, &c, &input);
+        let output = index_block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 3.0);
 
         // And this:
         let array_string_indexes = ["Scalar:2"];
         let parameters = Parameters::<1>::new(&array_string_indexes);
-        let output = index_block.process(&parameters, &c, &input);
+        let output = index_block.process(&parameters, &model_clock, &input);
         assert_eq!(output, 3.0);
     }
 
     #[test]
     fn test_vector_index_block_matrix() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut index_block = VectorIndexBlock::<2, f64, Matrix<2, 2, f64>>::default();
         let input = Matrix {
             data: [[5.0, 7.0], [6.0, 8.0]],
@@ -156,7 +156,7 @@ mod tests {
         let array_string_indexes = ["1", "3"];
 
         let parameters = Parameters::<2>::new(&array_string_indexes);
-        let output = index_block.process(&parameters, &c, &input);
+        let output = index_block.process(&parameters, &model_clock, &input);
         assert_eq!(output.0, 7.0);
         assert_eq!(output.1, 8.0);
         assert_eq!(index_block.buffer().0, 7.0);
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_vector_index_block_input_too_short() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut index_block = VectorIndexBlock::<2, f64, Matrix<2, 2, f64>>::default();
         let input = Matrix {
             data: [[5.0, 7.0], [6.0, 8.0]],
@@ -175,7 +175,7 @@ mod tests {
         let vec_string_indexes = vec!["1", "15"];
 
         let parameters = Parameters::<2>::new(&vec_string_indexes);
-        let output = index_block.process(&parameters, &c, &input);
+        let output = index_block.process(&parameters, &model_clock, &input);
         assert_eq!(output.0, 7.0);
         assert_eq!(output.1, 0.0);
         assert_eq!(index_block.buffer().0, 7.0);

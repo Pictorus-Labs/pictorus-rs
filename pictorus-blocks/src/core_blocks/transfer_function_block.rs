@@ -90,7 +90,7 @@ macro_rules! impl_transfer_function {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
@@ -170,7 +170,7 @@ macro_rules! impl_transfer_function {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 if self.input.is_empty() {
@@ -244,7 +244,7 @@ impl_transfer_function!(f32);
 #[cfg(test)]
 mod tests {
     use super::Parameters;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
     use pictorus_traits::{Matrix, ProcessBlock};
 
@@ -252,26 +252,26 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_scalar_unity() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0];
         let parameters = Parameters::new_arr(&num, &denom);
 
         let mut block = TransferFunctionBlock::<1, 1, f64, f64>::default();
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_eq!(output, 1.0);
 
-        let output = block.process(&parameters, &c, 10.0);
+        let output = block.process(&parameters, &model_clock, 10.0);
         assert_relative_eq!(output, 10.0, max_relative = 0.01);
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(output, 1.0, max_relative = 0.01);
     }
 
     #[test]
     fn test_transfer_function_block_scalar_delay() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [0.0, 1.0];
         let denom = [1.0];
 
@@ -279,90 +279,90 @@ mod tests {
 
         let mut block = TransferFunctionBlock::<2, 1, f64, f64>::default();
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_eq!(output, 0.0);
 
-        let output = block.process(&parameters, &c, 10.0);
+        let output = block.process(&parameters, &model_clock, 10.0);
         assert_relative_eq!(output, 1.0, max_relative = 0.01);
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(output, 10.0, max_relative = 0.01);
     }
 
     #[test]
     fn test_transfer_function_block_scalar_exp_decay() {
         // Divide by 2 each call to process
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -0.5];
         let parameters = super::Parameters::new_arr(&num, &denom);
 
         let mut block = TransferFunctionBlock::<1, 2, f64, f64>::default();
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_eq!(output, 1.0);
 
-        let output = block.process(&parameters, &c, 0.0);
+        let output = block.process(&parameters, &model_clock, 0.0);
         assert_relative_eq!(output, 0.5, max_relative = 0.01);
 
-        let output = block.process(&parameters, &c, 0.0);
+        let output = block.process(&parameters, &model_clock, 0.0);
         assert_relative_eq!(output, 0.25, max_relative = 0.01);
 
-        let output = block.process(&parameters, &c, 0.0);
+        let output = block.process(&parameters, &model_clock, 0.0);
         assert_relative_eq!(output, 0.125, max_relative = 0.01);
     }
 
     #[test]
     fn test_transfer_function_block_scalar_integrator() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
 
         let mut block = TransferFunctionBlock::<1, 2, f64, f64>::default();
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_eq!(output, 1.0);
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(output, 2.0, max_relative = 0.01);
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(output, 3.0, max_relative = 0.01);
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_relative_eq!(output, 4.0, max_relative = 0.01);
     }
 
     #[test]
     fn test_transfer_function_block_scalar_differentiator() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [1.0, -1.0];
         let denom = [1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
 
         let mut block = TransferFunctionBlock::<2, 1, f64, f64>::default();
 
-        let output = block.process(&parameters, &c, 1.0);
+        let output = block.process(&parameters, &model_clock, 1.0);
         assert_eq!(output, 1.0);
 
-        let output = block.process(&parameters, &c, 2.0);
+        let output = block.process(&parameters, &model_clock, 2.0);
         assert_eq!(output, 1.0);
 
-        let output = block.process(&parameters, &c, 3.0);
+        let output = block.process(&parameters, &model_clock, 3.0);
         assert_eq!(output, 1.0);
 
-        let output = block.process(&parameters, &c, 4.0);
+        let output = block.process(&parameters, &model_clock, 4.0);
         assert_eq!(output, 1.0);
 
-        let output = block.process(&parameters, &c, 10.0);
+        let output = block.process(&parameters, &model_clock, 10.0);
         assert_eq!(output, 6.0);
     }
 
     #[test]
     fn test_transfer_function_block_matrix_exp_decay() {
         // Divide by 2 each call to process
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -0.5];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -371,7 +371,7 @@ mod tests {
 
         let output = block.process(
             &parameters,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[1.0, -1.0], [10.0, -10.0]],
             },
@@ -384,7 +384,7 @@ mod tests {
         );
 
         let zeroed = Matrix::<2, 2, f64>::zeroed();
-        let output = block.process(&parameters, &c, &zeroed);
+        let output = block.process(&parameters, &model_clock, &zeroed);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -395,7 +395,7 @@ mod tests {
             max_relative = 0.01
         );
 
-        let output = block.process(&parameters, &c, &zeroed);
+        let output = block.process(&parameters, &model_clock, &zeroed);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -406,7 +406,7 @@ mod tests {
             max_relative = 0.01
         );
 
-        let output = block.process(&parameters, &c, &zeroed);
+        let output = block.process(&parameters, &model_clock, &zeroed);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_matrix_integrator() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [1.0];
         let denom = [1.0, -1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -430,7 +430,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, -1.0], [10.0, -10.0]],
         };
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(
             output,
             &Matrix {
@@ -438,7 +438,7 @@ mod tests {
             }
         );
 
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -450,7 +450,7 @@ mod tests {
         );
 
         let zeroed = Matrix::<2, 2, f64>::zeroed();
-        let output = block.process(&parameters, &c, &zeroed);
+        let output = block.process(&parameters, &model_clock, &zeroed);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -464,7 +464,7 @@ mod tests {
         let input = Matrix {
             data: [[-2.0, 2.0], [-20.0, 20.0]],
         };
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_matrix_differentiator() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [1.0, -1.0];
         let denom = [1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -488,7 +488,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, -1.0], [5.0, -5.0]],
         };
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(
             output,
             &Matrix {
@@ -497,7 +497,7 @@ mod tests {
         );
 
         // Same input differentiated is 0
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -510,7 +510,7 @@ mod tests {
 
         // Go back the other direction
         let zeroed = Matrix::<2, 2, f64>::zeroed();
-        let output = block.process(&parameters, &c, &zeroed);
+        let output = block.process(&parameters, &model_clock, &zeroed);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     fn test_transfer_function_block_matrix_delay() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let num = [0.0, 1.0];
         let denom = [1.0];
         let parameters = super::Parameters::new_arr(&num, &denom);
@@ -534,7 +534,7 @@ mod tests {
         let input = Matrix {
             data: [[1.0, -1.0], [5.0, -5.0]],
         };
-        let output = block.process(&parameters, &c, &input);
+        let output = block.process(&parameters, &model_clock, &input);
         assert_eq!(
             output,
             &Matrix {
@@ -543,7 +543,7 @@ mod tests {
         );
 
         let zeroed = Matrix::<2, 2, f64>::zeroed();
-        let output = block.process(&parameters, &c, &zeroed);
+        let output = block.process(&parameters, &model_clock, &zeroed);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {
@@ -554,7 +554,7 @@ mod tests {
             max_relative = 0.01
         );
 
-        let output = block.process(&parameters, &c, &zeroed);
+        let output = block.process(&parameters, &model_clock, &zeroed);
         assert_relative_eq!(
             output.data.as_flattened(),
             &Matrix {

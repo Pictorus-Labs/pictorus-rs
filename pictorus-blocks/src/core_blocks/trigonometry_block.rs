@@ -57,7 +57,7 @@ macro_rules! impl_trig_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 let output = match parameters.function {
@@ -93,7 +93,7 @@ macro_rules! impl_trig_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 inputs: PassBy<'_, Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 inputs.for_each(|input, c, r| {
@@ -130,7 +130,7 @@ impl_trig_block!(f32);
 mod tests {
     extern crate std;
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
     use core::f64::consts::PI;
     use rstest::rstest;
@@ -171,11 +171,11 @@ mod tests {
         #[case] input: f64,
         #[case] expected: f64,
     ) {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = TrigonometryBlock::<f64>::default();
         let p = Parameters::new(function);
 
-        let output = block.process(&p, &c, input);
+        let output = block.process(&p, &model_clock, input);
         assert_relative_eq!(output, expected, max_relative = 0.00001);
         assert_relative_eq!(block.buffer(), expected, max_relative = 0.00001);
         assert_eq!(block.buffer(), output);
@@ -183,14 +183,14 @@ mod tests {
 
     #[test]
     fn test_trigonometry_block_vectorized() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut sine_block = TrigonometryBlock::<Matrix<1, 2, f64>>::default();
         let p = Parameters::new("Sine");
         let inputs = Matrix {
             data: [[0.0], [PI / 2.0]],
         };
 
-        let output = sine_block.process(&p, &c, &inputs);
+        let output = sine_block.process(&p, &model_clock, &inputs);
         assert_relative_eq!(
             output.data.as_flattened(),
             [[0.0], [1.0]].as_flattened(),

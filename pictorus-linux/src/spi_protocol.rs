@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use linux_embedded_hal::spidev::{Spidev, SpidevOptions};
 use pictorus_blocks::{SpiReceiveBlockParams, SpiTransmitBlockParams};
 use pictorus_traits::ByteSliceSignal;
-use pictorus_traits::{Context, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
 
 use super::CdevPin;
 use pictorus_internal::protocols::{Flush, OutputPin};
@@ -65,7 +65,7 @@ impl InputBlock for SpiConnection {
     fn input(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         if !self.is_cache_valid {
             self.is_cache_valid = true;
@@ -113,7 +113,7 @@ impl OutputBlock for SpiConnection {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         // TODO: Error handling?

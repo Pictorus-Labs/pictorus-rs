@@ -78,7 +78,7 @@ impl<T: Apply> ProcessBlock for BytesSplitBlock<T> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let parsed_deliminator = parse_string_to_read_delimiter(&parameters.delimiter);
@@ -96,11 +96,11 @@ impl<T: Apply> ProcessBlock for BytesSplitBlock<T> {
             parsed_deliminator.2,
         );
         if parse_success {
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
         }
         let valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         T::set_valid(&mut self.buffer, valid);
         <T as Apply>::storage_as_by(&self.buffer)
     }
@@ -757,91 +757,91 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     // TODO: We have tests for each impl of Apply, but don't yet test their handling of the stale_age parameter
 
     #[test]
     fn test_bytes_split_block_data() {
-        let mut context = StubContext::default();
+        let mut model_clock = StubModelClock::default();
         let params = Parameters::new(":", &["scalar:0", "scalar:3", "BytesArray:1"], 1000.0);
         let mut block = BytesSplitBlock::<(f64, f64, ByteSliceSignal)>::default();
         let input = br#"123:4.56:78.9:42.0"#;
-        let output = block.process(&params, &context, input);
+        let output = block.process(&params, &model_clock, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
 
-        context.time += context.fundamental_timestep;
+        model_clock.time += model_clock.fundamental_timestep;
         let input = br#"123:4.56:78.9"#;
-        let output = block.process(&params, &context, input);
+        let output = block.process(&params, &model_clock, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true)); // stale time has not elapsed
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
 
-        context.time = Duration::from_secs_f64(2.0);
-        let output = block.process(&params, &context, input);
+        model_clock.time = Duration::from_secs_f64(2.0);
+        let output = block.process(&params, &model_clock, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), false)); // stale time has elapsed
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), false));
 
         // Now input is valid again
-        context.time += context.fundamental_timestep;
+        model_clock.time += model_clock.fundamental_timestep;
         let input = br#"1.03:17:23.4:11.0"#;
-        let output = block.process(&params, &context, input);
+        let output = block.process(&params, &model_clock, input);
         assert_eq!(output, (1.03, 11.0, b"17".as_slice(), true));
         assert_eq!(block.buffer(), (1.03, 11.0, b"17".as_slice(), true));
     }
 
     #[test]
     fn test_wildcard_delim() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let delim = r"\xAA\x**\xAB";
         let parameters = Parameters::new(delim, &["BytesArray:0", "BytesArray:2"], 1000.0);
         let mut block = BytesSplitBlock::<(ByteSliceSignal, ByteSliceSignal)>::default();
 
         let input = b"\x00\xAA\xAA\xAB\x01\xAA\xFF\xAB\x02";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, (b"\x00".as_ref(), b"\x02".as_ref(), true));
         assert_eq!(block.buffer(), (b"\x00".as_ref(), b"\x02".as_ref(), true));
     }
 
     #[test]
     fn test_1_output() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new(":", &["scalar:3"], 1000.0);
         let mut block = BytesSplitBlock::<f64>::default();
 
         let input = b"123:4.56:78.9:42.0";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, (42.0, true));
         assert_eq!(block.buffer(), (42.0, true));
     }
 
     #[test]
     fn test_2_outputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new(":", &["scalar:0", "BytesArray:3"], 1000.0);
         let mut block = BytesSplitBlock::<(f64, ByteSliceSignal)>::default();
 
         let input = b"123:4.56:78.9:42.0";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, (123.0, b"42.0".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, b"42.0".as_slice(), true));
     }
 
     #[test]
     fn test_3_outputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new(":", &["scalar:0", "scalar:3", "BytesArray:1"], 1000.0);
         let mut block = BytesSplitBlock::<(f64, f64, ByteSliceSignal)>::default();
 
         let input = b"123:4.56:78.9:42.0";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, (123.0, 42.0, b"4.56".as_slice(), true));
         assert_eq!(block.buffer(), (123.0, 42.0, b"4.56".as_slice(), true));
     }
 
     #[test]
     fn test_4_outputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &["scalar:0", "scalar:3", "scalar:1", "BytesArray:2"],
@@ -850,7 +850,7 @@ mod tests {
         let mut block = BytesSplitBlock::<(f64, f64, f64, ByteSliceSignal)>::default();
 
         let input = b"123:4.56:78.9:42.0";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, (123.0, 42.0, 4.56, b"78.9".as_slice(), true));
         assert_eq!(
             block.buffer(),
@@ -860,7 +860,7 @@ mod tests {
 
     #[test]
     fn test_5_outputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &[
@@ -875,7 +875,7 @@ mod tests {
         let mut block = BytesSplitBlock::<(f64, f64, f64, f64, ByteSliceSignal)>::default();
 
         let input = b"123:4.56:78.9:42.0";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, (123.0, 42.0, 4.56, 78.9, b"78.9".as_slice(), true));
         assert_eq!(
             block.buffer(),
@@ -885,7 +885,7 @@ mod tests {
 
     #[test]
     fn test_6_outputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &[
@@ -901,7 +901,7 @@ mod tests {
         let mut block = BytesSplitBlock::<(f64, f64, ByteSliceSignal, f64, f64, f64)>::default();
 
         let input = b"123:4.56:78.9:42.0";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(
             output,
             (123.0, 42.0, b"78.9".as_slice(), 4.56, 78.9, 4.56, true)
@@ -914,7 +914,7 @@ mod tests {
 
     #[test]
     fn test_7_outputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new(
             ":",
             &[
@@ -939,7 +939,7 @@ mod tests {
         )>::default();
 
         let input = b"123:4.56:78.9:42.0";
-        let output = block.process(&parameters, &context, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(
             output,
             (

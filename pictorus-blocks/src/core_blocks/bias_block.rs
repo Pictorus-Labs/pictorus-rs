@@ -35,7 +35,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         T::apply(&mut self.buffer, input, parameters.offset)
@@ -109,7 +109,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
     use paste::paste;
 
@@ -126,9 +126,9 @@ mod tests {
     fn test_bias_scalar_to_pass() {
         let mut block = BiasBlock::<f64>::default();
         let parameters = Parameters::new(3.0);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.process(&parameters, &context, -3.1);
+        let output = block.process(&parameters, &model_clock, -3.1);
         assert_relative_eq!(output, -0.1);
         assert_relative_eq!(block.buffer(), -0.1);
     }
@@ -145,9 +145,9 @@ mod tests {
                 fn [<test_bias_scalar_ $type>]() {
                     let mut block = BiasBlock::<$type>::default();
                     let parameters = Parameters::new(3 as $type);
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
 
-                    let output = block.process(&parameters, &context, 2 as $type);
+                    let output = block.process(&parameters, &model_clock, 2 as $type);
                     assert_eq!(output, 5 as $type);
                     assert_eq!(block.buffer(), output);
                 }
@@ -155,12 +155,12 @@ mod tests {
                 #[test]
                 fn [<test_bias_matrix_ $type>]() {
                     let mut block = BiasBlock::<Matrix<2, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let input = Matrix {
                         data: [[1 as $type, 2 as $type], [3 as $type, 4 as $type]],
                     };
                     let parameters = Parameters::new(2 as $type);
-                    let output = block.process(&parameters, &context, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     let expected = [
                         [3 as $type, 4 as $type],
                         [5 as $type, 6 as $type],
@@ -180,9 +180,9 @@ mod tests {
         // Native integer addition overflow panics in debug builds (wraps in release).
         let mut block = BiasBlock::<u8>::default();
         let parameters = Parameters::new(1u8);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.process(&parameters, &context, u8::MAX);
+        let output = block.process(&parameters, &model_clock, u8::MAX);
         assert_eq!(output, u8::MIN);
     }
 
@@ -193,9 +193,9 @@ mod tests {
         // debug builds (wraps in release).
         let mut block = BiasBlock::<i8>::default();
         let parameters = Parameters::new(-100i8);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
-        let output = block.process(&parameters, &context, -100i8);
+        let output = block.process(&parameters, &model_clock, -100i8);
         assert_eq!(output, 56);
     }
 }

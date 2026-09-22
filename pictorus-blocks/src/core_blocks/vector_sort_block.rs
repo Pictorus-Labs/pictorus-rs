@@ -58,7 +58,7 @@ macro_rules! impl_vector_sort {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 const { assert!(IROWS * ICOLS == OCOLS, "Input matrix dimensions do not match output matrix dimensions in VectorSortBlock"); }
@@ -100,7 +100,7 @@ macro_rules! impl_vector_sort {
             fn process(
                 &mut self,
                 _parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 self.buffer = input;
@@ -128,20 +128,20 @@ impl_vector_sort!(u8);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     /// This test should fail to compile due to the assertion test for the input and output matrix dimensions.
     /// ```compile_fail,E0080
     /// fn static_assert() {
-    ///     let c = StubContext::default();
+    ///     let model_clock = StubModelClock::default();
     ///     let mut block = VectorSortBlock::<Matrix<3, 3, f64>, Matrix<1, 8, f64>>::default();
     ///     let parameters = Parameters::new("Ascending");
     ///
     ///    let input = Matrix {
     ///         data: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
     ///     };
-    ///     let output = block.process(&parameters, &c, &input);
+    ///     let output = block.process(&parameters, &model_clock, &input);
     /// }
     /// ```
     #[test]
@@ -155,20 +155,20 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_vector_sort_scalar_ $type>]() {
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = VectorSortBlock::<$type, $type>::default();
                     let parameters = Parameters::new("Ascending");
 
                     let input = [<3 $type>];
 
-                    let output = block.process(&parameters, &c, input);
+                    let output = block.process(&parameters, &model_clock, input);
 
                     assert_eq!(output, [<3 $type>]);
                 }
 
                 #[test]
                 fn [<test_vector_sort_ascending_ $type>]() {
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = VectorSortBlock::<Matrix<3, 3, $type>, Matrix<1, 9, $type>>::default();
                     let parameters = Parameters::new("Ascending");
 
@@ -180,7 +180,7 @@ mod tests {
                             ]],
                     };
 
-                    let output = block.process(&parameters, &c, &input).data;
+                    let output = block.process(&parameters, &model_clock, &input).data;
 
                     assert_eq!(
                         output,
@@ -200,7 +200,7 @@ mod tests {
 
                 #[test]
                 fn [<test_vector_sort_descending_ $type>]() {
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = VectorSortBlock::<Matrix<3, 3, $type>, Matrix<1, 9, $type>>::default();
                     let parameters = Parameters::new("Descending");
 
@@ -213,7 +213,7 @@ mod tests {
                             ]],
                     };
 
-                    let output = block.process(&parameters, &c, &input).data;
+                    let output = block.process(&parameters, &model_clock, &input).data;
 
                     assert_eq!(
                         output,

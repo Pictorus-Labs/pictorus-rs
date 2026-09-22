@@ -51,7 +51,7 @@ macro_rules! impl_compare_to_value_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 let val = match parameters.comparison_type {
@@ -81,7 +81,7 @@ macro_rules! impl_compare_to_value_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                _context: &dyn pictorus_traits::Context,
+                _model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
                 for r in 0..ROWS {
@@ -122,7 +122,7 @@ impl_compare_to_value_block!(bool);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use num_traits::{One, Zero};
     use paste::paste;
 
@@ -149,36 +149,36 @@ mod tests {
                         Compares an input of 1 to a scalar value of 1 for all comparison types.
                     */
                     let mut parameters = Parameter::new("Equal", <$type>::one());
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
 
                     let mut block = CompareToValueBlock::<$type>::default();
 
-                    let output = block.process(&parameters, &context, <$type>::one());
+                    let output = block.process(&parameters, &model_clock, <$type>::one());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.buffer(), output);
 
                     parameters.comparison_type = ComparisonType::NotEqual;
-                    let output = block.process(&parameters, &context, <$type>::zero());
+                    let output = block.process(&parameters, &model_clock, <$type>::zero());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::LessThan;
-                    let output = block.process(&parameters, &context, <$type>::zero());
+                    let output = block.process(&parameters, &model_clock, <$type>::zero());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::LessOrEqual;
-                    let output = block.process(&parameters, &context, <$type>::one());
+                    let output = block.process(&parameters, &model_clock, <$type>::one());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::GreaterThan;
-                    let output = block.process(&parameters, &context, <$type>::one() + <$type>::one());
+                    let output = block.process(&parameters, &model_clock, <$type>::one() + <$type>::one());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.buffer(), <$type>::one());
 
                     parameters.comparison_type = ComparisonType::GreaterOrEqual;
-                    let output = block.process(&parameters, &context, <$type>::one());
+                    let output = block.process(&parameters, &model_clock, <$type>::one());
                     assert_eq!(output, <$type>::one());
                     assert_eq!(block.buffer(), <$type>::one());
                 }
@@ -189,7 +189,7 @@ mod tests {
                         Compares an input [[1, 0], [0, 2]] to a scalar value of 1 for all comparison types.
                     */
                     let mut parameters = Parameter::new("Equal", <$type>::one());
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
 
                     let mut block = CompareToValueBlock::<Matrix<2, 2, $type>>::default();
                     let input = Matrix {
@@ -199,7 +199,7 @@ mod tests {
                     let expected = Matrix {
                         data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::zero()]],
                     };
-                    let output = block.process(&parameters, &context, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output, &expected);
                     assert_eq!(block.buffer(), &expected);
 
@@ -207,7 +207,7 @@ mod tests {
                     let expected = Matrix {
                         data: [[<$type>::zero(), <$type>::one()], [<$type>::one(), <$type>::one()]],
                     };
-                    let output = block.process(&parameters, &context, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output, &expected);
                     assert_eq!(block.buffer(), &expected);
 
@@ -215,7 +215,7 @@ mod tests {
                     let expected = Matrix {
                         data: [[<$type>::zero(), <$type>::one()], [<$type>::one(), <$type>::zero()]],
                     };
-                    let output = block.process(&parameters, &context, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output, &expected);
                     assert_eq!(block.buffer(), &expected);
 
@@ -223,7 +223,7 @@ mod tests {
                     let expected = Matrix {
                         data: [[<$type>::one(), <$type>::one()], [<$type>::one(), <$type>::zero()]],
                     };
-                    let output = block.process(&parameters, &context, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output, &expected);
                     assert_eq!(block.buffer(), &expected);
 
@@ -231,7 +231,7 @@ mod tests {
                     let expected = Matrix {
                         data: [[<$type>::zero(), <$type>::zero()], [<$type>::zero(), <$type>::one()]],
                     };
-                    let output = block.process(&parameters, &context, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output, &expected);
                     assert_eq!(block.buffer(), &expected);
 
@@ -239,7 +239,7 @@ mod tests {
                     let expected = Matrix {
                         data: [[<$type>::one(), <$type>::zero()], [<$type>::zero(), <$type>::one()]],
                     };
-                    let output = block.process(&parameters, &context, &input);
+                    let output = block.process(&parameters, &model_clock, &input);
                     assert_eq!(output, &expected);
                     assert_eq!(block.buffer(), &expected);
                 }
@@ -253,52 +253,52 @@ mod tests {
     #[allow(clippy::bool_assert_comparison)]
     fn test_compare_to_value_bool() {
         let mut parameters = Parameter::new("Equal", true);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = CompareToValueBlock::<bool>::default();
 
-        let output = block.process(&parameters, &context, true);
+        let output = block.process(&parameters, &model_clock, true);
         assert_eq!(output, true);
         assert_eq!(block.buffer(), output);
 
         parameters.comparison_type = ComparisonType::NotEqual;
-        let output = block.process(&parameters, &context, false);
+        let output = block.process(&parameters, &model_clock, false);
         assert_eq!(output, true);
         assert_eq!(block.buffer(), true);
 
         // false < true == true and true < true == false
         parameters.comparison_type = ComparisonType::LessThan;
-        let output = block.process(&parameters, &context, false);
+        let output = block.process(&parameters, &model_clock, false);
         assert_eq!(output, true);
         assert_eq!(block.buffer(), true);
-        let output = block.process(&parameters, &context, true);
+        let output = block.process(&parameters, &model_clock, true);
         assert_eq!(output, false);
         assert_eq!(block.buffer(), false);
 
         // false <= true == true and true <= true == true
         parameters.comparison_type = ComparisonType::LessOrEqual;
-        let output = block.process(&parameters, &context, false);
+        let output = block.process(&parameters, &model_clock, false);
         assert_eq!(output, true);
         assert_eq!(block.buffer(), true);
-        let output = block.process(&parameters, &context, true);
+        let output = block.process(&parameters, &model_clock, true);
         assert_eq!(output, true);
         assert_eq!(block.buffer(), true);
 
         // false > true == false and true > true == false
         parameters.comparison_type = ComparisonType::GreaterThan;
-        let output = block.process(&parameters, &context, false);
+        let output = block.process(&parameters, &model_clock, false);
         assert_eq!(output, false);
         assert_eq!(block.buffer(), false);
-        let output = block.process(&parameters, &context, true);
+        let output = block.process(&parameters, &model_clock, true);
         assert_eq!(output, false);
         assert_eq!(block.buffer(), false);
 
         // false >= true == false and true >= true == true
         parameters.comparison_type = ComparisonType::GreaterOrEqual;
-        let output = block.process(&parameters, &context, false);
+        let output = block.process(&parameters, &model_clock, false);
         assert_eq!(output, false);
         assert_eq!(block.buffer(), false);
-        let output = block.process(&parameters, &context, true);
+        let output = block.process(&parameters, &model_clock, true);
         assert_eq!(output, true);
         assert_eq!(block.buffer(), true);
     }

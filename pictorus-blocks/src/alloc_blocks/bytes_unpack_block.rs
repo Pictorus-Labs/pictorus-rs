@@ -51,7 +51,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let mut new_buffer = [O::zero(); N];
@@ -72,11 +72,11 @@ where
         }
         if unpack_success {
             self.buffer = new_buffer;
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
         }
         self.buffer[N - 1] = if self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age)
+            .is_valid(model_clock.time(), parameters.stale_age)
         {
             O::one()
         } else {
@@ -149,12 +149,12 @@ where
 mod tests {
     use super::super::bytes_pack_block::{BytesPackBlock, Parameters as PackParameters};
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_relative_eq;
 
     #[test]
     fn test_bytes_unpack_1_output() {
-        let mut context = StubContext::default();
+        let mut model_clock = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<f64>::default();
         let mut block = BytesUnpackBlock::<2>::default();
         let spec_strings = &["I8:BigEndian"];
@@ -164,23 +164,23 @@ mod tests {
         // Test happy path
         let test_data = 42.0;
         let expected = [42.0, 1.0];
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
+        let packed = pack_block.process(&pack_parameters, &model_clock, test_data);
+        let unpacked = block.process(&parameters, &model_clock, packed);
         assert_eq!(unpacked, expected.as_slice());
 
         // Test not-stale yet but invalid data
-        let unpacked = block.process(&parameters, &context, &[]);
+        let unpacked = block.process(&parameters, &model_clock, &[]);
         assert_eq!(unpacked, expected.as_slice());
 
         // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &[]);
+        model_clock.time += Duration::from_secs_f64(1.1);
+        let unpacked = block.process(&parameters, &model_clock, &[]);
         assert_eq!(unpacked, [42.0, 0.0].as_slice());
     }
 
     #[test]
     fn test_bytes_unpack_2_outputs() {
-        let mut context = StubContext::default();
+        let mut model_clock = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<(f64, f64)>::default();
         let mut block = BytesUnpackBlock::<3>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];
@@ -190,28 +190,28 @@ mod tests {
         // Test happy path
         let test_data = (-23.0, 43.0);
         let expected = [-23.0, 43.0, 1.0];
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
+        let packed = pack_block.process(&pack_parameters, &model_clock, test_data);
         let expected_packed: [u8; 2] = [
             0b11101001, // -23 as i8
             0b00101011,
         ];
         assert_eq!(&packed[..2], expected_packed.as_slice());
-        let unpacked = block.process(&parameters, &context, packed);
+        let unpacked = block.process(&parameters, &model_clock, packed);
         assert_eq!(unpacked, expected.as_slice());
 
         // Test not-stale yet but invalid data
-        let unpacked = block.process(&parameters, &context, &[]);
+        let unpacked = block.process(&parameters, &model_clock, &[]);
         assert_eq!(unpacked, expected.as_slice());
 
         // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &[]);
+        model_clock.time += Duration::from_secs_f64(1.1);
+        let unpacked = block.process(&parameters, &model_clock, &[]);
         assert_eq!(unpacked, [-23.0, 43.0, 0.0].as_slice());
     }
 
     #[test]
     fn test_bytes_unpack_7_outputs() {
-        let mut context = StubContext::default();
+        let mut model_clock = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<(f64, f64, f64, f64, f64, f64, f64)>::default();
         let mut block = BytesUnpackBlock::<8>::default();
         let spec_strings = &[
@@ -228,8 +228,8 @@ mod tests {
 
         // Test happy path
         let test_data = (-23.0, 43.0, 1.234, 3.1, 42.5, 9999.0, -7.89);
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
+        let packed = pack_block.process(&pack_parameters, &model_clock, test_data);
+        let unpacked = block.process(&parameters, &model_clock, packed);
         assert_relative_eq!(unpacked[0], -23.0_f64);
         assert_relative_eq!(unpacked[1], 43.0_f64);
         assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
@@ -240,7 +240,7 @@ mod tests {
         assert_relative_eq!(unpacked[7], 1.0_f64, epsilon = 0.001);
 
         // Test not-stale yet but invalid data
-        let unpacked = block.process(&parameters, &context, &[]);
+        let unpacked = block.process(&parameters, &model_clock, &[]);
         assert_relative_eq!(unpacked[0], -23.0_f64);
         assert_relative_eq!(unpacked[1], 43.0_f64);
         assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
@@ -251,8 +251,8 @@ mod tests {
         assert_relative_eq!(unpacked[7], 1.0_f64, epsilon = 0.001);
 
         // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &[]);
+        model_clock.time += Duration::from_secs_f64(1.1);
+        let unpacked = block.process(&parameters, &model_clock, &[]);
         assert_relative_eq!(unpacked[0], -23.0_f64);
         assert_relative_eq!(unpacked[1], 43.0_f64);
         assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
@@ -265,7 +265,7 @@ mod tests {
 
     #[test]
     fn test_bytes_unpack_12_outputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut pack_block_1 = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
         let mut pack_block_2 = BytesPackBlock::<(f64, f64, f64, f64, f64, f64)>::default();
         let mut block = BytesUnpackBlock::<13>::default();
@@ -296,12 +296,12 @@ mod tests {
             2.2250739e-308,
             -2147483648.0,
         );
-        let packed_1 = pack_block_1.process(&pack_parameters_1, &context, test_data_1);
-        let packed_2 = pack_block_2.process(&pack_parameters_2, &context, test_data_2);
+        let packed_1 = pack_block_1.process(&pack_parameters_1, &model_clock, test_data_1);
+        let packed_2 = pack_block_2.process(&pack_parameters_2, &model_clock, test_data_2);
         let mut packed = alloc::vec![];
         packed.extend_from_slice(packed_1);
         packed.extend_from_slice(packed_2);
-        let unpacked = block.process(&parameters, &context, packed.as_slice());
+        let unpacked = block.process(&parameters, &model_clock, packed.as_slice());
         assert_relative_eq!(unpacked[0], -23.0_f64);
         assert_relative_eq!(unpacked[1], 43.0_f64);
         assert_relative_eq!(unpacked[2], 1.234_f64, epsilon = 0.001);
@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_bytes_unpack_3_output_f32() {
-        let mut context = StubContext::default();
+        let mut model_clock = StubModelClock::default();
         let mut pack_block = BytesPackBlock::<(f32, f32)>::default();
         let mut block = BytesUnpackBlock::<3, f32>::default();
         let spec_strings = &["I8:BigEndian", "U64:LittleEndian"];
@@ -329,17 +329,17 @@ mod tests {
         // Test happy path
         let test_data = (-23.0, 43.0);
         let expected = [-23.0, 43.0, 1.0];
-        let packed = pack_block.process(&pack_parameters, &context, test_data);
-        let unpacked = block.process(&parameters, &context, packed);
+        let packed = pack_block.process(&pack_parameters, &model_clock, test_data);
+        let unpacked = block.process(&parameters, &model_clock, packed);
         assert_eq!(unpacked, expected.as_slice());
 
         // Test not-stale yet but invalid data
-        let unpacked: &[f32; 3] = block.process(&parameters, &context, &[]);
+        let unpacked: &[f32; 3] = block.process(&parameters, &model_clock, &[]);
         assert_eq!(unpacked, expected.as_slice());
 
         // Now it is stale
-        context.time += Duration::from_secs_f64(1.1);
-        let unpacked = block.process(&parameters, &context, &[]);
+        model_clock.time += Duration::from_secs_f64(1.1);
+        let unpacked = block.process(&parameters, &model_clock, &[]);
         assert_eq!(unpacked, [-23.0, 43.0, 0.0].as_slice());
     }
 }

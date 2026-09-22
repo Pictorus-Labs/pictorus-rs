@@ -68,7 +68,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(input);
@@ -153,7 +153,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use approx::assert_abs_diff_eq;
 
     #[test]
@@ -168,9 +168,9 @@ mod tests {
     #[test]
     fn test_matrix_inverse_scalar() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = MatrixInverseBlock::<f64, Inverse>::default();
-        let res = block.process(&params, &ctxt, 99.0);
+        let res = block.process(&params, &model_clock, 99.0);
         assert_eq!(res, (99.0, true));
         assert_eq!(block.buffer(), res);
     }
@@ -178,12 +178,12 @@ mod tests {
     #[test]
     fn test_matrix_inverse_matrix() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = MatrixInverseBlock::<Matrix<2, 2, f64>, Inverse>::default();
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let res = block.process(&params, &ctxt, &input);
+        let res = block.process(&params, &model_clock, &input);
         let expected = [[-2.0, 1.0], [1.5, -0.5]];
         assert_eq!(res.0.data, expected);
         assert!(res.1);
@@ -195,14 +195,14 @@ mod tests {
     #[test]
     fn test_svd_robustness_compared_to_inverse() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let det_zero_input = Matrix {
             data: [[1.0, 2.0, 3.0], [2.0, 4.0, 6.0], [3.0, 6.0, 8.0]],
         };
 
         // Regular inverse method panics with an input determinant == 0.0
         let mut invert_block = MatrixInverseBlock::<Matrix<3, 3, f64>, Inverse>::default();
-        let res = invert_block.process(&params, &ctxt, &det_zero_input);
+        let res = invert_block.process(&params, &model_clock, &det_zero_input);
         let expected = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
         assert_eq!(res.0.data, expected,);
         assert!(!res.1);
@@ -212,7 +212,7 @@ mod tests {
 
         // SVD-based pseudo-inverse method should be fine
         let mut svd_block = MatrixInverseBlock::<Matrix<3, 3, f64>, Svd>::default();
-        let res = svd_block.process(&params, &ctxt, &det_zero_input);
+        let res = svd_block.process(&params, &model_clock, &det_zero_input);
         let expected = [
             [-0.32, -0.64, 0.60],
             [-0.64, -1.28, 1.20],
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn test_pseudo_inverse_square_nonsingular() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = MatrixInverseBlock::<Matrix<3, 3, f64>, Svd>::default();
         let matrix = Matrix {
             data: [[4.0, 7.0, 2.0], [1.0, 6.0, 9.0], [5.0, 3.0, 8.0]],
@@ -251,7 +251,7 @@ mod tests {
             ],
         };
 
-        let res = block.process(&params, &ctxt, &matrix);
+        let res = block.process(&params, &model_clock, &matrix);
         assert_abs_diff_eq!(
             res.0.data.as_flattened(),
             expected_inverse.data.as_flattened(),
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn test_pseudo_inverse_nonsquare() {
         let params = Parameters::new();
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = MatrixInverseBlock::<Matrix<2, 3, f64>, Svd>::default();
         let matrix = Matrix {
             data: [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]],
@@ -277,7 +277,7 @@ mod tests {
             ],
         };
 
-        let res = block.process(&params, &ctxt, &matrix);
+        let res = block.process(&params, &model_clock, &matrix);
         assert_abs_diff_eq!(
             res.0.data.as_flattened(),
             expected_inverse.data.as_flattened(),

@@ -48,7 +48,7 @@ where
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         self.dac.ch1().set(embassy_stm32::dac::Value::Bit12Right(

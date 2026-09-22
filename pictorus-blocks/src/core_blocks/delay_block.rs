@@ -41,7 +41,7 @@ impl<T: Pass + Default + Copy + CopyInto<T>, const N: usize> ProcessBlock for De
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         // Calculate effective delay based on whether input is already delayed
@@ -99,7 +99,7 @@ impl<T: Pass + Default + Copy + CopyInto<T>> Parameters<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::Matrix;
 
     #[test]
@@ -109,30 +109,30 @@ mod tests {
             is_delayed: false,
         };
         let mut block = DelayBlock::<f64, 3>::new(&parameters);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
-        assert_eq!(block.process(&parameters, &context, 1.0), 0.0);
+        assert_eq!(block.process(&parameters, &model_clock, 1.0), 0.0);
         assert_eq!(block.buffer(), 0.0);
-        assert_eq!(block.process(&parameters, &context, 2.0), 0.0);
-        assert_eq!(block.process(&parameters, &context, 3.0), 0.0);
-        assert_eq!(block.process(&parameters, &context, 4.0), 1.0);
-        assert_eq!(block.process(&parameters, &context, 5.0), 2.0);
-        assert_eq!(block.process(&parameters, &context, 6.0), 3.0);
-        assert_eq!(block.process(&parameters, &context, 7.0), 4.0);
-        assert_eq!(block.process(&parameters, &context, 8.0), 5.0);
-        assert_eq!(block.process(&parameters, &context, 9.0), 6.0);
-        assert_eq!(block.process(&parameters, &context, 10.0), 7.0);
-        assert_eq!(block.process(&parameters, &context, 11.0), 8.0);
-        assert_eq!(block.process(&parameters, &context, 12.0), 9.0);
-        assert_eq!(block.process(&parameters, &context, 13.0), 10.0);
-        assert_eq!(block.process(&parameters, &context, 14.0), 11.0);
-        assert_eq!(block.process(&parameters, &context, 15.0), 12.0);
-        assert_eq!(block.process(&parameters, &context, 16.0), 13.0);
-        assert_eq!(block.process(&parameters, &context, 17.0), 14.0);
-        assert_eq!(block.process(&parameters, &context, 18.0), 15.0);
-        assert_eq!(block.process(&parameters, &context, 19.0), 16.0);
-        assert_eq!(block.process(&parameters, &context, 20.0), 17.0);
+        assert_eq!(block.process(&parameters, &model_clock, 2.0), 0.0);
+        assert_eq!(block.process(&parameters, &model_clock, 3.0), 0.0);
+        assert_eq!(block.process(&parameters, &model_clock, 4.0), 1.0);
+        assert_eq!(block.process(&parameters, &model_clock, 5.0), 2.0);
+        assert_eq!(block.process(&parameters, &model_clock, 6.0), 3.0);
+        assert_eq!(block.process(&parameters, &model_clock, 7.0), 4.0);
+        assert_eq!(block.process(&parameters, &model_clock, 8.0), 5.0);
+        assert_eq!(block.process(&parameters, &model_clock, 9.0), 6.0);
+        assert_eq!(block.process(&parameters, &model_clock, 10.0), 7.0);
+        assert_eq!(block.process(&parameters, &model_clock, 11.0), 8.0);
+        assert_eq!(block.process(&parameters, &model_clock, 12.0), 9.0);
+        assert_eq!(block.process(&parameters, &model_clock, 13.0), 10.0);
+        assert_eq!(block.process(&parameters, &model_clock, 14.0), 11.0);
+        assert_eq!(block.process(&parameters, &model_clock, 15.0), 12.0);
+        assert_eq!(block.process(&parameters, &model_clock, 16.0), 13.0);
+        assert_eq!(block.process(&parameters, &model_clock, 17.0), 14.0);
+        assert_eq!(block.process(&parameters, &model_clock, 18.0), 15.0);
+        assert_eq!(block.process(&parameters, &model_clock, 19.0), 16.0);
+        assert_eq!(block.process(&parameters, &model_clock, 20.0), 17.0);
     }
 
     #[test]
@@ -142,15 +142,15 @@ mod tests {
             is_delayed: true,
         };
         let mut block = DelayBlock::<f64, 3>::new(&parameters);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
-        assert_eq!(block.process(&parameters, &context, 1.0), 0.0);
-        assert_eq!(block.process(&parameters, &context, 2.0), 0.0);
-        assert_eq!(block.process(&parameters, &context, 3.0), 0.0);
-        assert_eq!(block.process(&parameters, &context, 4.0), 2.0);
-        assert_eq!(block.process(&parameters, &context, 5.0), 3.0);
-        assert_eq!(block.process(&parameters, &context, 6.0), 4.0);
+        assert_eq!(block.process(&parameters, &model_clock, 1.0), 0.0);
+        assert_eq!(block.process(&parameters, &model_clock, 2.0), 0.0);
+        assert_eq!(block.process(&parameters, &model_clock, 3.0), 0.0);
+        assert_eq!(block.process(&parameters, &model_clock, 4.0), 2.0);
+        assert_eq!(block.process(&parameters, &model_clock, 5.0), 3.0);
+        assert_eq!(block.process(&parameters, &model_clock, 6.0), 4.0);
     }
 
     #[test]
@@ -162,13 +162,13 @@ mod tests {
             is_delayed: false,
         };
         let mut block = DelayBlock::<Matrix<2, 2, f64>, 3>::new(&parameters);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
         assert_eq!(
             block.process(
                 &parameters,
-                &context,
+                &model_clock,
                 &Matrix {
                     data: [[1.0, 2.0], [3.0, 4.0]]
                 }
@@ -180,7 +180,7 @@ mod tests {
         assert_eq!(
             block.process(
                 &parameters,
-                &context,
+                &model_clock,
                 &Matrix {
                     data: [[5.0, 6.0], [7.0, 8.0]]
                 }
@@ -192,7 +192,7 @@ mod tests {
         assert_eq!(
             block.process(
                 &parameters,
-                &context,
+                &model_clock,
                 &Matrix {
                     data: [[9.0, 10.0], [11.0, 12.0]]
                 }
@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(
             block.process(
                 &parameters,
-                &context,
+                &model_clock,
                 &Matrix {
                     data: [[13.0, 14.0], [15.0, 16.0]]
                 }
@@ -216,7 +216,7 @@ mod tests {
         assert_eq!(
             block.process(
                 &parameters,
-                &context,
+                &model_clock,
                 &Matrix {
                     data: [[17.0, 18.0], [19.0, 20.0]]
                 }
@@ -228,7 +228,7 @@ mod tests {
         assert_eq!(
             block.process(
                 &parameters,
-                &context,
+                &model_clock,
                 &Matrix {
                     data: [[21.0, 22.0], [23.0, 24.0]]
                 }
@@ -246,25 +246,25 @@ mod tests {
             is_delayed: false,
         };
         let mut block = DelayBlock::<f64, 6>::new(&parameters);
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         // Initial condition should be output until N samples are received
-        assert_eq!(block.process(&parameters, &context, 1.0), 42.0);
-        assert_eq!(block.process(&parameters, &context, 2.0), 42.0);
-        assert_eq!(block.process(&parameters, &context, 3.0), 42.0);
+        assert_eq!(block.process(&parameters, &model_clock, 1.0), 42.0);
+        assert_eq!(block.process(&parameters, &model_clock, 2.0), 42.0);
+        assert_eq!(block.process(&parameters, &model_clock, 3.0), 42.0);
 
         //switch it up parameter has a different IC now
         let parameters = Parameters {
             ic: 12.0,
             is_delayed: false,
         };
-        assert_eq!(block.process(&parameters, &context, 4.0), 12.0);
-        assert_eq!(block.process(&parameters, &context, 5.0), 12.0);
-        assert_eq!(block.process(&parameters, &context, 6.0), 12.0);
-        assert_eq!(block.process(&parameters, &context, 7.0), 1.0);
-        assert_eq!(block.process(&parameters, &context, 8.0), 2.0);
-        assert_eq!(block.process(&parameters, &context, 9.0), 3.0);
-        assert_eq!(block.process(&parameters, &context, 10.0), 4.0);
-        assert_eq!(block.process(&parameters, &context, 11.0), 5.0);
+        assert_eq!(block.process(&parameters, &model_clock, 4.0), 12.0);
+        assert_eq!(block.process(&parameters, &model_clock, 5.0), 12.0);
+        assert_eq!(block.process(&parameters, &model_clock, 6.0), 12.0);
+        assert_eq!(block.process(&parameters, &model_clock, 7.0), 1.0);
+        assert_eq!(block.process(&parameters, &model_clock, 8.0), 2.0);
+        assert_eq!(block.process(&parameters, &model_clock, 9.0), 3.0);
+        assert_eq!(block.process(&parameters, &model_clock, 10.0), 4.0);
+        assert_eq!(block.process(&parameters, &model_clock, 11.0), 5.0);
     }
 }

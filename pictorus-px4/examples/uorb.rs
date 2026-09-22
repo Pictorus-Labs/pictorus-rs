@@ -16,8 +16,8 @@ use spin::RwLock;
 static HEAP: embedded_alloc::Heap = embedded_alloc::Heap::empty();
 
 #[derive(Default)]
-pub struct StubContext;
-impl pictorus_traits::Context for StubContext {
+pub struct StubModelClock;
+impl pictorus_traits::ModelClock for StubModelClock {
     fn fundamental_timestep(&self) -> core::time::Duration {
         core::time::Duration::from_millis(10)
     }
@@ -80,10 +80,10 @@ impl PictorusModel {
     fn update(&mut self) {
         let accel_data = self
             .accel_input_block
-            .input(&self.accel_input_params, &StubContext::default());
+            .input(&self.accel_input_params, &StubModelClock::default());
         let gyro_data = self
             .gyro_input_block
-            .input(&self.gyro_input_params, &StubContext::default());
+            .input(&self.gyro_input_params, &StubModelClock::default());
 
         let attitude_input = (
             self.count as f64,
@@ -95,7 +95,7 @@ impl PictorusModel {
         );
         self.attitude_output_block.output(
             &self.attitude_output_params,
-            &StubContext::default(),
+            &StubModelClock::default(),
             attitude_input.as_by(),
         );
         self.count += 1;

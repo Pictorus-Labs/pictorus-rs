@@ -78,11 +78,11 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         if let Some(previous_data) = &self.prev_data {
-            let timestep = context.time() - previous_data.prev_time;
+            let timestep = model_clock.time() - previous_data.prev_time;
             let alpha = compute_alpha(parameters.method, parameters.cutoff_frequency, timestep);
             self.output = match parameters.method {
                 FrequencyFilterEnum::HighPass => {
@@ -98,7 +98,7 @@ where
         let _ = self.prev_data.insert(PreviousData {
             prev_input: inputs,
             prev_output: self.output,
-            prev_time: context.time(),
+            prev_time: model_clock.time(),
         });
         self.output.as_by()
     }
@@ -120,11 +120,11 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         if let Some(previous_data) = &self.prev_data {
-            let timestep = context.time() - previous_data.prev_time;
+            let timestep = model_clock.time() - previous_data.prev_time;
             let alpha = compute_alpha(parameters.method, parameters.cutoff_frequency, timestep);
             inputs.for_each(|input, col, row| {
                 let prev_output = previous_data.prev_output.data[col][row];
@@ -142,7 +142,7 @@ where
         let _ = self.prev_data.insert(PreviousData {
             prev_input: Matrix { data: inputs.data },
             prev_output: self.output,
-            prev_time: context.time(),
+            prev_time: model_clock.time(),
         });
         self.output.as_by()
     }
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn test_freq_filter_high_pass_scalar() {
         let mut runtime = StubRuntime::default();
-        runtime.context.fundamental_timestep = Duration::from_secs_f64(0.001);
+        runtime.model_clock.fundamental_timestep = Duration::from_secs_f64(0.001);
         let parameters_1_hz = Parameters::new(0.0, 1.0, "HighPass");
         let mut block_1_hz = FrequencyFilterBlock::<f64>::new(&parameters_1_hz);
         let parameters_50_hz = Parameters::new(0.0, 50.0, "HighPass");
@@ -228,11 +228,11 @@ mod tests {
         let mut high_pass_50_hz_data = [0.0; 1000];
 
         for i in 0..1000 {
-            sine_data[i] = sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.context());
+            sine_data[i] = sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.model_clock());
             high_pass_1_hz_data[i] =
-                block_1_hz.process(&parameters_1_hz, &runtime.context(), sine_data[i].as_by());
+                block_1_hz.process(&parameters_1_hz, &runtime.model_clock(), sine_data[i].as_by());
             high_pass_50_hz_data[i] =
-                block_50_hz.process(&parameters_50_hz, &runtime.context(), sine_data[i].as_by());
+                block_50_hz.process(&parameters_50_hz, &runtime.model_clock(), sine_data[i].as_by());
             runtime.tick();
         }
 
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn test_freq_filter_low_pass_scalar() {
         let mut runtime = StubRuntime::default();
-        runtime.context.fundamental_timestep = Duration::from_secs_f64(0.001);
+        runtime.model_clock.fundamental_timestep = Duration::from_secs_f64(0.001);
         let parameters_1_hz = Parameters::new(0.0, 1.0, "LowPass");
         let mut block_1_hz = FrequencyFilterBlock::<f32>::new(&parameters_1_hz);
         let parameters_50_hz = Parameters::new(0.0, 50.0, "LowPass");
@@ -262,11 +262,11 @@ mod tests {
         let mut low_pass_50_hz_data = [0.0; 1000];
 
         for i in 0..1000 {
-            sine_data[i] = sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.context());
+            sine_data[i] = sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.model_clock());
             low_pass_1_hz_data[i] =
-                block_1_hz.process(&parameters_1_hz, &runtime.context(), sine_data[i].as_by());
+                block_1_hz.process(&parameters_1_hz, &runtime.model_clock(), sine_data[i].as_by());
             low_pass_50_hz_data[i] =
-                block_50_hz.process(&parameters_50_hz, &runtime.context(), sine_data[i].as_by());
+                block_50_hz.process(&parameters_50_hz, &runtime.model_clock(), sine_data[i].as_by());
             runtime.tick();
         }
 
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn test_freq_filter_high_pass_matrix() {
         let mut runtime = StubRuntime::default();
-        runtime.context.fundamental_timestep = Duration::from_secs_f64(0.001);
+        runtime.model_clock.fundamental_timestep = Duration::from_secs_f64(0.001);
 
         let params_50_hz_high_pass_matrix = Parameters::new(Matrix::zeroed(), 50.0, "HighPass");
         let params_50_hz_high_pass_scalar = Parameters::new(0.0, 50.0, "HighPass");
@@ -309,15 +309,15 @@ mod tests {
             let sine_data = [
                 [
                     sinewave_generators[0]
-                        .generate(&params_sinewave_generators[0], &runtime.context()),
+                        .generate(&params_sinewave_generators[0], &runtime.model_clock()),
                     sinewave_generators[1]
-                        .generate(&params_sinewave_generators[1], &runtime.context()),
+                        .generate(&params_sinewave_generators[1], &runtime.model_clock()),
                 ],
                 [
                     sinewave_generators[2]
-                        .generate(&params_sinewave_generators[2], &runtime.context()),
+                        .generate(&params_sinewave_generators[2], &runtime.model_clock()),
                     sinewave_generators[3]
-                        .generate(&params_sinewave_generators[3], &runtime.context()),
+                        .generate(&params_sinewave_generators[3], &runtime.model_clock()),
                 ],
             ];
 
@@ -325,24 +325,24 @@ mod tests {
                 [
                     high_pass_50_hz_scalars[0].process(
                         &params_50_hz_high_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[0][0].as_by(),
                     ),
                     high_pass_50_hz_scalars[1].process(
                         &params_50_hz_high_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[0][1].as_by(),
                     ),
                 ],
                 [
                     high_pass_50_hz_scalars[2].process(
                         &params_50_hz_high_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[1][0].as_by(),
                     ),
                     high_pass_50_hz_scalars[3].process(
                         &params_50_hz_high_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[1][1].as_by(),
                     ),
                 ],
@@ -350,7 +350,7 @@ mod tests {
 
             let hp_mat_data: &Matrix<2, 2, f64> = high_pass_50hz_mat.process(
                 &params_50_hz_high_pass_matrix,
-                &runtime.context,
+                &runtime.model_clock,
                 &Matrix { data: sine_data },
             );
             assert_eq!(hp_mat_data.data, hp_scalar_data);
@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn test_freq_filter_low_pass_matrix() {
         let mut runtime = StubRuntime::default();
-        runtime.context.fundamental_timestep = Duration::from_secs_f64(0.001);
+        runtime.model_clock.fundamental_timestep = Duration::from_secs_f64(0.001);
 
         let params_50_hz_low_pass_matrix = Parameters::new(Matrix::zeroed(), 50.0, "LowPass");
         let params_50_hz_low_pass_scalar = Parameters::new(0.0, 50.0, "LowPass");
@@ -387,15 +387,15 @@ mod tests {
             let sine_data = [
                 [
                     sinewave_generators[0]
-                        .generate(&params_sinewave_generators[0], &runtime.context()),
+                        .generate(&params_sinewave_generators[0], &runtime.model_clock()),
                     sinewave_generators[1]
-                        .generate(&params_sinewave_generators[1], &runtime.context()),
+                        .generate(&params_sinewave_generators[1], &runtime.model_clock()),
                 ],
                 [
                     sinewave_generators[2]
-                        .generate(&params_sinewave_generators[2], &runtime.context()),
+                        .generate(&params_sinewave_generators[2], &runtime.model_clock()),
                     sinewave_generators[3]
-                        .generate(&params_sinewave_generators[3], &runtime.context()),
+                        .generate(&params_sinewave_generators[3], &runtime.model_clock()),
                 ],
             ];
 
@@ -403,24 +403,24 @@ mod tests {
                 [
                     low_pass_50_hz_scalars[0].process(
                         &params_50_hz_low_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[0][0].as_by(),
                     ),
                     low_pass_50_hz_scalars[1].process(
                         &params_50_hz_low_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[0][1].as_by(),
                     ),
                 ],
                 [
                     low_pass_50_hz_scalars[2].process(
                         &params_50_hz_low_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[1][0].as_by(),
                     ),
                     low_pass_50_hz_scalars[3].process(
                         &params_50_hz_low_pass_scalar,
-                        &runtime.context(),
+                        &runtime.model_clock(),
                         sine_data[1][1].as_by(),
                     ),
                 ],
@@ -428,7 +428,7 @@ mod tests {
 
             let hp_mat_data: &Matrix<2, 2, f64> = low_pass_50hz_mat.process(
                 &params_50_hz_low_pass_matrix,
-                &runtime.context,
+                &runtime.model_clock,
                 &Matrix { data: sine_data },
             );
             assert_eq!(hp_mat_data.data, hp_scalar_data);

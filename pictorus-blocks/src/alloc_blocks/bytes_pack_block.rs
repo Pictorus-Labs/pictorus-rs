@@ -27,7 +27,7 @@ impl<T: Apply> ProcessBlock for BytesPackBlock<T> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = T::pack_bytes(inputs, parameters);
@@ -216,7 +216,7 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use byteorder::WriteBytesExt;
 
     #[test]
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_bytes_pack_block_1_input() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["I8:BigEndian"]);
         let mut block = BytesPackBlock::<f64>::default();
         let inputs = 255.0;
@@ -238,14 +238,14 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_1_input_f32() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["I8:BigEndian"]);
         let mut block = BytesPackBlock::<f32>::default();
         let inputs = 255.0f32;
@@ -256,25 +256,25 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_1_input_u8_exact() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["U8:BigEndian"]);
         let mut block = BytesPackBlock::<u8>::default();
 
-        let output = block.process(&params, &context, 255u8);
+        let output = block.process(&params, &model_clock, 255u8);
         assert_eq!(output, [255u8].as_slice());
         assert_eq!(block.buffer(), [255u8].as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_1_input_i16_negative() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["I16:LittleEndian"]);
         let mut block = BytesPackBlock::<i16>::default();
 
@@ -286,7 +286,7 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, -12345i16);
+        let output = block.process(&params, &model_clock, -12345i16);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
@@ -295,7 +295,7 @@ mod tests {
     fn test_bytes_pack_block_1_input_i64_beyond_f64_precision() {
         // An i64 input larger than 2^53 packs exactly; routing it through an f64
         // signal (the only option before int support) would have rounded it.
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["I64:BigEndian"]);
         let mut block = BytesPackBlock::<i64>::default();
         let value = (1i64 << 53) + 1;
@@ -306,7 +306,7 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, value);
+        let output = block.process(&params, &model_clock, value);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
@@ -315,7 +315,7 @@ mod tests {
     fn test_bytes_pack_block_1_input_u64_beyond_f64_precision() {
         // A u64 input larger than 2^53 (and above i64::MAX) packs exactly; routing it
         // through an f64 signal (the only option before int support) would have rounded it.
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["U64:BigEndian"]);
         let mut block = BytesPackBlock::<u64>::default();
         let value = u64::MAX - 1;
@@ -326,7 +326,7 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, value);
+        let output = block.process(&params, &model_clock, value);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
@@ -334,17 +334,17 @@ mod tests {
     #[test]
     fn test_bytes_pack_block_int_truncating_spec() {
         // An input wider than its pack spec truncates with native `as` cast semantics.
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["U8:BigEndian"]);
         let mut block = BytesPackBlock::<u32>::default();
 
-        let output = block.process(&params, &context, 300u32);
+        let output = block.process(&params, &model_clock, 300u32);
         assert_eq!(output, [300u32 as u8].as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_mixed_input_types() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["U8:BigEndian", "F32:BigEndian", "I16:LittleEndian"]);
         let mut block = BytesPackBlock::<(u8, f32, i16)>::default();
         let inputs = (42u8, 3.5f32, -1000i16);
@@ -361,14 +361,14 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_2_inputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["F32:BigEndian", "U24:LittleEndian"]);
         let mut block = BytesPackBlock::<(f64, f64)>::default();
         let inputs = (255.0, 123.0);
@@ -384,7 +384,7 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
 
@@ -401,14 +401,14 @@ mod tests {
                 .unwrap();
             expected
         };
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_3_inputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&["I16:BigEndian", "U16:LittleEndian", "I32:BigEndian"]);
         let mut block = BytesPackBlock::<(f64, f64, f64)>::default();
         let inputs = (1000.0, 12345.0, -1234.0);
@@ -427,14 +427,14 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_4_inputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&[
             "I16:BigEndian",
             "U16:LittleEndian",
@@ -461,14 +461,14 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_5_inputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&[
             "I16:BigEndian",
             "U16:LittleEndian",
@@ -497,14 +497,14 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_6_inputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&[
             "I16:BigEndian",
             "U16:LittleEndian",
@@ -537,14 +537,14 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_7_inputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&[
             "I16:BigEndian",
             "U16:LittleEndian",
@@ -581,14 +581,14 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }
 
     #[test]
     fn test_bytes_pack_block_8_inputs() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters::new(&[
             "I16:BigEndian",
             "U16:LittleEndian",
@@ -638,7 +638,7 @@ mod tests {
             expected
         };
 
-        let output = block.process(&params, &context, inputs);
+        let output = block.process(&params, &model_clock, inputs);
         assert_eq!(output, expected.as_slice());
         assert_eq!(block.buffer(), expected.as_slice());
     }

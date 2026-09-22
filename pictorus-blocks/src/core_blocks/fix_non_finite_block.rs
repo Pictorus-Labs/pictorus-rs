@@ -35,7 +35,7 @@ impl<T: Float> ProcessBlock for FixNonFiniteBlock<T> {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let res = if !input.is_finite() {
@@ -54,7 +54,7 @@ impl<T: Float> ProcessBlock for FixNonFiniteBlock<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -66,17 +66,17 @@ mod tests {
 
     #[test]
     fn test_passthrough_block_scalar() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let params = Parameters;
         let mut block = FixNonFiniteBlock::<f64>::default();
 
         let input = 99.999;
-        let output = block.process(&params, &ctxt, input.as_by());
+        let output = block.process(&params, &model_clock, input.as_by());
         assert_eq!(output, input);
         assert_eq!(block.buffer(), output);
 
         let input = f64::NAN;
-        let output = block.process(&params, &ctxt, input.as_by());
+        let output = block.process(&params, &model_clock, input.as_by());
         assert_eq!(output, 0.0);
         assert_eq!(block.buffer(), 0.0);
     }

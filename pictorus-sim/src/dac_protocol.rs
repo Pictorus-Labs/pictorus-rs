@@ -22,7 +22,7 @@ impl OutputBlock for SimDac {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         _inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         // Do nothing

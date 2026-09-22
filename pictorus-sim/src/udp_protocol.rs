@@ -36,7 +36,7 @@ impl InputBlock for UdpConnection {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         &[]
     }
@@ -49,7 +49,7 @@ impl OutputBlock for UdpConnection {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         _inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
     }

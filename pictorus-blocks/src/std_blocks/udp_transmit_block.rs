@@ -42,7 +42,7 @@ impl ProcessBlock for UdpTransmitBlock {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer.clear();

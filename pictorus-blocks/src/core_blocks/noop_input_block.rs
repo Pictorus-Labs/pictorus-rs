@@ -1,4 +1,4 @@
-use pictorus_traits::{Context, InputBlock, Pass, PassBy};
+use pictorus_traits::{ModelClock, InputBlock, Pass, PassBy};
 
 pub struct NoOpInputBlockParameters {}
 
@@ -43,7 +43,7 @@ where
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         self.store = T::default();
         self.store.as_by()
@@ -53,64 +53,64 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::Matrix;
 
     #[test]
     fn test_noop_input_block_scalars_and_scalar_tuples() {
         let mut block = NoOpInputBlock::<f64>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
-        let input = block.input(&params, &context);
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, 0.0);
 
         let mut block = NoOpInputBlock::<f32>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, 0.0);
 
         let mut block = NoOpInputBlock::<(f64, f64)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, 0.0));
 
         let mut block = NoOpInputBlock::<(f32, f32, f32)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, 0.0, 0.0));
 
         let mut block = NoOpInputBlock::<(f64, f64, f64, f64)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, 0.0, 0.0, 0.0));
 
         let mut block = NoOpInputBlock::<(f32, f32, f32, f32, f32)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, 0.0, 0.0, 0.0, 0.0));
 
         let mut block = NoOpInputBlock::<(f64, f64, f64, f64, f64, f64)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
 
         let mut block = NoOpInputBlock::<(f32, f32, f32, f32, f32, f32, f32)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
 
         let mut block = NoOpInputBlock::<(f64, f64, f64, f64, f64, f64, f64, f64)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
     }
 
@@ -118,21 +118,21 @@ mod tests {
     fn test_noop_input_block_matrices() {
         let mut block = NoOpInputBlock::<Matrix<2, 2, f64>>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, &Matrix::default());
 
         let mut block = NoOpInputBlock::<(Matrix<2, 2, f64>, Matrix<3, 1, f64>)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (&Matrix::default(), &Matrix::default()));
 
         let mut block =
             NoOpInputBlock::<(Matrix<2, 2, f64>, Matrix<3, 1, f64>, Matrix<1, 3, f64>)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (&Matrix::default(), &Matrix::default(), &Matrix::default())
@@ -145,8 +145,8 @@ mod tests {
             Matrix<2, 3, f64>,
         )>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (
@@ -165,8 +165,8 @@ mod tests {
             Matrix<3, 2, f64>,
         )>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (
@@ -187,8 +187,8 @@ mod tests {
             Matrix<1, 1, f64>,
         )>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (
@@ -211,8 +211,8 @@ mod tests {
             Matrix<2, 1, f64>,
         )>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (
@@ -237,8 +237,8 @@ mod tests {
             Matrix<1, 2, f64>,
         )>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (
@@ -258,28 +258,28 @@ mod tests {
     fn test_noop_input_block_mixed() {
         let mut block = NoOpInputBlock::<(f64, Matrix<2, 2, f64>)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, &Matrix::default()));
 
         let mut block = NoOpInputBlock::<(f32, Matrix<3, 1, f32>, f32)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, &Matrix::default(), 0.0));
 
         let mut block =
             NoOpInputBlock::<(f64, Matrix<2, 2, f64>, f64, Matrix<1, 3, f64>)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(input, (0.0, &Matrix::default(), 0.0, &Matrix::default()));
 
         let mut block =
             NoOpInputBlock::<(f64, Matrix<2, 2, f64>, f64, Matrix<3, 1, f64>, f64)>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (0.0, &Matrix::default(), 0.0, &Matrix::default(), 0.0)
@@ -295,8 +295,8 @@ mod tests {
             f64,
         )>::default();
         let params = NoOpInputBlockParameters::new();
-        let context = StubContext::default();
-        let input = block.input(&params, &context);
+        let model_clock = StubModelClock::default();
+        let input = block.input(&params, &model_clock);
         assert_eq!(
             input,
             (

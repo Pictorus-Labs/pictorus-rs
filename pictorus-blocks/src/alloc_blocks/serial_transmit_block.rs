@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 use log::debug;
-use pictorus_traits::{ByteSliceSignal, Context, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, Pass, PassBy, ProcessBlock};
 
 use crate::byte_data::{parse_string_to_bytes, BUFF_SIZE_BYTES};
 use crate::traits::Serialize;
@@ -55,7 +55,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let write_val = [
@@ -76,7 +76,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::Matrix;
 
     use super::*;
@@ -89,31 +89,31 @@ mod tests {
 
     #[test]
     fn test_write_byteslicesignal_no_delimiters() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("", "");
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
         let expected = "42".as_bytes();
-        let to_serial_peripheral = block.process(&parameters, &context, expected);
+        let to_serial_peripheral = block.process(&parameters, &model_clock, expected);
         assert_eq!(to_serial_peripheral, expected);
         assert_eq!(block.buffer(), expected);
     }
 
     #[test]
     fn test_write_byteslicesignal_delimited_data() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
         let expected = "$GPGSA,123\r\n".as_bytes();
 
-        let to_serial_peripheral = block.process(&parameters, &context, b"123");
+        let to_serial_peripheral = block.process(&parameters, &model_clock, b"123");
         assert_eq!(to_serial_peripheral, expected);
     }
 
     #[test]
     fn test_write_matrix() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<Matrix<2, 3, f64>>::default();
 
@@ -127,25 +127,25 @@ mod tests {
 
         let expected = "$GPGSA,[[1.0,2.0,3.0],[4.0,5.0,6.0]]\r\n".as_bytes();
 
-        let to_serial_peripheral = block.process(&parameters, &context, &input);
+        let to_serial_peripheral = block.process(&parameters, &model_clock, &input);
         assert_eq!(to_serial_peripheral, expected);
     }
 
     #[test]
     fn test_write_scalar() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<f64>::default();
 
         let expected = "$GPGSA,8675.309\r\n".as_bytes();
 
-        let to_serial_peripheral = block.process(&parameters, &context, 8675.309);
+        let to_serial_peripheral = block.process(&parameters, &model_clock, 8675.309);
         assert_eq!(to_serial_peripheral, expected);
     }
 
     #[test]
     fn test_write_vector() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("$GPGSA,", "\r\n");
         let mut block = SerialTransmitBlock::<Matrix<1, 3, f64>>::default();
 
@@ -155,19 +155,19 @@ mod tests {
             data: [[1.2], [3.4], [5.6]],
         };
 
-        let to_serial_peripheral = block.process(&parameters, &context, &input);
+        let to_serial_peripheral = block.process(&parameters, &model_clock, &input);
         assert_eq!(to_serial_peripheral, expected);
     }
 
     #[test]
     fn test_write_hex() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("", "");
         let mut block = SerialTransmitBlock::<ByteSliceSignal>::default();
 
         let expected = "\x12\x34".as_bytes();
 
-        let to_serial_peripheral = block.process(&parameters, &context, b"\x12\x34");
+        let to_serial_peripheral = block.process(&parameters, &model_clock, b"\x12\x34");
         assert_eq!(to_serial_peripheral, expected);
     }
 }

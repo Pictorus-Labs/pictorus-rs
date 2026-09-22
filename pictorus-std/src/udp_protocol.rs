@@ -114,7 +114,7 @@ impl InputBlock for UdpConnection {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
     ) -> pictorus_traits::PassBy<'_, Self::Output> {
         self.read().unwrap_or_default()
     }
@@ -127,7 +127,7 @@ impl OutputBlock for UdpConnection {
     fn output(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
         self.write(inputs, parameters.destination()).ok();

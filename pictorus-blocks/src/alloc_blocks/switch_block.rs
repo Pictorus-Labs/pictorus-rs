@@ -13,12 +13,12 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 /// use core::time::Duration;
 /// use pictorus_blocks::SwitchBlock;
 /// use pictorus_traits::ProcessBlock;
-/// use pictorus_traits::Context;
+/// use pictorus_traits::ModelClock;
 ///
 /// #[derive(Default)]
-/// struct StubContext {}
+/// struct StubModelClock {}
 ///
-/// impl Context for StubContext {
+/// impl ModelClock for StubModelClock {
 ///     fn time(&self) -> Duration {
 ///         Duration::from_secs(0)
 ///     }
@@ -32,7 +32,7 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 ///     }
 /// }
 ///
-/// let ctxt = StubContext::default();
+/// let model_clock = StubModelClock::default();
 /// let mut block = SwitchBlock::<(f64, f64, f64)>::default();
 /// // If condition is 0, output the signal at index 0
 /// // If condition is 1, output the signal at index 1
@@ -42,7 +42,7 @@ use crate::traits::{CopyInto, DefaultStorage, Scalar};
 /// // Here we have a condition of 0.0, and inputs of [1.0, 2.0]
 /// // Since condition matches case 0, the output will be 1.0
 /// let input = (0.0, 1.0, 2.0);
-/// let output = block.process(&parameters, &ctxt, input);
+/// let output = block.process(&parameters, &model_clock, input);
 /// assert_eq!(output, 1.0);
 ///
 pub struct SwitchBlock<T: Apply>
@@ -74,7 +74,7 @@ where
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         T::apply(inputs, parameters, &mut self.buffer);
@@ -303,7 +303,7 @@ mod tests {
     use crate::traits::MatrixOps;
 
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_switch_default_buffer_no_panic() {
@@ -313,53 +313,53 @@ mod tests {
 
     #[test]
     fn test_switch_block_2_scalars() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
 
         let input = (0.0, 1.0, 2.0);
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 1.0);
         assert_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_switch_block_7_scalars() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64, f64, f64, f64, f64, f64)>::default();
         let parameters = Parameters::new([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 
         let input = (6.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0);
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 7.0);
         assert_eq!(block.buffer(), 7.0);
     }
 
     #[test]
     fn test_switch_block_scalar_default() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, f64, f64)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
 
         // Should use the last value by default
         let input = (1.2345, 1.0, 2.0);
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 2.0);
         assert_eq!(block.buffer(), 2.0);
     }
 
     #[test]
     fn test_switch_block_2_matrices() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, Matrix<3, 3, f64>, Matrix<3, 3, f64>)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
 
         let input = (0.0, &Matrix::from_element(1.0), &Matrix::from_element(2.0));
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         let expected: Matrix<3, 3, f64> = Matrix::from_element(1.0);
         assert_eq!(output, &expected);
         assert_eq!(block.buffer(), &expected);
@@ -367,7 +367,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_7_matrices() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(
             f64,
@@ -391,7 +391,7 @@ mod tests {
             &Matrix::from_element(6.0),
             &Matrix::from_element(7.0),
         );
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         let expected: Matrix<3, 3, f64> = Matrix::from_element(7.0);
         assert_eq!(output, &expected);
         assert_eq!(block.buffer(), &expected);
@@ -399,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_switch_block_matrix_default() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, Matrix<3, 3, f64>, Matrix<3, 3, f64>)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
@@ -410,7 +410,7 @@ mod tests {
             &Matrix::from_element(1.0),
             &Matrix::from_element(2.0),
         );
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         let expected: Matrix<3, 3, f64> = Matrix::from_element(2.0);
         assert_eq!(output, &expected);
         assert_eq!(block.buffer(), &expected);
@@ -418,50 +418,50 @@ mod tests {
 
     #[test]
     fn test_switch_block_bool_condition_scalars() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(bool, f32, f32)>::default();
         let parameters = Parameters::new([true, false]);
 
         let input = (true, 1.5f32, 2.5f32);
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 1.5);
         assert_eq!(block.buffer(), output);
 
         let input = (false, 1.5f32, 2.5f32);
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 2.5);
         assert_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_switch_block_int_condition_scalars() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(u8, f64, f64, f64)>::default();
         let parameters = Parameters::new([10u8, 20u8, 30u8]);
 
         let input = (20u8, 1.0, 2.0, 3.0);
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 2.0);
         assert_eq!(block.buffer(), output);
 
         // No match falls through to the last input
         let input = (99u8, 1.0, 2.0, 3.0);
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, 3.0);
         assert_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_switch_block_int_condition_matrices() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(i32, Matrix<2, 2, f32>, Matrix<2, 2, f32>)>::default();
         let parameters = Parameters::new([-1, 1]);
 
         let input = (-1, &Matrix::from_element(1.0), &Matrix::from_element(2.0));
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         let expected: Matrix<2, 2, f32> = Matrix::from_element(1.0);
         assert_eq!(output, &expected);
         assert_eq!(block.buffer(), &expected);
@@ -469,47 +469,47 @@ mod tests {
 
     #[test]
     fn test_switch_block_int_condition_bytes() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(u16, ByteSliceSignal, ByteSliceSignal)>::default();
         let parameters = Parameters::new([100u16, 200u16]);
 
         let input = (200u16, b"foo".as_slice(), b"bar".as_slice());
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, b"bar");
         assert_eq!(block.buffer(), b"bar".as_slice());
     }
 
     #[test]
     fn test_switch_block_2_bytes() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, ByteSliceSignal, ByteSliceSignal)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
 
         let input = (0.0, b"foo".as_slice(), b"bar".as_slice());
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, b"foo");
         assert_eq!(block.buffer(), b"foo".as_slice());
     }
 
     #[test]
     fn test_switch_block_2_bytes_default() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(f64, ByteSliceSignal, ByteSliceSignal)>::default();
         let parameters = Parameters::new([0.0, 1.0]);
 
         // Should use the last value by default
         let input = (1.2345, b"foo".as_slice(), b"bar".as_slice());
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, b"bar");
         assert_eq!(block.buffer(), b"bar".as_slice());
     }
 
     #[test]
     fn test_switch_block_7_bytes() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let mut block = SwitchBlock::<(
             f64,
@@ -533,7 +533,7 @@ mod tests {
             b"corge".as_slice(),
             b"grault".as_slice(),
         );
-        let output = block.process(&parameters, &ctxt, input);
+        let output = block.process(&parameters, &model_clock, input);
         assert_eq!(output, b"grault");
         assert_eq!(block.buffer(), b"grault".as_slice());
     }

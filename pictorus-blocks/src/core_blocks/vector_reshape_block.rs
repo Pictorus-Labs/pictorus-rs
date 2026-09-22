@@ -48,7 +48,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         const {
@@ -82,7 +82,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         self.buffer.data[0][0] = input;
@@ -97,21 +97,21 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     /// This test should fail to compile due to the assertion test for the input and output matrix dimensions.
     /// ```compile_fail,E0080
     /// #[test]
     /// fn static_assert() {
-    ///      let c = StubContext::default();
+    ///      let model_clock = StubModelClock::default();
     ///      let mut block = VectorReshapeBlock::<Matrix<3, 3, f64>, Matrix<4, 4, f64>>::default();
     ///      let parameters = Parameters::new();
     ///
     ///     let input = Matrix {
     ///          data: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
     ///      };
-    ///      let _output = block.process(&parameters, &c, &input);
+    ///      let _output = block.process(&parameters, &model_clock, &input);
     /// }
     /// ```
     #[test]
@@ -125,20 +125,20 @@ mod tests {
             paste! {
                 #[test]
                 fn [<test_vector_sort_scalar_ $type>]() {
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<$type, Matrix<1, 1, $type>>::default();
                     let parameters = Parameters::new();
 
                     let input = [<3 $type>];
 
-                    let output = block.process(&parameters, &c, input);
+                    let output = block.process(&parameters, &model_clock, input);
 
                     assert_eq!(output.data, [[[<3 $type>]]]);
                 }
 
                 #[test]
                 fn [<test_vector_reshape_3x3_1x9 $type>]() {
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<Matrix<3, 3, $type>, Matrix<1, 9, $type>>::default();
                     let parameters = Parameters::new();
 
@@ -150,7 +150,7 @@ mod tests {
                             ]],
                     };
 
-                    let output = block.process(&parameters, &c, &input).data;
+                    let output = block.process(&parameters, &model_clock, &input).data;
 
                     assert_eq!(
                         output,
@@ -170,7 +170,7 @@ mod tests {
 
                 #[test]
                 fn [<test_vector_reshape_3x2_2x3_ $type>]() {
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<Matrix<3, 2, $type>, Matrix<2, 3, $type>>::default();
                     let parameters = Parameters::new();
 
@@ -182,7 +182,7 @@ mod tests {
                             ]],
                     };
 
-                    let output = block.process(&parameters, &c, &input).data;
+                    let output = block.process(&parameters, &model_clock, &input).data;
 
                     assert_eq!(
                         output,
@@ -197,7 +197,7 @@ mod tests {
                 #[test]
                 fn [<test_vector_reshape_4x4_8x2 $type>]() {
                     // Matlab documentation example
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let mut block = VectorReshapeBlock::<Matrix<4, 4, $type>, Matrix<8, 2, $type>>::default();
                     let parameters = Parameters::new();
 
@@ -211,7 +211,7 @@ mod tests {
                             ],
                     };
 
-                    let output = block.process(&parameters, &c, &input).data;
+                    let output = block.process(&parameters, &model_clock, &input).data;
 
                     assert_eq!(
                         output,

@@ -4,7 +4,7 @@ use core::time::Duration;
 use num_traits::AsPrimitive;
 
 use miniserde::json::{self, Array, Number, Object, Value};
-use pictorus_traits::{ByteSliceSignal, Context, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::{
     stale_tracker::{duration_from_ms_f64, StaleTracker},
@@ -66,15 +66,15 @@ impl<T: Apply> ProcessBlock for JsonLoadBlock<T> {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         if T::apply(&mut self.buffer, inputs, parameters).is_ok() {
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
         }
         let valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         T::set_valid(&mut self.buffer, valid);
         T::storage_as_by(&self.buffer)
     }
@@ -649,7 +649,7 @@ impl<
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     use super::*;
 
@@ -661,18 +661,18 @@ mod tests {
 
     #[test]
     fn test_reads_scalar_data_if_no_selectors() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"1.2"#;
         let params = Parameters::new(&[], 0.0);
         let mut block = JsonLoadBlock::<f64>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         assert_eq!(res, (1.2, true));
         assert_eq!(block.buffer(), res);
     }
 
     #[test]
     fn test_reads_object_data_if_has_selectors() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#" {"foo": 99.0, "bar": "hello", "baz": [1.0, 2.0], "buzz": [[1.0, 0.0],[0.0, 1.0]]} "#;
         let params = Parameters::new(
             &[
@@ -687,7 +687,7 @@ mod tests {
             JsonLoadBlock::<(f64, ByteSliceSignal, Matrix<2, 1, f64>, Matrix<2, 2, f64>)>::default(
             );
 
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = (
             99.0,
             b"hello".as_slice(),
@@ -704,44 +704,44 @@ mod tests {
 
     #[test]
     fn test_reads_invalid_json_input_without_panicking() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = b"invalid_json";
         let params = Parameters::new(&[], 1000.0);
         let mut block = JsonLoadBlock::<f64>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
     }
 
     #[test]
     fn test_reads_non_existing_key_in_selector() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{"foo": 99.0, "bar": "hello"}"#;
         let params = Parameters::new(&["Scalar:non_existing_key".into()], 1000.0);
         let mut block = JsonLoadBlock::<f64>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
     }
 
     #[test]
     fn test_reads_empty_input() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = b"";
         let params = Parameters::new(&[], 1000.0);
         let mut block = JsonLoadBlock::<f64>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         assert_eq!(res, (0.0, false));
         assert_eq!(block.buffer(), (0.0, false));
     }
 
     #[test]
     fn test_reads_numeric_array() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"[1.0, 2.0, 3.0]"#;
         let params = Parameters::new(&[], 1000.0);
         let mut block = JsonLoadBlock::<Matrix<1, 3, f64>>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = &Matrix {
             data: [[1.0], [2.0], [3.0]],
         };
@@ -751,11 +751,11 @@ mod tests {
 
     #[test]
     fn test_reads_empty_numeric_array() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"[]"#;
         let params = Parameters::new(&[], 1000.0);
         let mut block = JsonLoadBlock::<Matrix<0, 1, f64>>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = &Matrix { data: [[]] };
         assert_eq!(res, (expected, true));
         assert_eq!(block.buffer(), (expected, true));
@@ -763,11 +763,11 @@ mod tests {
 
     #[test]
     fn test_reads_numeric_matrix() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"[[1.0, 2.0], [3.0, 4.0]]"#;
         let params = Parameters::new(&[], 1000.0);
         let mut block = JsonLoadBlock::<Matrix<2, 2, f64>>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = &Matrix {
             data: [[1.0, 3.0], [2.0, 4.0]],
         };
@@ -777,29 +777,29 @@ mod tests {
 
     #[test]
     fn test_load_single_variant() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{"foo": 1.0}"#;
         let params = Parameters::new(&["Scalar:foo".into()], 1000.0);
         let mut block = JsonLoadBlock::<f64>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         assert_eq!(res, (1.0, true));
         assert_eq!(block.buffer(), (1.0, true));
     }
 
     #[test]
     fn test_load_2_tuple_variant() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{"foo": 1.0, "bar": "hello"}"#;
         let params = Parameters::new(&["Scalar:foo".into(), "BytesArray:bar".into()], 1000.0);
         let mut block = JsonLoadBlock::<(f64, ByteSliceSignal)>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         assert_eq!(res, (1.0, b"hello".as_slice(), true));
         assert_eq!(block.buffer(), (1.0, b"hello".as_slice(), true));
     }
 
     #[test]
     fn test_load_3_tuple_variant() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{"foo": 1.0, "bar": "hello", "baz": [1.0, 2.0]}"#;
         let params = Parameters::new(
             &[
@@ -810,7 +810,7 @@ mod tests {
             1000.0,
         );
         let mut block = JsonLoadBlock::<(f64, ByteSliceSignal, Matrix<1, 2, f64>)>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = (
             1.0,
             b"hello".as_slice(),
@@ -825,7 +825,7 @@ mod tests {
 
     #[test]
     fn test_load_4_tuple_variant() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input =
             br#"{"foo": 1.0, "bar": "hello", "baz": [1.0, 2.0], "buzz": [[1.0, 0.0],[0.0, 1.0]]}"#;
         let params = Parameters::new(
@@ -840,7 +840,7 @@ mod tests {
         let mut block =
             JsonLoadBlock::<(f64, ByteSliceSignal, Matrix<1, 2, f64>, Matrix<2, 2, f64>)>::default(
             );
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = (
             1.0,
             b"hello".as_slice(),
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn test_load_5_tuple_variant() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{"foo": 1.0, "bar": "hello", "baz": [1.0, 2.0], "buzz": [[1.0, 0.0],[0.0, 1.0]], "qux": [1.0]}"#;
         let params = Parameters::new(
             &[
@@ -877,7 +877,7 @@ mod tests {
             Matrix<2, 2, f64>,
             Matrix<1, 1, f64>,
         )>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = (
             1.0,
             b"hello".as_slice(),
@@ -896,7 +896,7 @@ mod tests {
 
     #[test]
     fn test_load_6_tuple_variant() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{"foo": 1.0, "bar": "hello", "baz": [1.0, 2.0], "buzz": [[1.0, 0.0],[0.0, 1.0]], "qux": [1.0], "quux": [2.0]}"#;
         let params = Parameters::new(
             &[
@@ -917,7 +917,7 @@ mod tests {
             Matrix<1, 1, f64>,
             Matrix<1, 1, f64>,
         )>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = (
             1.0,
             b"hello".as_slice(),
@@ -937,7 +937,7 @@ mod tests {
 
     #[test]
     fn test_load_7_tuple_variant() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{
         "foo": 1.0,
         "bar": "hello",
@@ -971,7 +971,7 @@ mod tests {
             Matrix<2, 2, f64>,
         )>::default();
 
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
 
         let expected = (
             1.0,
@@ -996,22 +996,22 @@ mod tests {
 
     #[test]
     fn test_load_f32_scalar() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"{"foo": 1.0}"#;
         let params = Parameters::new(&["Scalar:foo".into()], 1000.0);
         let mut block = JsonLoadBlock::<f32>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         assert_eq!(res, (1.0_f32, true));
         assert_eq!(block.buffer(), (1.0_f32, true));
     }
 
     #[test]
     fn test_load_f32_matrix() {
-        let ctxt = StubContext::default();
+        let model_clock = StubModelClock::default();
         let input = br#"[[1.0, 2.0], [3.0, 4.0]]"#;
         let params = Parameters::new(&[], 1000.0);
         let mut block = JsonLoadBlock::<Matrix<2, 2, f32>>::default();
-        let res = block.process(&params, &ctxt, input);
+        let res = block.process(&params, &model_clock, input);
         let expected = &Matrix {
             data: [[1.0_f32, 3.0_f32], [2.0_f32, 4.0_f32]],
         };

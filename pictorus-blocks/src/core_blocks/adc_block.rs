@@ -1,5 +1,5 @@
 use num_traits::Float;
-use pictorus_traits::{Context, PassBy, ProcessBlock, Scalar};
+use pictorus_traits::{ModelClock, PassBy, ProcessBlock, Scalar};
 
 /// Parameters for the ADC block
 #[doc(hidden)]
@@ -54,7 +54,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = O::from(input).expect("Failed to convert input to output");
@@ -69,7 +69,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_adc_block_default_buffer_no_panic() {
@@ -79,20 +79,20 @@ mod test {
 
     #[test]
     fn test_adc_block_f64() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = AdcBlock::<u16, f64>::default();
         let input = 42u16;
-        let output = block.process(&Parameters::new(), &c, input);
+        let output = block.process(&Parameters::new(), &model_clock, input);
         assert_eq!(output, 42.0);
         assert_eq!(block.buffer(), output);
     }
 
     #[test]
     fn test_adc_block_f32() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = AdcBlock::<u16, f32>::default();
         let input = 42u16;
-        let output = block.process(&Parameters::new(), &c, input);
+        let output = block.process(&Parameters::new(), &model_clock, input);
         assert_eq!(output, 42.0);
     }
 }

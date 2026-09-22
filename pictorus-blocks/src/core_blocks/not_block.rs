@@ -37,7 +37,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         let output = T::apply(&mut self.buffer, input, parameters.method);
@@ -148,7 +148,7 @@ impl_not_apply!(i16);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use num_traits::{One, Zero};
     use paste::paste;
 
@@ -167,14 +167,14 @@ mod tests {
                 #[test]
                 fn [<test_not_block_logical_scalar_ $type>]() {
                     let mut block = NotBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let parameters = Parameters::new("Logical");
 
-                    let res = block.process(&parameters, &context, $type::one());
+                    let res = block.process(&parameters, &model_clock, $type::one());
                     assert_eq!(res, $type::zero());
                     assert_eq!(block.buffer(), res);
 
-                    let res = block.process(&parameters, &context, $type::zero());
+                    let res = block.process(&parameters, &model_clock, $type::zero());
                     assert_eq!(res, $type::one());
                     assert_eq!(block.buffer(), $type::one());
                 }
@@ -182,13 +182,13 @@ mod tests {
                 #[test]
                 fn [<test_not_block_logical_matrix_ $type>]() {
                     let mut block = NotBlock::<Matrix<4, 1, $type>>::default();
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let parameters = Parameters::new("Logical");
 
                     let input = Matrix {
                         data: [[$type::one(), $type::zero(), $type::one(), $type::one()]],
                     };
-                    let res = block.process(&parameters, &context, &input);
+                    let res = block.process(&parameters, &model_clock, &input);
                     assert_eq!(res.data, [[$type::zero(), $type::one(), $type::zero(), $type::zero()]]);
                     assert_eq!(block.buffer().data, [[$type::zero(), $type::one(), $type::zero(), $type::zero()]]);
                 }
@@ -196,22 +196,22 @@ mod tests {
                 #[test]
                 fn [<test_not_block_bitwise_scalar_ $type>]() {
                     let mut block = NotBlock::<$type>::default();
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let parameters = Parameters::new("Bitwise");
 
-                    let res = block.process(&parameters, &context, 0b1 as $type);
+                    let res = block.process(&parameters, &model_clock, 0b1 as $type);
                     assert_eq!(res, !0b1 as $type);
                     assert_eq!(block.buffer(), !0b1 as $type);
 
-                    let res = block.process(&parameters, &context, 42 as $type);
+                    let res = block.process(&parameters, &model_clock, 42 as $type);
                     assert_eq!(res, !42 as $type);
                     assert_eq!(block.buffer(), !42 as $type);
 
-                    let res = block.process(&parameters, &context, -1i8 as $type);
+                    let res = block.process(&parameters, &model_clock, -1i8 as $type);
                     assert_eq!(res, !-1i8 as $type);
                     assert_eq!(block.buffer(), !-1i8 as $type);
 
-                    let res = block.process(&parameters, &context, 1 as $type);
+                    let res = block.process(&parameters, &model_clock, 1 as $type);
                     assert_eq!(res, !1 as $type);
                     assert_eq!(block.buffer(), !1 as $type);
                 }
@@ -219,13 +219,13 @@ mod tests {
                 #[test]
                 fn [<test_not_block_bitwise_matrix_ $type>]() {
                     let mut block = NotBlock::<Matrix<2, 2, $type>>::default();
-                    let context = StubContext::default();
+                    let model_clock = StubModelClock::default();
                     let parameters = Parameters::new("Bitwise");
 
                     let input = Matrix {
                         data: [[1 as $type, 42 as $type], [-1i8 as $type, 1 as $type]],
                     };
-                    let res = block.process(&parameters, &context, &input);
+                    let res = block.process(&parameters, &model_clock, &input);
                     assert_eq!(res.data, [[!1 as $type, !42 as $type], [!-1i8 as $type, !1 as $type]]);
                     assert_eq!(block.buffer().data, [[!1 as $type, !42 as $type], [!-1i8 as $type, !1 as $type]]);
                 }
@@ -247,23 +247,23 @@ mod tests {
     #[test]
     fn test_scalar_bool() {
         let mut block = NotBlock::<bool>::default();
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("Logical");
 
-        let res = block.process(&parameters, &context, true);
+        let res = block.process(&parameters, &model_clock, true);
         assert!(!res);
         assert!(!block.buffer());
 
-        let res = block.process(&parameters, &context, false);
+        let res = block.process(&parameters, &model_clock, false);
         assert!(res);
         assert!(block.buffer());
 
         let parameters = Parameters::new("Bitwise");
-        let res = block.process(&parameters, &context, true);
+        let res = block.process(&parameters, &model_clock, true);
         assert!(!res);
         assert!(!block.buffer());
 
-        let res = block.process(&parameters, &context, false);
+        let res = block.process(&parameters, &model_clock, false);
         assert!(res);
         assert!(block.buffer());
     }
@@ -271,13 +271,13 @@ mod tests {
     #[test]
     fn test_matrix_bool() {
         let mut block = NotBlock::<Matrix<2, 2, bool>>::default();
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let parameters = Parameters::new("Logical");
 
         let input = Matrix {
             data: [[true, false], [false, true]],
         };
-        let res = block.process(&parameters, &context, &input);
+        let res = block.process(&parameters, &model_clock, &input);
         assert_eq!(res.data, [[false, true], [true, false]]);
         assert_eq!(block.buffer().data, [[false, true], [true, false]]);
     }

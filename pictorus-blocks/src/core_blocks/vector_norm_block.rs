@@ -55,7 +55,7 @@ where
     fn process(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         T::apply(&mut self.buffer, inputs)
@@ -89,7 +89,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use paste::paste;
 
     #[test]
@@ -103,10 +103,10 @@ mod tests {
         // Output type param defaults to f64 for any input type
         let mut block = VectorNormBlock::<Matrix<1, 2, i8>>::default();
         let p = Parameters::new();
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let input = Matrix { data: [[3], [4]] };
-        let output: f64 = block.process(&p, &c, &input);
+        let output: f64 = block.process(&p, &model_clock, &input);
         assert_eq!(output, 5.0);
     }
 
@@ -122,13 +122,13 @@ mod tests {
                 fn [<test_vector_norm_ $type _to_ $otype>]() {
                     let mut block = VectorNormBlock::<Matrix<1, 2, $type>, $otype>::default();
                     let p = Parameters::new();
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
 
                     let input = Matrix {
                         data: [[3 as $type], [4 as $type]]
                     };
 
-                    let output = block.process(&p, &c, &input);
+                    let output = block.process(&p, &model_clock, &input);
                     assert_eq!(output, 5 as $otype);
                     assert_eq!(block.buffer(), output);
                 }
@@ -137,12 +137,12 @@ mod tests {
                 fn [<test_matrix_norm_ $type _to_ $otype>]() {
                     let mut block = VectorNormBlock::<Matrix<2, 2, $type>, $otype>::default();
                     let p = Parameters::new();
-                    let c = StubContext::default();
+                    let model_clock = StubModelClock::default();
 
                     let input = Matrix {
                         data: [[3 as $type, 3 as $type], [3 as $type, 3 as $type]],
                     };
-                    let output = block.process(&p, &c, &input);
+                    let output = block.process(&p, &model_clock, &input);
                     assert_eq!(output, 6 as $otype);
                     assert_eq!(block.buffer(), output);
                 }

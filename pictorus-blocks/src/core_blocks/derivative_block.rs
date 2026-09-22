@@ -28,7 +28,7 @@ impl<T: Float, const N: usize> ProcessBlock for DerivativeBlock<T, N> {
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         // store the current input in the sample buffer
@@ -45,7 +45,7 @@ impl<T: Float, const N: usize> ProcessBlock for DerivativeBlock<T, N> {
         if !self.initial_accumulation {
             self.output = (inputs - self.samples[self.sample_index])
                 / ((T::from_usize(N).unwrap() - T::one())
-                    * T::from_duration(context.timestep().expect(
+                    * T::from_duration(model_clock.timestep().expect(
                         "timestep should never be None outside of Initial Accumulation phase",
                     )));
         }
@@ -79,7 +79,7 @@ impl<T: Float, const N: usize, const NCOLS: usize, const NROWS: usize> ProcessBl
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        context: &dyn pictorus_traits::Context,
+        model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         // store the current input in the sample buffer
@@ -96,7 +96,7 @@ impl<T: Float, const N: usize, const NCOLS: usize, const NROWS: usize> ProcessBl
         if !self.initial_accumulation {
             let output = (inputs.as_view() - self.samples[self.sample_index].as_view())
                 / ((T::from_usize(N).unwrap() - T::one())
-                    * T::from_duration(context.timestep().expect(
+                    * T::from_duration(model_clock.timestep().expect(
                         "timestep should never be None outside of Initial Accumulation phase",
                     )));
             self.output.as_view_mut().copy_from(&output);
@@ -144,48 +144,48 @@ mod tests {
     #[test]
     fn test_scalar() {
         let mut runtime = StubRuntime::default();
-        runtime.context.fundamental_timestep = Duration::from_secs(1);
+        runtime.model_clock.fundamental_timestep = Duration::from_secs(1);
         let parameters = Parameters::new(0.0);
         let mut block = DerivativeBlock::<f64, 2>::new(&parameters);
 
         let input = 1.0;
-        let output = block.process(&parameters, &runtime.context(), input);
+        let output = block.process(&parameters, &runtime.model_clock(), input);
         assert_eq!(output, 0.0);
 
         runtime.tick();
         let input = 2.0;
-        let output = block.process(&parameters, &runtime.context(), input);
+        let output = block.process(&parameters, &runtime.model_clock(), input);
         assert_eq!(output, 1.0);
 
         runtime.tick();
         let input = 3.0;
-        let output = block.process(&parameters, &runtime.context(), input);
+        let output = block.process(&parameters, &runtime.model_clock(), input);
         assert_eq!(output, 1.0);
 
         runtime.tick();
         let input = 4.0;
-        let output = block.process(&parameters, &runtime.context(), input);
+        let output = block.process(&parameters, &runtime.model_clock(), input);
         assert_eq!(output, 1.0);
     }
 
     #[test]
     fn test_matrix() {
         let mut runtime = StubRuntime::default();
-        runtime.context.fundamental_timestep = Duration::from_secs(1);
+        runtime.model_clock.fundamental_timestep = Duration::from_secs(1);
         let parameters = Parameters::new(Matrix::zeroed());
         let mut block = DerivativeBlock::<Matrix<2, 2, f32>, 2>::new(&parameters);
 
         let input = Matrix {
             data: [[1.0, 2.0], [3.0, 4.0]],
         };
-        let output = block.process(&parameters, &runtime.context(), &input);
+        let output = block.process(&parameters, &runtime.model_clock(), &input);
         assert_eq!(output, &Matrix::zeroed());
 
         runtime.tick();
         let input = Matrix {
             data: [[2.0, 3.0], [4.0, 5.0]],
         };
-        let output = block.process(&parameters, &runtime.context(), &input);
+        let output = block.process(&parameters, &runtime.model_clock(), &input);
         assert_eq!(
             output,
             &Matrix {
@@ -197,7 +197,7 @@ mod tests {
         let input = Matrix {
             data: [[3.0, 4.0], [5.0, 6.0]],
         };
-        let output = block.process(&parameters, &runtime.context(), &input);
+        let output = block.process(&parameters, &runtime.model_clock(), &input);
         assert_eq!(
             output,
             &Matrix {

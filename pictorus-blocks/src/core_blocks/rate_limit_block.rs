@@ -53,10 +53,10 @@ macro_rules! impl_rate_limit_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                context: &dyn pictorus_traits::Context,
+                model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
-                if let Some(timestep_duration) = context.timestep() {
+                if let Some(timestep_duration) = model_clock.timestep() {
                     let timestep_s = <$type>::from_duration(timestep_duration);
                     let change_rate = (input - self.buffer) / timestep_s;
                     let clamped_change_rate =
@@ -91,10 +91,10 @@ macro_rules! impl_rate_limit_block {
             fn process(
                 &mut self,
                 parameters: &Self::Parameters,
-                context: &dyn pictorus_traits::Context,
+                model_clock: &dyn pictorus_traits::ModelClock,
                 input: PassBy<Self::Inputs>,
             ) -> PassBy<'_, Self::Output> {
-                if let Some(timestep_duration) = context.timestep() {
+                if let Some(timestep_duration) = model_clock.timestep() {
                     let timestep_s = <$type>::from_duration(timestep_duration);
                     let mut output = Matrix::zeroed();
                     input.for_each(|v, c, r| {
@@ -160,41 +160,41 @@ mod tests {
                     let timestep_s = 1.0;
 
                     let mut runtime = StubRuntime::default();
-                    runtime.context.fundamental_timestep = time::Duration::from_secs_f64(timestep_s);
+                    runtime.model_clock.fundamental_timestep = time::Duration::from_secs_f64(timestep_s);
 
                     // Test rising rate
                     runtime.tick();
-                    let output = block.process(&parameters, &runtime.context(), 3.0);
+                    let output = block.process(&parameters, &runtime.model_clock(), 3.0);
                     assert_eq!(output, 2.0);
                     assert_eq!(block.buffer(), output);
 
                     // Test rising rate
                     runtime.tick();
-                    let output = block.process(&parameters, &runtime.context(), 30.0);
+                    let output = block.process(&parameters, &runtime.model_clock(), 30.0);
                     assert_eq!(output, 4.0);
                     assert_eq!(block.buffer(), 4.0);
 
                     // Value doesn't change if input matches current state
                     runtime.tick();
-                    let output = block.process(&parameters, &runtime.context(), 4.0);
+                    let output = block.process(&parameters, &runtime.model_clock(), 4.0);
                     assert_eq!(output, 4.0);
                     assert_eq!(block.buffer(), 4.0);
 
                     // Test falling rate
                     runtime.tick();
-                    let output = block.process(&parameters, &runtime.context(), -30.0);
+                    let output = block.process(&parameters, &runtime.model_clock(), -30.0);
                     assert_eq!(output, 3.0);
                     assert_eq!(block.buffer(), 3.0);
 
                     // Test falling rate
                     runtime.tick();
-                    let output = block.process(&parameters, &runtime.context(), -0.5);
+                    let output = block.process(&parameters, &runtime.model_clock(), -0.5);
                     assert_eq!(output, 2.0);
                     assert_eq!(block.buffer(), 2.0);
 
                     // Test passing in no timestep does not change output
-                    runtime.context.timestep = Some(Duration::from_secs(0));
-                    let output = block.process(&parameters, &runtime.context(), -30.0);
+                    runtime.model_clock.timestep = Some(Duration::from_secs(0));
+                    let output = block.process(&parameters, &runtime.model_clock(), -30.0);
                     assert_eq!(output, 2.0);
                     assert_eq!(block.buffer(), 2.0);
                 }
@@ -211,14 +211,14 @@ mod tests {
                     let timestep_s = 1.0;
 
                     let mut runtime = StubRuntime::default();
-                    runtime.context.fundamental_timestep = time::Duration::from_secs_f64(timestep_s);
+                    runtime.model_clock.fundamental_timestep = time::Duration::from_secs_f64(timestep_s);
 
                     // Test rising rate
                     runtime.tick();
                     let inputs = Matrix {
                         data: [[3.0, 5.0], [6.0, 8.0]],
                     };
-                    let output = block.process(&parameters, &runtime.context(), &inputs);
+                    let output = block.process(&parameters, &runtime.model_clock(), &inputs);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -237,7 +237,7 @@ mod tests {
                     let inputs = Matrix {
                         data: [[30.0, 5.0], [6.0, 8.0]],
                     };
-                    let output = block.process(&parameters, &runtime.context(), &inputs);
+                    let output = block.process(&parameters, &runtime.model_clock(), &inputs);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -256,7 +256,7 @@ mod tests {
                     let inputs = Matrix {
                         data: [[4.0, 4.0], [4.0, 4.0]],
                     };
-                    let output = block.process(&parameters, &runtime.context(), &inputs);
+                    let output = block.process(&parameters, &runtime.model_clock(), &inputs);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -275,7 +275,7 @@ mod tests {
                     let inputs = Matrix {
                         data: [[-30.0, -2.0], [3.0, 3.8]],
                     };
-                    let output = block.process(&parameters, &runtime.context(), &inputs);
+                    let output = block.process(&parameters, &runtime.model_clock(), &inputs);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -294,7 +294,7 @@ mod tests {
                     let inputs = Matrix {
                         data: [[2.0, 2.5], [1.5, 3.6]],
                     };
-                    let output = block.process(&parameters, &runtime.context(), &inputs);
+                    let output = block.process(&parameters, &runtime.model_clock(), &inputs);
                     assert_eq!(
                         output,
                         &Matrix {
@@ -309,11 +309,11 @@ mod tests {
                     );
 
                     // Test passing in no timestep does not change output
-                    runtime.context.timestep = Some(Duration::from_secs(0));
+                    runtime.model_clock.timestep = Some(Duration::from_secs(0));
                     let inputs = Matrix {
                         data: [[2.0, 2.5], [1.5, 3.6]],
                     };
-                    let output = block.process(&parameters, &runtime.context(), &inputs);
+                    let output = block.process(&parameters, &runtime.model_clock(), &inputs);
                     assert_eq!(
                         output,
                         &Matrix {

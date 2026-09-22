@@ -3,7 +3,7 @@ use core::time::Duration;
 use core::{cmp::min, str};
 
 use log::debug;
-use pictorus_traits::{ByteSliceSignal, Context, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, ModelClock, PassBy, ProcessBlock};
 
 use crate::{
     byte_data::{
@@ -207,7 +207,7 @@ impl ProcessBlock for SerialReceiveBlock {
     fn process<'b>(
         &'b mut self,
         parameters: &Self::Parameters,
-        context: &dyn Context,
+        model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         // Inputs is a Vec<u8> copying into a Vec<u8>
@@ -225,7 +225,7 @@ impl ProcessBlock for SerialReceiveBlock {
             self.buffer
                 .drain(..(min(end_idx + parameters.end_delimiter.2, self.buffer.len())));
 
-            self.stale_check.mark_updated(context.time());
+            self.stale_check.mark_updated(model_clock.time());
         } else if self.buffer.len() >= BUFF_SIZE_BYTES * 2 {
             self.buffer.clear();
             self.buffer.extend_from_slice(inputs);
@@ -234,7 +234,7 @@ impl ProcessBlock for SerialReceiveBlock {
 
         self.last_valid = self
             .stale_check
-            .is_valid(context.time(), parameters.stale_age);
+            .is_valid(model_clock.time(), parameters.stale_age);
         (&self.output, self.last_valid)
     }
 
@@ -248,7 +248,7 @@ mod tests {
     use core::time::Duration;
 
     use super::*;
-    use crate::testing::{StubContext, StubRuntime};
+    use crate::testing::{StubModelClock, StubRuntime};
 
     #[test]
     fn test_serial_receive_default_buffer_no_panic() {
@@ -258,14 +258,14 @@ mod tests {
 
     #[test]
     fn test_serial_receive_block() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = SerialReceiveBlock::default();
         let parameters = Parameters::new("$", "\r\n", 0.0, 1000.0);
 
         // Test with a valid message
         let input_data = b"$Hello World\r\n";
         let result = {
-            let (data, valid) = block.process(&parameters, &context, input_data);
+            let (data, valid) = block.process(&parameters, &model_clock, input_data);
             (data.to_vec(), valid)
         };
         assert_eq!(result.0, b"Hello World");
@@ -274,29 +274,29 @@ mod tests {
 
     #[test]
     fn test_serial_receive_block_lots_of_nothing_then_data() {
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let mut block = SerialReceiveBlock::default();
         let parameters = Parameters::new("STX", "ETX", 0.0, 1000.0);
 
         // Test with stale data
         let input_data_1 = [0; 1024]; // BUFF_SIZE_BYTES is 1024
 
-        let result = block.process(&parameters, &context, &input_data_1);
+        let result = block.process(&parameters, &model_clock, &input_data_1);
         assert_eq!(result.0, b"");
         assert_eq!(block.buffer.len(), 1024);
 
         let input_data_2 = [0; 1023]; // BUFF_SIZE_BYTES is 1023
-        let result = block.process(&parameters, &context, &input_data_2); // Buffer resets at buffer >= 2048
+        let result = block.process(&parameters, &model_clock, &input_data_2); // Buffer resets at buffer >= 2048
         assert_eq!(result.0, b"");
         assert_eq!(block.buffer.len(), 2047);
 
         let input_data_3 = b"Still no delimiter";
-        let result = block.process(&parameters, &context, input_data_3); // Buffer resets at buffer >= 2048
+        let result = block.process(&parameters, &model_clock, input_data_3); // Buffer resets at buffer >= 2048
         assert_eq!(result.0, b"");
         assert_eq!(block.buffer.len(), b"Still no delimiter".len());
 
         let input_data_delimited = b"STXHelloWorldETX"; // Data with delimiter
-        let result = block.process(&parameters, &context, input_data_delimited);
+        let result = block.process(&parameters, &model_clock, input_data_delimited);
         assert_eq!(result.0, b"HelloWorld");
         assert_eq!(block.buffer.len(), 0);
     }
@@ -310,19 +310,19 @@ mod tests {
 
         // Test with a valid message
         let input_data = b"$Hello World\r\n";
-        let result = block.process(&parameters, &runtime.context(), input_data);
+        let result = block.process(&parameters, &runtime.model_clock(), input_data);
         assert!(result.1);
 
         for i in 1..11 {
             // 100ms to 1s
             runtime.set_time(Duration::from_millis(i * 100)); // 10 Hz runtime (100ms per tick)
-            let result = block.process(&parameters, &runtime.context(), &[]);
+            let result = block.process(&parameters, &runtime.model_clock(), &[]);
             assert!(result.1);
         }
 
         // Stale
         runtime.set_time(Duration::from_millis(11 * 100)); // 1.1s
-        let result = block.process(&parameters, &runtime.context(), &[]);
+        let result = block.process(&parameters, &runtime.model_clock(), &[]);
         assert!(!result.1);
     }
 }

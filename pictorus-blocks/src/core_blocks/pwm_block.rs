@@ -1,5 +1,5 @@
 use crate::traits::Scalar;
-use pictorus_traits::{Context, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ModelClock, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the PWM block
 #[doc(hidden)]
@@ -52,7 +52,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (frequency, duty_cycle) = inputs;
@@ -78,7 +78,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (frequency, duty_cycle_ch1, duty_cycle_ch2, duty_cycle_ch3, duty_cycle_ch4) = inputs;
@@ -106,7 +106,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_pwm_default_buffer_no_panic() {
@@ -117,37 +117,37 @@ mod tests {
     #[test]
     fn test_pwm_block_1ch() {
         let mut block = PwmBlock::<f32, (f32, f32)>::default();
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let inputs = (1000.0, 0.5);
-        let output = block.process(&Parameters::new(), &context, inputs);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
         assert_eq!(output, (1000.0, 0.5));
         assert_eq!(block.buffer(), output);
 
         let inputs = (2000.0, 1.5);
-        let output = block.process(&Parameters::new(), &context, inputs);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
         assert_eq!(output, (2000.0, 1.0)); // Duty cycle clamped to 1.0
 
         let inputs = (3000.0, -0.5);
-        let output = block.process(&Parameters::new(), &context, inputs);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
         assert_eq!(output, (3000.0, 0.0)); // Duty cycle clamped to 0.0
     }
 
     #[test]
     fn test_pwm_block_4ch() {
         let mut block = PwmBlock::<f32, (f32, f32, f32, f32, f32)>::default();
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let inputs = (1000.0, 0.5, 0.3, 0.2, 0.1);
-        let output = block.process(&Parameters::new(), &context, inputs);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
         assert_eq!(output, (1000.0, 0.5, 0.3, 0.2, 0.1));
 
         let inputs = (2000.0, 1.5, 1.0, 0.8, 1.6);
-        let output = block.process(&Parameters::new(), &context, inputs);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
         assert_eq!(output, (2000.0, 1.0, 1.0, 0.8, 1.0)); // Duty cycle clamped to 1.0
 
         let inputs = (3000.0, -0.5, 0.1, -0.1, 1.0);
-        let output = block.process(&Parameters::new(), &context, inputs);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
         assert_eq!(output, (3000.0, 0.0, 0.1, 0.0, 1.0)); // Duty cycle clamped to 0.0
     }
 }

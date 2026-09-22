@@ -1,4 +1,4 @@
-use pictorus_traits::{Context, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ModelClock, Matrix, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Float;
 
@@ -45,7 +45,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         input: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.buffer = *input;
@@ -60,7 +60,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
 
     #[test]
     fn test_dac_default_buffer_no_panic() {
@@ -71,9 +71,9 @@ mod tests {
     #[test]
     fn test_dac_block() {
         let mut dac_block = DacBlock::<Matrix<1, 2, f64>>::default();
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         let output =
-            *dac_block.process(&Parameters::new(), &context, &Matrix { data: [[1.], [2.]] });
+            *dac_block.process(&Parameters::new(), &model_clock, &Matrix { data: [[1.], [2.]] });
         assert_eq!(output.data, [[1.], [2.]]);
         assert_eq!(dac_block.buffer(), &output);
     }

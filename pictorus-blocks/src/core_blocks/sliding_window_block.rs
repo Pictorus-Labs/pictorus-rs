@@ -87,7 +87,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         // Initialize the memory with the initial condition
@@ -144,7 +144,7 @@ where
     fn process(
         &mut self,
         parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         input: PassBy<Self::Inputs>,
     ) -> PassBy<'_, Self::Output> {
         const {
@@ -190,12 +190,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::StubContext;
+    use crate::testing::StubModelClock;
     use pictorus_traits::{Matrix, ProcessBlock};
 
     #[test]
     fn test_sliding_window_block() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let initial_condition = Matrix {
             data: [[-1.0], [-1.0], [-1.0]],
@@ -205,7 +205,7 @@ mod tests {
             initial_condition,
         ));
 
-        let output = *block.process(&Parameters::new(initial_condition), &c, 1.0);
+        let output = *block.process(&Parameters::new(initial_condition), &model_clock, 1.0);
         assert_eq!(output.data.as_flattened(), [-1.0, -1.0, 1.0]);
         assert_eq!(block.buffer(), &output);
 
@@ -214,22 +214,22 @@ mod tests {
         };
 
         // Test that parameters with an IC are irrelevant after the first run
-        let output = block.process(&Parameters::new(ic2), &c, 2.0);
+        let output = block.process(&Parameters::new(ic2), &model_clock, 2.0);
         assert_eq!(output.data.as_flattened(), [-1.0, 1.0, 2.0]);
         assert_eq!(block.buffer().data.as_flattened(), [-1.0, 1.0, 2.0]);
 
-        let output = block.process(&Parameters::new(ic2), &c, 3.0);
+        let output = block.process(&Parameters::new(ic2), &model_clock, 3.0);
         assert_eq!(output.data.as_flattened(), [1.0, 2.0, 3.0]);
         assert_eq!(block.buffer().data.as_flattened(), [1.0, 2.0, 3.0]);
 
-        let output = block.process(&Parameters::new(ic2), &c, 4.0);
+        let output = block.process(&Parameters::new(ic2), &model_clock, 4.0);
         assert_eq!(output.data.as_flattened(), [2.0, 3.0, 4.0]);
         assert_eq!(block.buffer().data.as_flattened(), [2.0, 3.0, 4.0]);
     }
 
     #[test]
     fn test_sliding_window_block_vectors() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let ic = Matrix {
             data: [
@@ -250,7 +250,7 @@ mod tests {
 
         let output = block.process(
             &p,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[1.0], [2.0], [3.0]],
             },
@@ -273,7 +273,7 @@ mod tests {
 
         let output = block.process(
             &p,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[4.0], [5.0], [6.0]],
             },
@@ -296,7 +296,7 @@ mod tests {
 
         let output = block.process(
             &p,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[7.0], [8.0], [9.0]],
             },
@@ -319,7 +319,7 @@ mod tests {
 
         let output = block.process(
             &p,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[10.0], [11.0], [12.0]],
             },
@@ -343,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_sliding_window_block_matrix() {
-        let c = StubContext::default();
+        let model_clock = StubModelClock::default();
 
         let ic = Matrix {
             data: [
@@ -361,7 +361,7 @@ mod tests {
 
         let output = block.process(
             &p,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[1.0, 2.0], [3.0, 4.0]],
             },
@@ -381,7 +381,7 @@ mod tests {
 
         let output = block.process(
             &p,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[5.0, 6.0], [7.0, 8.0]],
             },
@@ -401,7 +401,7 @@ mod tests {
 
         let output = block.process(
             &p,
-            &c,
+            &model_clock,
             &Matrix {
                 data: [[9.0, 10.0], [11.0, 12.0]],
             },

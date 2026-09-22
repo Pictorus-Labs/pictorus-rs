@@ -2,7 +2,7 @@ use std::convert::Infallible;
 
 use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
 use pictorus_blocks::{GpioInputBlockParams, GpioOutputBlockParams};
-use pictorus_traits::{Context, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
 
 pub struct SimGpioPin {}
 
@@ -43,7 +43,7 @@ impl InputBlock for SimGpioPin {
     fn input(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
     ) -> PassBy<'_, Self::Output> {
         self.is_high().unwrap_or(false).into()
     }
@@ -56,7 +56,7 @@ impl OutputBlock for SimGpioPin {
     fn output(
         &mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn Context,
+        _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         if inputs {

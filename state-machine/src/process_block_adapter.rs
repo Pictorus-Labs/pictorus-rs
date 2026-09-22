@@ -161,7 +161,7 @@ where
     fn process<'b>(
         &'b mut self,
         _parameters: &Self::Parameters,
-        _context: &dyn pictorus_traits::Context,
+        _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         self.events.clear();
@@ -186,7 +186,7 @@ mod tests {
         TransitionTable,
     };
     use core::time::Duration;
-    use pictorus_traits::{Context, PassBy};
+    use pictorus_traits::{ModelClock, PassBy};
 
     use super::*;
 
@@ -292,13 +292,13 @@ mod tests {
     }
 
     #[derive(Debug, Copy, Clone)]
-    pub struct StubContext {
+    pub struct StubModelClock {
         pub time: Duration,
         pub timestep: Option<Duration>,
         pub fundamental_timestep: Duration,
     }
 
-    impl Default for StubContext {
+    impl Default for StubModelClock {
         fn default() -> Self {
             Self {
                 time: Duration::from_secs(0),
@@ -308,7 +308,7 @@ mod tests {
         }
     }
 
-    impl Context for StubContext {
+    impl ModelClock for StubModelClock {
         fn time(&self) -> Duration {
             self.time
         }
@@ -327,13 +327,13 @@ mod tests {
         let foo_diagram = build_foo_diagram();
         let mut sm_block = StateMachineBlock::<_, FooConverter>::new(foo_diagram);
         let parameters = Parameter::new();
-        let context = StubContext::default();
+        let model_clock = StubModelClock::default();
         assert_eq!(sm_block.buffer(), &[0.0, 0.0]); // No events have fired yet, so the buffer should be all zeros
         let input = [1.0, 0.0, 0.0];
-        let output = sm_block.process(&parameters, &context, input.as_by());
+        let output = sm_block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, &[0.0, 1.0]); // We expect EventB to fire due to initialization,  No events fire besides that because the guard for Event1 is not satisfied
         let input = [1.0, 0.0, 42.0];
-        let output = sm_block.process(&parameters, &context, input.as_by());
+        let output = sm_block.process(&parameters, &model_clock, input.as_by());
         assert_eq!(output, &[1.0, 0.0]); // EventA should be emitted due to Event1 being true
     }
 }
