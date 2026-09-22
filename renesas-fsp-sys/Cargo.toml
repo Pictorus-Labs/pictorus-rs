@@ -1,0 +1,13 @@
+[package]
+name = "renesas-fsp-sys"
+version = "0.0.0"
+edition = "2024"
+description = "Raw FFI declarations for the Renesas FSP interface layer."
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[build-dependencies]
+bindgen = "0.72"

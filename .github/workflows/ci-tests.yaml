@@ -4,6 +4,14 @@ on:
   pull_request:
     paths:
       - "**/*.rs"
+      # renesas-fsp-sys generates its bindings from vendored C headers via a
+      # shell script, so a re-vendor or a dependency bump must run CI too.
+      # `vendor/**` is matched wholesale to catch FSP_VERSION, which src/lib.rs
+      # checks against the generated header and which is not a `.h` file.
+      - "**/*.h"
+      - "**/*.sh"
+      - "**/Cargo.toml"
+      - "renesas-fsp-sys/vendor/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -55,7 +63,7 @@ jobs:
           ]
         include:
           - target: x86_64-unknown-linux-gnu
-            platforms: "pictorus-linux pictorus-sim"
+            platforms: "pictorus-linux pictorus-sim renesas-fsp-sys"
             run_tests: true
           - target: arm-unknown-linux-musleabi
             linker: arm-linux-gnueabihf
@@ -74,7 +82,14 @@ jobs:
             feature_variants: "_std_can_std_uart _fdcan_interrupt_uart"
           - target: thumbv8m.main-none-eabi
             no_std: true
-            platforms: "pictorus-renesas"
+            platforms: "pictorus-renesas renesas-fsp-sys"
+            feature_variants: ""
+          # Hard float, matching FSP's own -mfloat-abi=hard build. This is also
+          # the only job where bindgen emits layout assertions, which is where a
+          # wrong enum width actually fails.
+          - target: thumbv8m.main-none-eabihf
+            no_std: true
+            platforms: "renesas-fsp-sys"
             feature_variants: ""
     steps:
       - name: Checkout repo
@@ -101,7 +116,9 @@ jobs:
       - name: install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libudev-dev
+          # clang/libclang are for renesas-fsp-sys: bindgen links libclang, and
+          # the crate builds -nostdlibinc against clang's own resource headers.
+          sudo apt-get install -y libudev-dev clang libclang-dev
       - name: Run check std
         run: cargo check --target ${{ matrix.target }} --all-features
         if: ${{ !matrix.no_std }}
