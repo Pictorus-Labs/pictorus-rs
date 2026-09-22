@@ -1,0 +1,19 @@
+[package]
+name = "renesas-fsp-sys"
+version = "0.0.0"
+edition = "2024"
+description = "Raw FFI declarations for the Renesas FSP interface layer."
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+# There is deliberately no `links` key, and build.rs emits no
+# `cargo:rustc-link-*`. This crate declares symbols; it never asks cargo to
+# resolve them. The FSP C sources are compiled and linked by the e2 studio
+# project that consumes the final static library, so a host `cargo build`
+# succeeds with those references left dangling.
+
+[build-dependencies]
+bindgen = "0.72"

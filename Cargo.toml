@@ -7,6 +7,7 @@ members = [
   "pictorus-sim",
   "pictorus-stm32",
   "pictorus-renesas",
+  "renesas-fsp-sys",
   "pictorus-px4",
   "px4-msgs-sys",
   "state-machine",
