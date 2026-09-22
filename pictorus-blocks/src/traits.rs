@@ -435,7 +435,7 @@ where
 /// and matrix -> matrix.
 ///
 /// Note: This currently only works for blocks that require only their parameters and inputs to
-/// determine the output. If a block requires a `ModelClock`, you will need to create a bespoke
+/// determine the output. If a block requires additional context, you will need to create a bespoke
 /// implementation.
 pub trait ApplyInto<DEST: Pass, P>: Pass + Default {
     fn apply_into<'a>(
