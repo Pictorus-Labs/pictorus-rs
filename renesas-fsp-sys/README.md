@@ -152,20 +152,6 @@ Cortex-M33 RA parts have a single-precision FPU, and FSP is built
 soft-float `thumbv8m.main-none-eabi`, which would corrupt every float-passing
 call into FSP.
 
-### Checking both
-
-Arm records both settings in an ELF object's `.ARM.attributes` section.
-`script/check-arm-abi.py` reads them out of an object or `.a` archive using only
-the Python standard library, so it works without binutils on `PATH`:
-
-```sh
-script/check-arm-abi.py \
-    <extracted Renesas.RA pack>/ra/fsp/lib/rm_motor_current/cm33_gcc/librm_motor_current.a
-```
-
-`Tag_ABI_enum_size = small` and `Tag_ABI_VFP_args = hard` in that output are
-where the two claims above come from.
-
 ## Linking
 
 Nothing here links. There is no `links` key, no `cc` invocation and no
@@ -202,19 +188,44 @@ so a cross build refuses the update rather than committing the larger variant.
 
 `vendor/` holds the FSP interface headers unmodified, in their upstream
 `ra/fsp/inc/` layout, with `vendor/FSP_VERSION` recording which pack they came
-from. Refresh them with:
+from. Both procedures below start from a pack distribution zip — download it
+from the [Renesas FSP releases page](https://github.com/renesas/fsp/releases),
+or copy it out of an e2 studio installation under
+`internal/projectgen/ra/packs/` — and both are run from this crate's root.
+
+### Upgrading to a new FSP release
 
 ```sh
-script/vendor-headers.sh path/to/FSP_Packs_vX.Y.Z.zip
+cd renesas-fsp-sys
+script/vendor-headers.sh ~/Downloads/FSP_Packs_v6.7.0.zip
+RENESAS_FSP_SYS_UPDATE_SNAPSHOT=1 cargo build -p renesas-fsp-sys
+git diff vendor/ bindings/generated.rs
 ```
 
-Adding a peripheral is four coordinated edits — miss one and you get either a
-stale binding or a header that fails to parse:
+The script rewrites `vendor/fsp/inc/` and `vendor/FSP_VERSION`; the build
+rewrites `bindings/generated.rs`. Read the snapshot diff before committing — it
+is the only place a shifted struct layout shows up, since nothing here compiles
+the FSP C. The build must be a host build (see above), and `src/lib.rs` will
+fail its test if `FSP_VERSION` and the generated `fsp_version.h` constants
+disagree.
 
-1. add its `r_*_api.h` to `HEADERS` in `script/vendor-headers.sh`,
-2. re-run that script,
-3. add the `#include` to `wrapper.h`,
-4. refresh the snapshot and review the diff.
+### Adding a peripheral
+
+Four coordinated edits — miss one and you get either a stale binding or a
+header that fails to parse:
+
+1. add its `r_*_api.h` to the `HEADERS` array in `script/vendor-headers.sh`,
+   e.g. `r_spi_api.h`;
+2. re-run the script against the *same* pack version already recorded in
+   `vendor/FSP_VERSION`, so the new header is the only change:
+   `script/vendor-headers.sh ~/Downloads/FSP_Packs_v6.6.0.zip`;
+3. add `#include "r_spi_api.h"` to `wrapper.h`;
+4. refresh the snapshot and review the diff:
+   `RENESAS_FSP_SYS_UPDATE_SNAPSHOT=1 cargo build -p renesas-fsp-sys`.
+
+If the new header names a BSP type `shim/bsp_api.h` does not declare, step 4
+fails to parse — declare it there as an `enum` carrying the real type's extreme
+values, following the existing ones.
 
 Two peripherals need more than that, and both were in scope for the prototype
 this crate came from:

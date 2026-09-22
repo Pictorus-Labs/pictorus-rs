@@ -6,9 +6,12 @@ on:
       - "**/*.rs"
       # renesas-fsp-sys generates its bindings from vendored C headers via a
       # shell script, so a re-vendor or a dependency bump must run CI too.
+      # `vendor/**` is matched wholesale to catch FSP_VERSION, which src/lib.rs
+      # checks against the generated header and which is not a `.h` file.
       - "**/*.h"
       - "**/*.sh"
       - "**/Cargo.toml"
+      - "renesas-fsp-sys/vendor/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

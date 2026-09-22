@@ -8,9 +8,10 @@
 # Usage:
 #   script/vendor-headers.sh path/to/FSP_Packs_vX.Y.Z.zip
 #
-# The pack distribution is not redistributable and is not checked in: download
-# it from Renesas, or copy it out of an e2 studio installation under
-# `internal/projectgen/ra/packs/`. Requires `unzip`.
+# The pack distribution is a few hundred MB, so it is not checked in. Download
+# it from the Renesas FSP releases page --
+# https://github.com/renesas/fsp/releases -- or copy it out of an e2 studio
+# installation under `internal/projectgen/ra/packs/`. Requires `unzip`.
 
 set -euo pipefail
 
