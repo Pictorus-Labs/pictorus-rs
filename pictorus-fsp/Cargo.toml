@@ -1,0 +1,32 @@
+[package]
+name = "pictorus-fsp"
+version = "0.0.0"
+edition = "2024"
+description = "Renesas FSP implementations of the Pictorus platform traits."
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
+pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
+pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }
+renesas-fsp-sys = { path = "../renesas-fsp-sys", version = "0.0.0" }
+embedded-hal = "1.0.0"
+libm = "0.2.11"
+log = "0.4.21"
+
+[build-dependencies]
+bindgen = "0.72"
+
+[dev-dependencies]
+embedded-alloc = "0.5"
+
+[[example]]
+name = "fsp_module"
+crate-type = ["staticlib"]
+
+[features]
+alloc = ["pictorus-blocks/alloc", "pictorus-internal/alloc"]
