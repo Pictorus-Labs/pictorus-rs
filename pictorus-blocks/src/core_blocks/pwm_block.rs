@@ -67,6 +67,42 @@ where
     }
 }
 
+/// Two duty cycles, for a timer that drives two outputs.
+///
+/// Renesas RA parts are the motivating case: a GPT or AGT has exactly two
+/// compare outputs, so neither the one-duty nor the four-duty shape fits.
+impl<T> ProcessBlock for PwmBlock<T, (T, T, T)>
+where
+    T: Default + Scalar + num_traits::Zero + num_traits::One + num_traits::Float,
+{
+    type Inputs = (T, T, T); // (Frequency, Duty Cycle Ch1, Duty Cycle Ch2)
+    type Output = (T, T, T); // (Frequency, Duty Cycle Ch1, Duty Cycle Ch2)
+    type Parameters = Parameters;
+
+    fn process<'b>(
+        &'b mut self,
+        _parameters: &Self::Parameters,
+        _model_clock: &dyn ModelClock,
+        inputs: PassBy<'_, Self::Inputs>,
+    ) -> PassBy<'b, Self::Output> {
+        let (frequency, duty_cycle_ch1, duty_cycle_ch2) = inputs;
+        let duty_cycle_ch1_clamped = duty_cycle_ch1.clamp(T::zero(), T::one());
+        let duty_cycle_ch2_clamped = duty_cycle_ch2.clamp(T::zero(), T::one());
+
+        let frequency_clamped = frequency.clamp(T::zero(), T::max_value());
+        self.pwm_values = (
+            frequency_clamped,
+            duty_cycle_ch1_clamped,
+            duty_cycle_ch2_clamped,
+        );
+        self.pwm_values
+    }
+
+    fn buffer(&self) -> PassBy<'_, Self::Output> {
+        self.pwm_values
+    }
+}
+
 impl<T> ProcessBlock for PwmBlock<T, (T, T, T, T, T)>
 where
     T: Default + Scalar + num_traits::Zero + num_traits::One + num_traits::Float,
@@ -131,6 +167,25 @@ mod tests {
         let inputs = (3000.0, -0.5);
         let output = block.process(&Parameters::new(), &model_clock, inputs);
         assert_eq!(output, (3000.0, 0.0)); // Duty cycle clamped to 0.0
+    }
+
+    #[test]
+    fn test_pwm_block_2ch() {
+        let mut block = PwmBlock::<f32, (f32, f32, f32)>::default();
+        let model_clock = StubModelClock::default();
+
+        let inputs = (1000.0, 0.5, 0.3);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
+        assert_eq!(output, (1000.0, 0.5, 0.3));
+        assert_eq!(block.buffer(), output);
+
+        let inputs = (2000.0, 1.5, 1.0);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
+        assert_eq!(output, (2000.0, 1.0, 1.0)); // Duty cycle clamped to 1.0
+
+        let inputs = (3000.0, -0.5, 0.1);
+        let output = block.process(&Parameters::new(), &model_clock, inputs);
+        assert_eq!(output, (3000.0, 0.0, 0.1)); // Duty cycle clamped to 0.0
     }
 
     #[test]

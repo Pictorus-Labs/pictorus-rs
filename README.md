@@ -30,6 +30,7 @@ These crates implement the platform-specific drivers needed to interact with I/O
 - [pictorus-sim](./pictorus-sim/) - Simulation drivers (for use in the Pictorus simulator)
 - [pictorus-stm32](./pictorus-stm32/) - STM32-specific drivers
 - [renesas-fsp-sys](./renesas-fsp-sys/) - Raw FFI declarations for the Renesas Flexible Software Package (FSP) interface layer, used by the Renesas drivers
+- [pictorus-fsp](./pictorus-fsp/) - Renesas FSP drivers (GPIO and PWM), for models hosted by an e2 studio project
 
 ## Developing
 
