@@ -104,7 +104,7 @@ impl FspInputPin {
 
 /// A pin written from the model.
 ///
-/// Pins cannot be configued under this interface, this should be done by
+/// Pins cannot be configured under this interface, this should be done by
 /// the FSP tool, which ultimately resides in <fsp_prj>/ra_gen/pin_data.c.
 ///
 /// The accepted consequence is that a pin a misconfigured output pin will

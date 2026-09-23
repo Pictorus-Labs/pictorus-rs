@@ -74,6 +74,20 @@ impl Peripherals {
         Ok(Self { bindings, ioport })
     }
 
+    /// Allow [`Peripherals::take`] to succeed again, after the model's I/O has
+    /// been dropped.
+    ///
+    /// # Safety
+    ///
+    /// Every wrapper obtained from this `Peripherals` must already have been
+    /// dropped. Calling this while one is alive permits a second owner of the
+    /// same peripheral, which is exactly what the latch exists to prevent.
+    /// The shim satisfies this by calling it only from `app_interface_free`,
+    /// after the model has been freed.
+    pub unsafe fn release() {
+        TAKEN.store(false, Ordering::Release);
+    }
+
     /// The IOPORT singleton, for driving a pin the table does not name.
     pub fn ioport(&self) -> Ioport {
         self.ioport

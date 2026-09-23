@@ -31,7 +31,6 @@ pub struct st_rm_pictorus_cfg {
 pub type rm_pictorus_cfg_t = st_rm_pictorus_cfg;
 pub type rm_pictorus_ctrl_t = core::ffi::c_void;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
 pub struct st_rm_pictorus_instance_ctrl {
     pub open: u32,
     pub p_cfg: *const rm_pictorus_cfg_t,
@@ -42,6 +41,7 @@ pub struct st_rm_pictorus_instance_ctrl {
     pub elapsed_periods: u64,
     pub timer_clock_hz: u32,
     pub timer_period_counts: u32,
+    pub timer_direction: timer_direction_t,
 }
 pub type rm_pictorus_instance_ctrl_t = st_rm_pictorus_instance_ctrl;
 #[repr(C)]

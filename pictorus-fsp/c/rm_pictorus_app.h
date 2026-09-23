@@ -162,6 +162,15 @@ typedef struct st_rm_pictorus_instance_ctrl
      * without the timer being reconfigured, which only the configurator does. */
     uint32_t timer_clock_hz;
     uint32_t timer_period_counts;
+
+    /* Whether the time base counts up or down, from timer_info_t.
+     *
+     * Not cosmetic: statusGet returns the raw counter, which on a down-counter
+     * is the count remaining in the period rather than the count elapsed.
+     * Adding it as elapsed makes model time sawtooth backwards within every
+     * period. The AGT counts down and the GPT counts up, and the AGT is the
+     * usual time base, so the down case is the common one. */
+    timer_direction_t timer_direction;
 } rm_pictorus_instance_ctrl_t;
 
 typedef struct st_rm_pictorus_api

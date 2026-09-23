@@ -70,7 +70,15 @@ static double rm_pictorus_time_seconds (rm_pictorus_instance_ctrl_t * const p_ct
     timer_instance_t const * p_timer = p_ctrl->p_cfg->p_bindings->p_time_base;
     timer_status_t           status  = {0};
 
-    uint64_t periods = p_ctrl->elapsed_periods;
+    /* elapsed_periods is 64-bit and the core is 32-bit, so a plain read is two
+     * loads and the callback can land between them. Use critical section to 
+     * guard against an ISR occuring between reads. */
+    FSP_CRITICAL_SECTION_DEFINE;
+
+    uint64_t periods;
+    FSP_CRITICAL_SECTION_ENTER;
+    periods = p_ctrl->elapsed_periods;
+    FSP_CRITICAL_SECTION_EXIT;
 
     for (uint32_t attempt = 0; attempt < 2U; attempt++)
     {
@@ -80,7 +88,11 @@ static double rm_pictorus_time_seconds (rm_pictorus_instance_ctrl_t * const p_ct
             break;
         }
 
-        uint64_t recheck = p_ctrl->elapsed_periods;
+        uint64_t recheck;
+        FSP_CRITICAL_SECTION_ENTER;
+        recheck = p_ctrl->elapsed_periods;
+        FSP_CRITICAL_SECTION_EXIT;
+
         if (recheck == periods)
         {
             break;
@@ -88,7 +100,13 @@ static double rm_pictorus_time_seconds (rm_pictorus_instance_ctrl_t * const p_ct
         periods = recheck;
     }
 
-    uint64_t counts = (periods * (uint64_t) p_ctrl->timer_period_counts) + (uint64_t) status.counter;
+    uint32_t elapsed_in_period = status.counter;
+    if (TIMER_DIRECTION_DOWN == p_ctrl->timer_direction)
+    {
+        elapsed_in_period = p_ctrl->timer_period_counts - status.counter;
+    }
+
+    uint64_t counts = (periods * (uint64_t) p_ctrl->timer_period_counts) + (uint64_t) elapsed_in_period;
 
     return (double) counts / (double) p_ctrl->timer_clock_hz;
 }
@@ -169,6 +187,7 @@ static fsp_err_t rm_pictorus_open (rm_pictorus_ctrl_t * const p_api_ctrl, rm_pic
 
     p_ctrl->timer_clock_hz      = info.clock_frequency;
     p_ctrl->timer_period_counts = info.period_counts;
+    p_ctrl->timer_direction     = info.count_direction;
 
     err = p_timer->p_api->callbackSet(p_timer->p_ctrl, rm_pictorus_timer_callback, p_ctrl, NULL);
     FSP_ERROR_RETURN(FSP_SUCCESS == err, err);
@@ -205,7 +224,7 @@ static fsp_err_t rm_pictorus_update (rm_pictorus_ctrl_t * const p_api_ctrl, doub
 }
 
 /*
- * Run the model indefiniately.
+ * Run the model indefinitely.
  *
  * Two modes. Paced waits for the time base and runs one step per timer period,
  * so the tick rate is the timer's configured period. Free running executes as
@@ -225,15 +244,21 @@ static fsp_err_t rm_pictorus_run (rm_pictorus_ctrl_t * const p_api_ctrl)
     {
         if (paced)
         {
-            if (!p_ctrl->tick_pending)
+            /* Test and clear together, under a critical section.*/
+            bool run_step = false;
+            FSP_CRITICAL_SECTION_DEFINE;
+            FSP_CRITICAL_SECTION_ENTER;
+            if (p_ctrl->tick_pending)
+            {
+                p_ctrl->tick_pending = false;
+                run_step             = true;
+            }
+            FSP_CRITICAL_SECTION_EXIT;
+
+            if (!run_step)
             {
                 continue;
             }
-
-            /* Cleared before the step, not after. Clearing afterwards would
-             * discard a tick that arrived while the model was running, hiding
-             * the overrun that missed_ticks exists to record. */
-            p_ctrl->tick_pending = false;
         }
 
         app_interface_update(p_ctrl->p_app, rm_pictorus_time_seconds(p_ctrl));

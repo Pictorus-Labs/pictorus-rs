@@ -75,26 +75,48 @@ impl FspPwm {
             duty_counts: [0; TIMER_OUTPUTS],
         };
 
-        let (instance_ref, api) = pwm.parts()?;
-        let open = api.open.ok_or(FspError::UNIMPLEMENTED)?;
-        // SAFETY: caller's contract; p_cfg is the generated const cfg.
-        check(unsafe { open(instance_ref.p_ctrl, instance_ref.p_cfg) })?;
-
-        let start = api.start.ok_or(FspError::UNIMPLEMENTED)?;
-        // SAFETY: as above.
-        check(unsafe { start(instance_ref.p_ctrl) })?;
-
-        let info = pwm.info()?;
-        if info.clock_frequency == 0 {
-            // Every later conversion divides by this. Reporting it here names
-            // the timer configuration as the cause; letting it through would
-            // surface as a division by zero deep in a tick.
-            return Err(FspError::INVALID_CLOCK);
+        {
+            let (instance_ref, api) = pwm.parts()?;
+            let open = api.open.ok_or(FspError::UNIMPLEMENTED)?;
+            // SAFETY: caller's contract; p_cfg is the generated const cfg.
+            check(unsafe { open(instance_ref.p_ctrl, instance_ref.p_cfg) })?;
         }
+
+        let info = match pwm.info() {
+            Ok(info) if info.clock_frequency != 0 => info,
+            // Every later conversion divides by the clock. Reporting it here
+            // names the timer configuration as the cause; letting it through
+            // would surface as a division by zero deep in a tick.
+            Ok(_) => return pwm.close_after_failure(FspError::INVALID_CLOCK),
+            Err(err) => return pwm.close_after_failure(err),
+        };
+
         pwm.clock_frequency = info.clock_frequency;
-        pwm.period_counts = info.period_counts;
+
+        let start_result = {
+            let (instance_ref, api) = pwm.parts()?;
+            match api.start {
+                // SAFETY: as above.
+                Some(start) => check(unsafe { start(instance_ref.p_ctrl) }),
+                None => Err(FspError::UNIMPLEMENTED),
+            }
+        };
+        if let Err(err) = start_result {
+            return pwm.close_after_failure(err);
+        }
 
         Ok(pwm)
+    }
+
+    /// Undo `open` so a failed construction does not strand the peripheral.
+    fn close_after_failure(&self, reason: FspError) -> Result<Self> {
+        if let Ok((instance, api)) = self.parts()
+            && let Some(close) = api.close
+        {
+            // SAFETY: open's contract; the instance was opened just above.
+            let _ = unsafe { close(instance.p_ctrl) };
+        }
+        Err(reason)
     }
 
     fn parts(&self) -> Result<(&timer_instance_t, &renesas_fsp_sys::timer_api_t)> {
@@ -114,31 +136,31 @@ impl FspPwm {
         Ok(unsafe { info.assume_init() })
     }
 
-    /// Counter counts for one period at `frequency` hertz.
+    /// Counter counts for one period at `frequency` hertz, or `None` if the
+    /// frequency is not a period this timer can express.
     ///
-    /// Clamped rather than rejected. A model can compute any frequency at
-    /// runtime, including zero and negative, and refusing one is not an option
-    /// inside `output`; the nearest representable period is the least
-    /// surprising answer and keeps the output well-defined.
-    fn period_counts_for(&self, frequency: f64) -> u32 {
+    /// A model can compute any frequency at runtime, including zero, negative
+    /// and NaN. Rather than substitute an extreme, an unusable frequency 
+    /// leaves the period alone.
+    fn period_counts_for(&self, frequency: f64) -> Option<u32> {
         // NaN has to be tested for rather than compared: every comparison
         // against it is false, so `frequency <= 0.0` would let it through into
         // a division whose result is also NaN, and `NaN as u32` is 0 -- a
         // period of zero counts.
-        //
-        // Positive infinity deliberately falls through. The division yields
+        if frequency.is_nan() || frequency <= 0.0 {
+            return None;
+        }
+        // Positive infinity deliberately falls through: the division yields
         // zero and the clamp below turns that into one count, which is the
         // right reading of "as fast as possible".
-        if frequency.is_nan() || frequency <= 0.0 {
-            return u32::MAX;
-        }
         let counts = libm::round(self.clock_frequency as f64 / frequency);
         if counts >= u32::MAX as f64 {
-            u32::MAX
+            // hold rather than guess at the width.
+            None
         } else if counts < 1.0 {
-            1
+            Some(1)
         } else {
-            counts as u32
+            Some(counts as u32)
         }
     }
 
@@ -168,7 +190,17 @@ impl FspPwm {
     }
 
     fn apply(&mut self, frequency: f64, duties: [f64; TIMER_OUTPUTS]) -> Result<()> {
-        let period_counts = self.period_counts_for(frequency);
+        let Some(period_counts) = self.period_counts_for(frequency) else {
+            warn_once!(
+                "PWM frequency {frequency} Hz is not representable on this timer; \
+                 holding the previous period"
+            );
+            return Ok(());
+        };
+
+        // `self.period_counts` is zero until the first successful update, so
+        // this is also what forces the first one to program everything rather
+        // than trusting the configurator's initial period and duty.
         let period_changed = period_counts != self.period_counts;
 
         if period_changed {
@@ -241,33 +273,53 @@ mod tests {
     #[test]
     fn period_is_clock_over_frequency() {
         let pwm = pwm(120_000_000);
-        assert_eq!(pwm.period_counts_for(1_000.0), 120_000);
-        assert_eq!(pwm.period_counts_for(20_000.0), 6_000);
+        assert_eq!(pwm.period_counts_for(1_000.0), Some(120_000));
+        assert_eq!(pwm.period_counts_for(20_000.0), Some(6_000));
     }
 
     #[test]
     fn period_rounds_rather_than_truncates() {
         // 120 MHz / 7 kHz = 17142.857..., so truncation would cost 0.86 counts
         // and bias every non-dividing frequency high.
-        assert_eq!(pwm(120_000_000).period_counts_for(7_000.0), 17_143);
+        assert_eq!(pwm(120_000_000).period_counts_for(7_000.0), Some(17_143));
     }
 
     #[test]
-    fn nonsense_frequencies_clamp_to_the_slowest_representable_period() {
+    fn nonsense_frequencies_hold_the_previous_period() {
         // A model can compute any of these at runtime, and `output` has no way
         // to refuse. The slowest period is the least surprising answer and
         // keeps the counter arithmetic well defined.
         let pwm = pwm(120_000_000);
-        assert_eq!(pwm.period_counts_for(0.0), u32::MAX);
-        assert_eq!(pwm.period_counts_for(-100.0), u32::MAX);
-        assert_eq!(pwm.period_counts_for(f64::NAN), u32::MAX);
-        assert_eq!(pwm.period_counts_for(f64::INFINITY), 1);
+        assert_eq!(pwm.period_counts_for(0.0), None);
+        assert_eq!(pwm.period_counts_for(-100.0), None);
+        assert_eq!(pwm.period_counts_for(f64::NAN), None);
+        // Infinity is representable: as fast as the counter goes.
+        assert_eq!(pwm.period_counts_for(f64::INFINITY), Some(1));
     }
 
     #[test]
     fn frequency_above_the_counter_clamps_to_one_count() {
         // Faster than the counter can express; one count is the floor.
-        assert_eq!(pwm(1_000).period_counts_for(10_000.0), 1);
+        assert_eq!(pwm(1_000).period_counts_for(10_000.0), Some(1));
+    }
+
+    /// A frequency slower than a 32-bit counter can express is held, not
+    /// saturated: `periodSet` on a 16-bit timer would reject `u32::MAX`.
+    #[test]
+    fn unrepresentably_slow_frequencies_are_held() {
+        // 1 Hz on a 120 MHz counter needs 120e6 counts, which fits; 0.01 Hz
+        // needs 1.2e10, which does not.
+        assert_eq!(pwm(120_000_000).period_counts_for(1.0), Some(120_000_000));
+        assert_eq!(pwm(120_000_000).period_counts_for(0.01), None);
+    }
+
+    /// Nothing has been written to a freshly opened timer, so the first update
+    /// must program the period and every duty even if the model happens to ask
+    /// for what the configurator already set.
+    #[test]
+    fn a_fresh_wrapper_has_no_cached_period() {
+        assert_eq!(pwm(120_000_000).period_counts, 0);
+        assert!(pwm(120_000_000).period_counts_for(1_000.0) != Some(0));
     }
 
     #[test]
@@ -292,8 +344,8 @@ mod tests {
         // fraction is a different count once the period moves, and periodSet
         // leaves the compare registers alone.
         let pwm = pwm(120_000_000);
-        let slow = pwm.period_counts_for(1_000.0);
-        let fast = pwm.period_counts_for(2_000.0);
+        let slow = pwm.period_counts_for(1_000.0).unwrap();
+        let fast = pwm.period_counts_for(2_000.0).unwrap();
         assert_eq!(pwm.duty_counts_for(slow, 0.5), 60_000);
         assert_eq!(pwm.duty_counts_for(fast, 0.5), 30_000);
     }
