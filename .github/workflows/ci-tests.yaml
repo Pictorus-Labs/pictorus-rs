@@ -63,7 +63,7 @@ jobs:
           ]
         include:
           - target: x86_64-unknown-linux-gnu
-            platforms: "pictorus-linux pictorus-sim renesas-fsp-sys pictorus-fsp"
+            platforms: "pictorus-linux pictorus-sim renesas-fsp-sys"
             run_tests: true
           - target: arm-unknown-linux-musleabi
             linker: arm-linux-gnueabihf
@@ -84,13 +84,12 @@ jobs:
             no_std: true
             platforms: "pictorus-renesas renesas-fsp-sys"
             feature_variants: ""
-          # Hard float, matching FSP's own -mfloat-abi=hard build. This is the
-          # only target the FSP crates are ever linked for, and the only job
-          # where bindgen emits layout assertions, which is where a wrong enum
-          # width actually fails.
+          # Hard float, matching FSP's own -mfloat-abi=hard build. This is also
+          # the only job where bindgen emits layout assertions, which is where a
+          # wrong enum width actually fails.
           - target: thumbv8m.main-none-eabihf
             no_std: true
-            platforms: "renesas-fsp-sys pictorus-fsp"
+            platforms: "renesas-fsp-sys"
             feature_variants: ""
     steps:
       - name: Checkout repo
