@@ -8,8 +8,6 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-mod diag;
-
 mod error;
 
 pub mod app;

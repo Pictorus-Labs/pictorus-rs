@@ -8,7 +8,6 @@ use pictorus_blocks::PwmBlockParams;
 use pictorus_traits::{ModelClock, OutputBlock, PassBy};
 use renesas_fsp_sys::{timer_info_t, timer_instance_t};
 
-use crate::diag::warn_once;
 use crate::error::{FspError, Result, check};
 
 /// Compare outputs a GPT or AGT drives: GTIOCA and GTIOCB.
@@ -173,10 +172,6 @@ impl FspPwm {
 
     fn apply(&mut self, frequency: f64, duties: [f64; TIMER_OUTPUTS]) -> Result<()> {
         let Some(period_counts) = self.period_counts_for(frequency) else {
-            warn_once!(
-                "PWM frequency {frequency} Hz is not representable on this timer; \
-                 holding the previous period"
-            );
             return Ok(());
         };
 
@@ -215,8 +210,8 @@ impl OutputBlock for FspPwm {
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         let (frequency, duty_a, duty_b) = inputs;
-        if let Err(err) = self.apply(frequency, [duty_a, duty_b]) {
-            warn_once!("PWM update failed: {}", err);
+        if let Err(_) = self.apply(frequency, [duty_a, duty_b]) {
+            // TODO: Error handling in FSP
         }
     }
 }

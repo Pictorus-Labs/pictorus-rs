@@ -47,14 +47,6 @@ impl fmt::Debug for FspError {
     }
 }
 
-impl fmt::Display for FspError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
-
-impl core::error::Error for FspError {}
-
 /// Errors this crate raises on its own behalf, where no FSP call failed.
 ///
 /// Mapped onto FSP codes rather than given a separate type so that every

@@ -5,7 +5,6 @@ use pictorus_blocks::{GpioInputBlockParams, GpioOutputBlockParams};
 use pictorus_traits::{InputBlock, ModelClock, OutputBlock, PassBy};
 use renesas_fsp_sys::{bsp_io_level_t, bsp_io_port_pin_t, ioport_instance_t};
 
-use crate::diag::warn_once;
 use crate::error::{FspError, Result, check};
 
 /// A pin identity, in FSP's `(port << 8) | pin` encoding.
@@ -161,7 +160,9 @@ impl InputBlock for FspInputPin {
         // A failed read holds the previous level rather than some default.
         match self.ioport.read(self.pin) {
             Ok(level) => self.last = level,
-            Err(err) => warn_once!("GPIO read failed on {:?}: {}", self.pin, err),
+            Err(_) => { 
+                // TODO: Error handling in FSP 
+            },
         }
         self.last.into()
     }
@@ -177,8 +178,8 @@ impl OutputBlock for FspOutputPin {
         _context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
-        if let Err(err) = self.ioport.write(self.pin, inputs) {
-            warn_once!("GPIO write failed on {:?}: {}", self.pin, err);
+        if let Err(_) = self.ioport.write(self.pin, inputs) {
+            // TODO: Error handling in FSP
         }
     }
 }
