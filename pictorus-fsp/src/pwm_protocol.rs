@@ -210,7 +210,7 @@ impl OutputBlock for FspPwm {
         inputs: PassBy<'_, Self::Inputs>,
     ) {
         let (frequency, duty_a, duty_b) = inputs;
-        if let Err(_) = self.apply(frequency, [duty_a, duty_b]) {
+        if self.apply(frequency, [duty_a, duty_b]).is_err() {
             // TODO: Error handling in FSP
         }
     }

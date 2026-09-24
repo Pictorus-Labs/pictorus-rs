@@ -75,22 +75,6 @@ impl FspError {
     pub const NO_SUCH_BLOCK: Self = Self(fsp_err_t::FSP_ERR_NOT_FOUND);
 }
 
-/// Lets a generated `IoManager::new() -> Result<Self, PictorusError>` use `?`
-/// on this crate's constructors without a manual `map_err` at every line.
-///
-/// Only available with `alloc`, because `PictorusError` holds two `String`s.
-/// That is not a constraint in practice: the shim initialises the heap before
-/// it calls `app_interface_new`, and `IoManager::new()` runs inside that.
-#[cfg(feature = "alloc")]
-impl From<FspError> for pictorus_internal::utils::PictorusError {
-    fn from(error: FspError) -> Self {
-        Self::new(
-            alloc::string::String::from("FspError"),
-            alloc::format!("{error}"),
-        )
-    }
-}
-
 /// Turn an `fsp_err_t` returned across FFI into a `Result`.
 pub(crate) fn check(err: fsp_err_t) -> Result<()> {
     if err == fsp_err_t::FSP_SUCCESS {

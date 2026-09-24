@@ -178,7 +178,7 @@ impl OutputBlock for FspOutputPin {
         _context: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
-        if let Err(_) = self.ioport.write(self.pin, inputs) {
+        if self.ioport.write(self.pin, inputs).is_err() {
             // TODO: Error handling in FSP
         }
     }
