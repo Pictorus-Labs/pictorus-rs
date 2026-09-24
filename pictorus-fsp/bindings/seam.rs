@@ -26,7 +26,6 @@ pub struct st_rm_pictorus_cfg {
     pub p_bindings: *const rm_pictorus_bindings_t,
     pub p_heap: *mut core::ffi::c_void,
     pub heap_bytes: usize,
-    pub paced: bool,
 }
 pub type rm_pictorus_cfg_t = st_rm_pictorus_cfg;
 pub type rm_pictorus_ctrl_t = core::ffi::c_void;

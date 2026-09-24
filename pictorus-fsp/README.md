@@ -59,11 +59,6 @@ let led = p.gpio_output(0)?;   // first GPIO block in the model
 let motor = p.pwm(0)?;         // first PWM block
 ```
 
-Nothing can check that agreement, one side is a generated Rust crate, the other
-the generated `hal_data.c` table, and they meet only at run time — a disagreement
-drives the wrong pin and reports nothing. Generating both from the same model
-description is what makes it safe.
-
 ## ABI
 
 `c/rm_pictorus_app.h` is compiled twice, by two toolchains that never see each
@@ -99,12 +94,6 @@ cargo build -p pictorus-fsp --example fsp_module --release --all-features \
     --target thumbv8m.main-none-eabihf
 ```
 
-**`thumbv8m.main-none-eabihf` — hard float.** Not the soft-float
-`thumbv8m.main-none-eabi` that `pictorus-renesas` uses. Cortex-M33 RA parts have
-a single-precision FPU and FSP is built `-mfloat-abi=hard -mfpu=fpv5-sp-d16`; a
-soft-float Rust library links against it without complaint and corrupts every
-float passed across the seam.
-
 The `fsp_module` example is the only target that proves anything about the final
 object. This crate is an rlib, and under LTO an rlib holds bitcode rather than
 ELF, so its float ABI, its enum-size attribute and which symbols survive are
@@ -112,7 +101,7 @@ unobservable until something links a `staticlib`. The example is also the
 template a generated application follows; everything in it a real application
 also needs is marked `TEMPLATE`.
 
-Six symbols have to be exported, and the link fails loudly if one is missing:
+Six symbols have to be exported, and the link fails if one is missing:
 
 ```sh
 nm -g libfsp_module.a | grep -E ' T (app_interface|pictorus_rt)'
@@ -130,19 +119,7 @@ forgot to set to Output yields a wrapper that reports success and drives
 nothing, with no diagnostic available. Reminding the user belongs in the
 module's Developer Assistance text.
 
-**A PWM block's duties 2 and 3 are unused.** A Pictorus PWM block carries four
-duty cycles; a GPT or AGT drives two outputs. Duty 0 maps to GTIOCA and duty 1 to
-GTIOCB. A model needing four independent duties needs two timers and two PWM
-blocks.
-
 **The time base must have an interrupt priority set** in the configurator. A
 blank priority allocates no vector, so the callback never fires,
 `elapsed_periods` stays zero, and model time runs to the end of one timer period
 and stops. `open()` checks for this and fails rather than letting it through.
-
-**Nothing here has run on hardware, and `rm_pictorus_app.c` has never been
-compiled.** No `arm-none-eabi-gcc` is available in CI or in the development
-environment used so far, and the shim cannot be compiled outside a configured
-project — it needs the real `bsp_api.h` and the generated
-`rm_pictorus_app_cfg.h`. It is the least-verified file here. Treat its first
-compile as a debugging session, not a formality.

@@ -57,13 +57,7 @@ const rm_pictorus_api_t g_rm_pictorus_on_rm_pictorus =
  *********************************************************************************************************************/
 
 /*
- * Elapsed seconds since open(), from the time-base timer.
- *
- * If the timer instance has no interrupt priority set in the configurator, no
- * vector is allocated, the callback never fires, `elapsed_periods` stays at
- * zero and this saturates at one period. That is the single most likely
- * misconfiguration for this module and it has no diagnostic from here, which is
- * why it is called out in the Developer Assistance text.
+ * Elapsed seconds since open(), from the general purpose timer timer.
  */
 static double rm_pictorus_time_seconds (rm_pictorus_instance_ctrl_t * const p_ctrl)
 {
@@ -113,11 +107,6 @@ static double rm_pictorus_time_seconds (rm_pictorus_instance_ctrl_t * const p_ct
 
 /*
  * Time-base expiry. Runs in ISR context and does the least possible.
- *
- * `p_context` is the control block, established by callbackSet in open(). The
- * timer's own configured callback, if the user set one, is displaced for the
- * duration -- that is what callbackSet is for, and a timer dedicated to this
- * module has no other consumer.
  */
 void rm_pictorus_timer_callback (timer_callback_args_t * p_args)
 {
@@ -168,10 +157,9 @@ static fsp_err_t rm_pictorus_open (rm_pictorus_ctrl_t * const p_api_ctrl, rm_pic
     timer_info_t             info    = {0};
 
     /*
-     * The time base must raise an interrupt, in both paced and free-running
-     * mode. Its callback is the only thing that increments `elapsed_periods`,
-     * and without that the counter read below is just the offset within one
-     * period: model time would run to the end of a single timer period and stop.
+     * The time base must raise an interrupt. Its callback is the only thing 
+     * that increments `elapsed_periods`, and without that the counter read 
+     * below is just the offset within one period.
      *
      * Checked here so that it is a clear failure at startup instead.
      */
@@ -225,11 +213,6 @@ static fsp_err_t rm_pictorus_update (rm_pictorus_ctrl_t * const p_api_ctrl, doub
 
 /*
  * Run the model indefinitely.
- *
- * Two modes. Paced waits for the time base and runs one step per timer period,
- * so the tick rate is the timer's configured period. Free running executes as
- * fast as the loop allows. Either way the time handed to the model is measured, 
- * so the two behave identically apart from their step size.
  */
 static fsp_err_t rm_pictorus_run (rm_pictorus_ctrl_t * const p_api_ctrl)
 {
@@ -238,29 +221,8 @@ static fsp_err_t rm_pictorus_run (rm_pictorus_ctrl_t * const p_api_ctrl)
     FSP_ASSERT(NULL != p_ctrl);
     FSP_ERROR_RETURN(RM_PICTORUS_OPEN == p_ctrl->open, FSP_ERR_NOT_OPEN);
 
-    bool paced = p_ctrl->p_cfg->paced;
-
     while (RM_PICTORUS_OPEN == p_ctrl->open)
     {
-        if (paced)
-        {
-            /* Test and clear together, under a critical section.*/
-            bool run_step = false;
-            FSP_CRITICAL_SECTION_DEFINE;
-            FSP_CRITICAL_SECTION_ENTER;
-            if (p_ctrl->tick_pending)
-            {
-                p_ctrl->tick_pending = false;
-                run_step             = true;
-            }
-            FSP_CRITICAL_SECTION_EXIT;
-
-            if (!run_step)
-            {
-                continue;
-            }
-        }
-
         app_interface_update(p_ctrl->p_app, rm_pictorus_time_seconds(p_ctrl));
     }
 

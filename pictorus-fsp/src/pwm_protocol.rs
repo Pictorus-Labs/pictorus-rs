@@ -1,11 +1,8 @@
 //! PWM, driven through the timer vtable.
 //!
-//! This module is where the unit mismatch between the two sides is resolved. A
-//! Pictorus PWM block speaks hertz and a duty fraction in 0..1; `timer_api_t`
+//! A Pictorus PWM block speaks hertz and a duty fraction in 0..1; `timer_api_t`
 //! speaks raw counter counts, whose meaning depends on the clock the
-//! configurator gave the timer. `infoGet` is the bridge, and it must be
-//! consulted rather than assumed: the same model on the same part reaches a
-//! different `clock_frequency` depending on the timer's source divider.
+//! configurator gave the timer.
 
 use pictorus_blocks::PwmBlockParams;
 use pictorus_traits::{ModelClock, OutputBlock, PassBy};
@@ -15,11 +12,6 @@ use crate::diag::warn_once;
 use crate::error::{FspError, Result, check};
 
 /// Compare outputs a GPT or AGT drives: GTIOCA and GTIOCB.
-///
-/// This is both the hardware's output count and the duty count of the
-/// `pictorus_blocks::PwmBlock` arity this platform uses, deliberately. The
-/// four-duty arity is an STM32 shape -- a TIM has four channels -- and binding
-/// it to an RA timer would leave two duties with nowhere to go.
 pub const TIMER_OUTPUTS: usize = 2;
 
 /// Output pin selector for `timer_api_t::dutyCycleSet`.
@@ -35,11 +27,7 @@ pub const GTIOCB: TimerPin = 1;
 /// A timer driving its [`TIMER_OUTPUTS`] compare outputs.
 ///
 /// The frequency and duty cycles arrive from the model every tick; everything
-/// electrical -- which timer, which clock source, which pins, the prescaler --
-/// is configured on the FSP timer instance and never duplicated here. That is
-/// deliberate: the current Renesas codegen emits pin and rate values into
-/// generated Rust that are *also* properties of the FSP module instance, with
-/// nothing reconciling the two.
+/// electrical is configured on the FSP timer instance.
 #[derive(Debug)]
 pub struct FspPwm {
     instance: *const timer_instance_t,
@@ -143,16 +131,10 @@ impl FspPwm {
     /// and NaN. Rather than substitute an extreme, an unusable frequency 
     /// leaves the period alone.
     fn period_counts_for(&self, frequency: f64) -> Option<u32> {
-        // NaN has to be tested for rather than compared: every comparison
-        // against it is false, so `frequency <= 0.0` would let it through into
-        // a division whose result is also NaN, and `NaN as u32` is 0 -- a
-        // period of zero counts.
+        // NaN has to be tested for rather than compared.
         if frequency.is_nan() || frequency <= 0.0 {
             return None;
         }
-        // Positive infinity deliberately falls through: the division yields
-        // zero and the clamp below turns that into one count, which is the
-        // right reading of "as fast as possible".
         let counts = libm::round(self.clock_frequency as f64 / frequency);
         if counts >= u32::MAX as f64 {
             // hold rather than guess at the width.
@@ -198,9 +180,7 @@ impl FspPwm {
             return Ok(());
         };
 
-        // `self.period_counts` is zero until the first successful update, so
-        // this is also what forces the first one to program everything rather
-        // than trusting the configurator's initial period and duty.
+        // `self.period_counts` is zero until the first successful update.
         let period_changed = period_counts != self.period_counts;
 
         if period_changed {
@@ -208,19 +188,11 @@ impl FspPwm {
         }
 
         for (channel, &duty) in duties.iter().enumerate() {
-            // `None` means the model left this output unused -- a single-output
-            // PWM block on a two-output timer. Nothing to report: the duty and
-            // the output are both absent, which is consistent.
+            // `None` means the model left this output unused.
             let Some(pin) = self.pins[channel] else {
                 continue;
             };
             let wanted = self.duty_counts_for(period_counts, duty);
-
-            // `periodSet` rewrites the period register and leaves the compare
-            // registers alone, so after a frequency change every duty is still
-            // expressed in counts of the *old* period and the actual duty
-            // fraction has shifted. Re-applying unconditionally after a period
-            // change is what keeps the fraction the model asked for.
             if period_changed || wanted != self.duty_counts[channel] {
                 self.set_duty(channel, pin, wanted)?;
             }

@@ -16,6 +16,5 @@
 #define RM_PICTORUS_APP_CFG_H_
 
 #define RM_PICTORUS_APP_CFG_HEAP_BYTES        (1024)
-#define RM_PICTORUS_APP_CFG_PACED             (1)
 
 #endif

@@ -107,28 +107,14 @@ typedef struct st_rm_pictorus_cfg
 
     /* Heap handed to the Rust allocator.
      *
-     * Sized in C rather than in Rust because the size is a GUI property, and a
-     * GUI property reaches code as a `#define` in a generated `*_cfg.h`. Rust
-     * cannot size a static array from a header it never compiles against, so C
-     * declares the buffer and passes it over. Set BSP_CFG_HEAP_BYTES to 0 so
-     * that FSP does not also reserve a `g_heap` nobody uses. 
+     * Different from BSP_CFG_HEAP_BYTES, which FSP uses to allocate its own C heap. 
+     * Pictorus with alloc requires its own heap, passing in using p_heap.
      */
     void * p_heap;
     size_t heap_bytes;
-
-    /* Run one time step per time-base period, rather than as fast as the loop
-     * allows.
-     *
-     * The tick rate is the time base timer's own period, set on that timer 
-     * in the configurator.
-     */
-    bool paced;
 } rm_pictorus_cfg_t;
 
-/* Allocated by the user, zero-initialised in .bss, populated by open(). Opaque
- * in the API signatures, as every FSP `<iface>_ctrl_t` is; the concrete type
- * below is what the user actually declares, exactly as `sci_uart_ctrl_t` is
- * opaque while `sci_uart_instance_ctrl_t` is not. */
+/* Alias pointer type for rm_pictorus_instance_ctrl_t */
 typedef void rm_pictorus_ctrl_t;
 
 /* Written into ctrl->open by open() and cleared by close(). An arbitrary
@@ -146,11 +132,9 @@ typedef struct st_rm_pictorus_instance_ctrl
      * debugger attached to a running board can answer the question. */
     char const * p_build_id;
 
-    /* Set by the time-base callback, cleared by the loop. Not a counter of work
-     * to do: a tick that arrives while the previous one is still running is a
-     * missed deadline, not a queued item, and running two ticks back to back to
-     * "catch up" would make an overrun worse. */
+    /* Set by the time-base callback, cleared by the loop. */
     volatile bool     tick_pending;
+    /* Keeps track of missed ticks in the timer callback. */
     volatile uint32_t missed_ticks;
 
     /* Software extension of the time base. The hardware counter is 16 or 32
@@ -163,13 +147,7 @@ typedef struct st_rm_pictorus_instance_ctrl
     uint32_t timer_clock_hz;
     uint32_t timer_period_counts;
 
-    /* Whether the time base counts up or down, from timer_info_t.
-     *
-     * Not cosmetic: statusGet returns the raw counter, which on a down-counter
-     * is the count remaining in the period rather than the count elapsed.
-     * Adding it as elapsed makes model time sawtooth backwards within every
-     * period. The AGT counts down and the GPT counts up, and the AGT is the
-     * usual time base, so the down case is the common one. */
+    /* Whether the time base counts up or down, from timer_info_t. */
     timer_direction_t timer_direction;
 } rm_pictorus_instance_ctrl_t;
 
@@ -183,12 +161,7 @@ typedef struct st_rm_pictorus_api
     /* Run the model for one time step. `app_time_s` is measured elapsed time */
     fsp_err_t (* update)(rm_pictorus_ctrl_t * const p_ctrl, double app_time_s);
 
-    /* Run until stopped, one step per time-base period when cfg->paced.
-     * Does not return. The model
-     * executes from this loop rather than from the timer ISR: it allocates, may
-     * write telemetry, and its duration is a function of the user's block
-     * diagram, so running it at interrupt priority would make every FSP
-     * driver's latency depend on the model. */
+    /* Run until stopped. Does not return. */
     fsp_err_t (* run)(rm_pictorus_ctrl_t * const p_ctrl);
 
     fsp_err_t (* close)(rm_pictorus_ctrl_t * const p_ctrl);
@@ -233,12 +206,7 @@ void pictorus_rt_heap_init(void * p_base, size_t bytes);
  * hal_data.c satisfies by making them const globals. */
 void pictorus_rt_bind(rm_pictorus_bindings_t const * p_bindings);
 
-/* The Pictorus C-ABI library interface, emitted by codegen for LibType.STATIC.
- *
- * The two-argument `update` is the whole signature: a third `AppDataInput *`
- * parameter appears only when the model declares C-binding I/O structs, so
- * models targeting FSP must use peripheral-mediated I/O only. That restriction
- * is what lets one model-agnostic C shim serve every model. */
+/* The Pictorus C-ABI library interface, emitted by codegen for LibType.STATIC. */
 AppInterface * app_interface_new(void);
 void           app_interface_update(AppInterface * p_app, double app_time_s);
 void           app_interface_free(AppInterface * p_app);
