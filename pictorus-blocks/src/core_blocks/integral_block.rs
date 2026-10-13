@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use crate::{
-    traits::{Float, MatrixOps},
+    traits::{Float, MatrixOps, ResetSignal},
     Scalar,
 };
 use pictorus_traits::{HasIc, Matrix, Pass, PassBy, ProcessBlock};
@@ -38,26 +38,16 @@ impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)> {
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
-        if reset.is_truthy() {
-            // Reset all state
-            self.output = parameters.ic;
-            self.previous_sample = parameters.ic;
-        } else {
-            let time_delta = F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO));
-            let delta = match parameters.method {
-                IntgeralMethod::Rectangle => integrate_rectangle_delta(sample, time_delta),
-                IntgeralMethod::Trapezoidal => {
-                    integrate_trapezoidal_delta(sample, self.previous_sample, time_delta)
-                }
-            };
-            // Add delta to previous output
-            let new_output = self.output + delta;
-
-            // Check for clamping
-            self.output = clamp(new_output, parameters.clamp_limit);
-            //Store previous sample
-            self.previous_sample = sample;
-        }
+        let time_delta = F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO));
+        step(
+            &mut self.output,
+            &mut self.previous_sample,
+            sample,
+            reset.is_truthy(),
+            parameters.ic,
+            parameters,
+            time_delta,
+        );
         self.output.as_by()
     }
 
@@ -66,16 +56,7 @@ impl<F: Float, R: Scalar> ProcessBlock for IntegralBlock<(F, R)> {
     }
 }
 
-impl<F: Float, R: Scalar> HasIc for IntegralBlock<(F, R)> {
-    fn new(parameters: &Self::Parameters) -> Self {
-        IntegralBlock::<(F, R)> {
-            previous_sample: parameters.ic,
-            output: parameters.ic,
-        }
-    }
-}
-
-impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
+impl<F: Float, const NROWS: usize, const NCOLS: usize, R: ResetSignal + Default> ProcessBlock
     for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
 {
     type Inputs = (Matrix<NROWS, NCOLS, F>, R);
@@ -89,78 +70,17 @@ impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
         inputs: PassBy<'_, Self::Inputs>,
     ) -> PassBy<'b, Self::Output> {
         let (sample, reset) = inputs;
-        if reset.is_truthy() {
-            // Reset all state
-            self.output = parameters.ic;
-            self.previous_sample = parameters.ic;
-        } else {
-            let time_delta = F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO));
-            sample.for_each(|sample, c, r| {
-                let delta = match parameters.method {
-                    IntgeralMethod::Rectangle => integrate_rectangle_delta(sample, time_delta),
-                    IntgeralMethod::Trapezoidal => integrate_trapezoidal_delta(
-                        sample,
-                        self.previous_sample.data[c][r],
-                        time_delta,
-                    ),
-                };
-                let new_output = self.output.data[c][r] + delta;
-                self.output.data[c][r] = clamp(new_output, parameters.clamp_limit);
-            });
-            self.previous_sample = *sample;
-        }
-        self.output.as_by()
-    }
-
-    fn buffer(&self) -> PassBy<'_, Self::Output> {
-        self.output.as_by()
-    }
-}
-
-impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
-    for IntegralBlock<(Matrix<NROWS, NCOLS, F>, R)>
-{
-    fn new(parameters: &Self::Parameters) -> Self {
-        IntegralBlock::<(Matrix<NROWS, NCOLS, F>, R)> {
-            previous_sample: parameters.ic,
-            output: parameters.ic,
-        }
-    }
-}
-
-impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
-    for IntegralBlock<(Matrix<NROWS, NCOLS, F>, Matrix<NROWS, NCOLS, R>)>
-{
-    type Inputs = (Matrix<NROWS, NCOLS, F>, Matrix<NROWS, NCOLS, R>);
-    type Output = Matrix<NROWS, NCOLS, F>;
-    type Parameters = Parameters<(Matrix<NROWS, NCOLS, F>, Matrix<NROWS, NCOLS, R>)>;
-
-    fn process<'b>(
-        &'b mut self,
-        parameters: &Self::Parameters,
-        model_clock: &dyn pictorus_traits::ModelClock,
-        inputs: PassBy<'_, Self::Inputs>,
-    ) -> PassBy<'b, Self::Output> {
-        let (sample, reset) = inputs;
         let time_delta = F::from_duration(model_clock.timestep().unwrap_or(Duration::ZERO));
         sample.for_each(|sample, c, r| {
-            if reset.data[c][r].is_truthy() {
-                // Reset this elements state
-                self.output.data[c][r] = parameters.ic.data[c][r];
-                self.previous_sample.data[c][r] = parameters.ic.data[c][r];
-            } else {
-                let delta = match parameters.method {
-                    IntgeralMethod::Rectangle => integrate_rectangle_delta(sample, time_delta),
-                    IntgeralMethod::Trapezoidal => integrate_trapezoidal_delta(
-                        sample,
-                        self.previous_sample.data[c][r],
-                        time_delta,
-                    ),
-                };
-                let new_output = self.output.data[c][r] + delta;
-                self.output.data[c][r] = clamp(new_output, parameters.clamp_limit);
-                self.previous_sample.data[c][r] = sample;
-            }
+            step(
+                &mut self.output.data[c][r],
+                &mut self.previous_sample.data[c][r],
+                sample,
+                R::is_reset_at(reset, c, r),
+                parameters.ic.data[c][r],
+                parameters,
+                time_delta,
+            );
         });
         self.output.as_by()
     }
@@ -170,15 +90,42 @@ impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> ProcessBlock
     }
 }
 
-impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> HasIc
-    for IntegralBlock<(Matrix<NROWS, NCOLS, F>, Matrix<NROWS, NCOLS, R>)>
+impl<T: Apply> HasIc for IntegralBlock<T>
+where
+    Self: ProcessBlock<Parameters = Parameters<T>>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
-        IntegralBlock::<(Matrix<NROWS, NCOLS, F>, Matrix<NROWS, NCOLS, R>)> {
+        IntegralBlock {
             previous_sample: parameters.ic,
             output: parameters.ic,
         }
     }
+}
+
+/// Advances the integration of a single element by one timestep, or resets it to
+/// its initial condition `ic` when `reset` is set.
+fn step<T: Apply>(
+    output: &mut T::Float,
+    previous_sample: &mut T::Float,
+    sample: T::Float,
+    reset: bool,
+    ic: T::Float,
+    parameters: &Parameters<T>,
+    time_delta: T::Float,
+) {
+    if reset {
+        *output = ic;
+        *previous_sample = ic;
+        return;
+    }
+    let delta = match parameters.method {
+        IntgeralMethod::Rectangle => integrate_rectangle_delta(sample, time_delta),
+        IntgeralMethod::Trapezoidal => {
+            integrate_trapezoidal_delta(sample, *previous_sample, time_delta)
+        }
+    };
+    *output = clamp(*output + delta, parameters.clamp_limit);
+    *previous_sample = sample;
 }
 
 fn integrate_rectangle_delta<F: Float>(sample: F, timestep: F) -> F {
@@ -200,8 +147,8 @@ fn clamp<F: Float>(value: F, limit: F) -> F {
 }
 
 pub trait Apply: Pass + Default {
-    type Output: Pass + Default;
-    type Float;
+    type Output: Pass + Default + Copy;
+    type Float: Float;
 }
 
 impl<F: Float, R: Scalar> Apply for (F, R) {
@@ -209,15 +156,8 @@ impl<F: Float, R: Scalar> Apply for (F, R) {
     type Float = F;
 }
 
-impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> Apply
+impl<F: Float, const NROWS: usize, const NCOLS: usize, R: ResetSignal + Default> Apply
     for (Matrix<NROWS, NCOLS, F>, R)
-{
-    type Output = Matrix<NROWS, NCOLS, F>;
-    type Float = F;
-}
-
-impl<F: Float, const NROWS: usize, const NCOLS: usize, R: Scalar> Apply
-    for (Matrix<NROWS, NCOLS, F>, Matrix<NROWS, NCOLS, R>)
 {
     type Output = Matrix<NROWS, NCOLS, F>;
     type Float = F;

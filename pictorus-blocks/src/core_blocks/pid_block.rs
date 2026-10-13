@@ -4,8 +4,8 @@ use super::derivative_block::Parameters as DerivativeParameters;
 use super::integral_block::{
     Apply as IntegralApply, IntgeralMethod, Parameters as IntegralParameters,
 };
-use crate::traits::{Float, MatrixOps};
-use crate::{DerivativeBlock, IntegralBlock, Scalar};
+use crate::traits::{Float, MatrixOps, ResetSignal};
+use crate::{DerivativeBlock, IntegralBlock};
 
 /// Performs PID (Proportional, Integral, Derivative) control against an error signal.
 ///
@@ -159,27 +159,6 @@ where
             integrator: IntegralBlock::new(&integrator_params),
             derivative: DerivativeBlock::new(&derivative_params),
         }
-    }
-}
-/// Reset input for the PID block: either a single scalar that resets every
-/// component of the integrator, or a matrix the same size as the input that
-/// resets each component individually.
-pub trait ResetSignal: Pass + Copy {
-    /// The integrator's inputs must share a single borrow lifetime, and the scaled
-    /// integrator sample is a local value, so the reset is copied out of its
-    /// borrowed form rather than forwarded as-is.
-    fn from_by(by: PassBy<'_, Self>) -> Self;
-}
-
-impl<S: Scalar> ResetSignal for S {
-    fn from_by(by: S) -> Self {
-        by
-    }
-}
-
-impl<const NROWS: usize, const NCOLS: usize, S: Scalar> ResetSignal for Matrix<NROWS, NCOLS, S> {
-    fn from_by(by: &Self) -> Self {
-        *by
     }
 }
 
