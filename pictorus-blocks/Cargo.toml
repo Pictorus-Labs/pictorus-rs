@@ -46,7 +46,6 @@ bitvec = { version = "1.0", default-features = false }
 approx = "0.5.1"
 rstest = "0.23"
 byteorder = { version = "1.5.0", features = ["std"] }
-derive-new = { version = "0.7.0", default-features = false }
 
 [features]
 alloc = ["generic-array/alloc"]
