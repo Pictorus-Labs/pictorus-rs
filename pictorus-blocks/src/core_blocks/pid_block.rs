@@ -117,8 +117,12 @@ where
         // Run derivative
         let derivative_params = Self::derivative_params(parameters);
 
-        let d_res =
-            ProcessBlock::process(&mut self.derivative, &derivative_params, model_clock, sample);
+        let d_res = ProcessBlock::process(
+            &mut self.derivative,
+            &derivative_params,
+            model_clock,
+            sample,
+        );
 
         // Add them all up!
         let p = T::component_mul(sample, parameters.kp);

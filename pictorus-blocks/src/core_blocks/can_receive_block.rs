@@ -270,7 +270,11 @@ mod tests {
         let mut block =
             CanReceiveBlock::<1, f64, StubCanParser, f64>::new(stub_can_parser_callback);
 
-        let output = block.process(&parameters, &runtime.model_clock(), &[42, 0, 0, 0, 0, 0, 0, 0]);
+        let output = block.process(
+            &parameters,
+            &runtime.model_clock(),
+            &[42, 0, 0, 0, 0, 0, 0, 0],
+        );
         assert_eq!(output, (42., true));
 
         runtime.set_time(Duration::from_secs(2));
@@ -292,7 +296,11 @@ mod tests {
                 stub_can_parser_callback,
             );
 
-        let output = block.process(&parameters, &runtime.model_clock(), &[42, 1, 2, 3, 4, 5, 6, 7]);
+        let output = block.process(
+            &parameters,
+            &runtime.model_clock(),
+            &[42, 1, 2, 3, 4, 5, 6, 7],
+        );
         assert_eq!(output, (42., 1., 2., 3., 4., 5., 6., true));
 
         // Simulate stale message

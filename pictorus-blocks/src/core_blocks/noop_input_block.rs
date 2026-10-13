@@ -1,4 +1,4 @@
-use pictorus_traits::{ModelClock, InputBlock, Pass, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, Pass, PassBy};
 
 pub struct NoOpInputBlockParameters {}
 

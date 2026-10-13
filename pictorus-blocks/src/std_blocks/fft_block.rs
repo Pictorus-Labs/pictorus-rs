@@ -120,8 +120,10 @@ mod tests {
         let fft_parameters = Parameters::new();
 
         for _ in 0..100 {
-            let output_2hz = sinewave_2_hz.generate(&sinewave_2_hz_parameters, &runtime.model_clock);
-            let output_3hz = sinewave_3_hz.generate(&sinewave_3_hz_parameters, &runtime.model_clock);
+            let output_2hz =
+                sinewave_2_hz.generate(&sinewave_2_hz_parameters, &runtime.model_clock);
+            let output_3hz =
+                sinewave_3_hz.generate(&sinewave_3_hz_parameters, &runtime.model_clock);
 
             let combined = output_2hz + output_3hz;
 

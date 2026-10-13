@@ -223,7 +223,8 @@ mod tests {
             <SinewaveBlock<f64> as GeneratorBlock>::Parameters::new(1.0, 1.0, f64::PI / 2., 0.0);
 
         for _ in 0..100 {
-            let sine_output = sine_wave_block.generate(&sine_wave_parameters, &runtime.model_clock());
+            let sine_output =
+                sine_wave_block.generate(&sine_wave_parameters, &runtime.model_clock());
             let cosine_output =
                 cosine_wave_block.generate(&cosine_wave_parameters, &runtime.model_clock());
             runtime.tick();
@@ -238,8 +239,11 @@ mod tests {
         }
 
         // Reset with any input value
-        let reset_output =
-            block.process(&parameters, &runtime.model_clock(), (1000000.0, true).as_by());
+        let reset_output = block.process(
+            &parameters,
+            &runtime.model_clock(),
+            (1000000.0, true).as_by(),
+        );
         assert_relative_eq!(reset_output, 0.0, epsilon = 0.01);
         assert_relative_eq!(block.buffer(), reset_output);
     }

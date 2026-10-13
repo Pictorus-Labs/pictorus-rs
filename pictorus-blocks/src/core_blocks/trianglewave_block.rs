@@ -51,8 +51,8 @@ where
         let four: F = two + two;
         let amplitude: F = parameters.amplitude.cast_element();
         let bias: F = parameters.bias.cast_element();
-        let t =
-            (parameters.frequency * F::from_duration(model_clock.time()) + parameters.phase) / (F::TAU);
+        let t = (parameters.frequency * F::from_duration(model_clock.time()) + parameters.phase)
+            / (F::TAU);
         let t = num_traits::Float::fract(t);
         let y = if t < F::one() / two { t } else { F::one() - t };
         // y is in the range [0, 0.5] over a t value from 0 to 1. Scale it by 4 ( to a range of [0, 2] )

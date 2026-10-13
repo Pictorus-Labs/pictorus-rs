@@ -124,7 +124,11 @@ mod tests {
         let mut block = NoOpOutputBlock::<(Matrix<1, 3, f64>, Matrix<2, 2, f64>)>::default();
         let params = NoOpOutputBlockParameters::new();
         let model_clock = StubModelClock::default();
-        block.output(&params, &model_clock, (&Matrix::default(), &Matrix::default()));
+        block.output(
+            &params,
+            &model_clock,
+            (&Matrix::default(), &Matrix::default()),
+        );
 
         let mut block =
             NoOpOutputBlock::<(Matrix<1, 3, f64>, Matrix<2, 2, f64>, Matrix<3, 1, f64>)>::default();
@@ -283,6 +287,10 @@ mod tests {
         let mut block = NoOpOutputBlock::<(f32, Matrix<2, 2, f32>, f32)>::default();
         let params = NoOpOutputBlockParameters::new();
         let model_clock = StubModelClock::default();
-        block.output(&params, &model_clock, (42.0_f32, &Matrix::default(), 43.0_f32));
+        block.output(
+            &params,
+            &model_clock,
+            (42.0_f32, &Matrix::default(), 43.0_f32),
+        );
     }
 }
