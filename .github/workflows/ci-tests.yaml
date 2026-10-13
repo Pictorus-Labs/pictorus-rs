@@ -22,21 +22,6 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  fmt:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: Set Up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          default: true
-          components: rustfmt
-      - name: Check formatting
-        run: cargo fmt --all -- --check
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -50,6 +35,8 @@ jobs:
           toolchain: stable
           default: true
           components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --all -- --check
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
       - name: Run Cargo Deny
