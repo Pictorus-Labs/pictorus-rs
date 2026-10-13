@@ -427,6 +427,40 @@ where
         mat
     }
 }
+
+/// A reset input for a block with element-wise state: either a single scalar that
+/// resets every element, or a matrix the same size as the signal that resets each
+/// element individually.
+pub trait ResetSignal: Pass + Copy {
+    /// Returns true if the element at column `c`, row `r` should be reset.
+    fn is_reset_at(by: PassBy<'_, Self>, c: usize, r: usize) -> bool;
+
+    /// Copies the reset out of its borrowed form. Useful when a block forwards the
+    /// reset to a sub-block alongside a locally computed value, since the sub-block's
+    /// inputs must share a single borrow lifetime.
+    fn from_by(by: PassBy<'_, Self>) -> Self;
+}
+
+impl<S: Scalar> ResetSignal for S {
+    fn is_reset_at(by: S, _c: usize, _r: usize) -> bool {
+        by.is_truthy()
+    }
+
+    fn from_by(by: S) -> Self {
+        by
+    }
+}
+
+impl<const NROWS: usize, const NCOLS: usize, S: Scalar> ResetSignal for Matrix<NROWS, NCOLS, S> {
+    fn is_reset_at(by: &Self, c: usize, r: usize) -> bool {
+        by.data[c][r].is_truthy()
+    }
+
+    fn from_by(by: &Self) -> Self {
+        *by
+    }
+}
+
 /// The Apply and ApplyInto traits can be used in combination to easily define a block
 /// that can accept a dynamic number of inputs as same-sized matrices or scalars, and output
 /// a single value that is either a matrix or scalar.

@@ -4,8 +4,8 @@ use super::derivative_block::Parameters as DerivativeParameters;
 use super::integral_block::{
     Apply as IntegralApply, IntgeralMethod, Parameters as IntegralParameters,
 };
-use crate::traits::{Float, MatrixOps};
-use crate::{DerivativeBlock, IntegralBlock, Scalar};
+use crate::traits::{Float, MatrixOps, ResetSignal};
+use crate::{DerivativeBlock, IntegralBlock};
 
 /// Performs PID (Proportional, Integral, Derivative) control against an error signal.
 ///
@@ -13,8 +13,10 @@ use crate::{DerivativeBlock, IntegralBlock, Scalar};
 /// In the case of a matrix, the PID control is applied element-wise.
 ///
 /// This block also accepts a second reset input, which can be used to reset the
-/// integrator.
-pub struct PidBlock<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize>
+/// integrator. The reset is either a single scalar that resets every component of
+/// the integrator, or a matrix the same size as the input that resets each
+/// component individually. See [`ResetSignal`].
+pub struct PidBlock<T: ComponentOps, R: ResetSignal, const ND_SAMPLES: usize>
 where
     (T, R): IntegralApply<Output = T>,
 {
@@ -23,7 +25,8 @@ where
     derivative: DerivativeBlock<T, ND_SAMPLES>,
 }
 
-impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> Default for PidBlock<T, R, ND_SAMPLES>
+impl<T: ComponentOps, R: ResetSignal, const ND_SAMPLES: usize> Default
+    for PidBlock<T, R, ND_SAMPLES>
 where
     (T, R): IntegralApply<Output = T>,
 {
@@ -64,9 +67,10 @@ impl<T: IntegralApply> Parameters<T> {
     }
 }
 
-impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> PidBlock<T, R, ND_SAMPLES>
+impl<T: ComponentOps, R: ResetSignal, const ND_SAMPLES: usize> PidBlock<T, R, ND_SAMPLES>
 where
-    (T, R): IntegralApply<Output = T, Float = T::Float>,
+    (T, R): IntegralApply<Output = T, Float = T::Float>
+        + for<'a> Pass<By<'a> = (PassBy<'a, T>, PassBy<'a, R>)>,
 {
     fn integrator_params(parameters: &Parameters<(T, R)>) -> IntegralParameters<(T, R)> {
         IntegralParameters {
@@ -84,14 +88,15 @@ where
 // It needs to enforce its own bounds as well as those of the sub-blocks. `ComponentOps` is the trait this block defines
 // itself. The first two sections of the where clause are the bounds for the sub-blocks. And the last section is the bound
 // for the Integral's `Apply` trait.
-impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> ProcessBlock
+impl<T: ComponentOps, R: ResetSignal, const ND_SAMPLES: usize> ProcessBlock
     for PidBlock<T, R, ND_SAMPLES>
 where
     DerivativeBlock<T, ND_SAMPLES>:
         ProcessBlock<Output = T, Inputs = T, Parameters = DerivativeParameters<T>>,
     IntegralBlock<(T, R)>:
         ProcessBlock<Output = T, Inputs = (T, R), Parameters = IntegralParameters<(T, R)>>,
-    (T, R): IntegralApply<Output = T, Float = T::Float> + for<'a> Pass<By<'a> = (PassBy<'a, T>, R)>,
+    (T, R): IntegralApply<Output = T, Float = T::Float>
+        + for<'a> Pass<By<'a> = (PassBy<'a, T>, PassBy<'a, R>)>,
 {
     type Inputs = (T, R);
     type Output = T;
@@ -105,13 +110,13 @@ where
     ) -> pictorus_traits::PassBy<'b, Self::Output> {
         let integrator_params = Self::integrator_params(parameters);
         // Run integrator
-        let (sample, reset): (PassBy<'_, T>, R) = inputs;
-        let i_sample = T::component_mul(sample, parameters.ki);
+        let (sample, reset) = inputs;
+        let i_inputs = (T::component_mul(sample, parameters.ki), R::from_by(reset));
         let i = ProcessBlock::process(
             &mut self.integrator,
             &integrator_params,
             model_clock,
-            (i_sample.as_by(), reset),
+            i_inputs.as_by(),
         );
 
         // Run derivative
@@ -137,13 +142,14 @@ where
     }
 }
 
-impl<T: ComponentOps, R: Scalar, const ND_SAMPLES: usize> HasIc for PidBlock<T, R, ND_SAMPLES>
+impl<T: ComponentOps, R: ResetSignal, const ND_SAMPLES: usize> HasIc for PidBlock<T, R, ND_SAMPLES>
 where
     DerivativeBlock<T, ND_SAMPLES>:
         ProcessBlock<Output = T, Inputs = T, Parameters = DerivativeParameters<T>> + HasIc,
     IntegralBlock<(T, R)>:
         ProcessBlock<Output = T, Inputs = (T, R), Parameters = IntegralParameters<(T, R)>> + HasIc,
-    (T, R): IntegralApply<Output = T, Float = T::Float> + for<'a> Pass<By<'a> = (PassBy<'a, T>, R)>,
+    (T, R): IntegralApply<Output = T, Float = T::Float>
+        + for<'a> Pass<By<'a> = (PassBy<'a, T>, PassBy<'a, R>)>,
 {
     fn new(parameters: &Self::Parameters) -> Self {
         let integrator_params = Self::integrator_params(parameters);
@@ -155,6 +161,7 @@ where
         }
     }
 }
+
 // It would be nice to have these types of common operators defined somewhere reusable
 // I.e. mixed scalar/matrix addition, multiplication, etc. This would reduce a lot
 // of repetition in block implementations
@@ -592,5 +599,74 @@ mod tests {
             block.buffer().data.as_flattened(),
             expected.data.as_flattened()
         );
+    }
+
+    #[test]
+    fn test_i_matrix_scalar_reset() {
+        let mut runtime = StubRuntime::new(StubModelClock::new(
+            Duration::ZERO,
+            None,
+            Duration::from_secs_f64(1.0),
+        ));
+
+        let params = Parameters::new(Matrix::zeroed(), 0.0, 3.0, 0.0, 10.0);
+        let mut i_block = PidBlock::<Matrix<2, 2, f64>, bool, 2>::new(&params);
+
+        let input = Matrix {
+            data: [[1.0, 1.0], [1.0, 1.0]],
+        };
+        i_block.process(&params, &runtime.model_clock(), (&input, false));
+        runtime.tick();
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, false));
+        assert_eq!(res.data, [[3.0, 3.0], [3.0, 3.0]]);
+        runtime.tick();
+
+        // A scalar reset clears every component
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, true));
+        assert_eq!(res.data, [[0.0, 0.0], [0.0, 0.0]]);
+        assert_eq!(i_block.buffer().data, [[0.0, 0.0], [0.0, 0.0]]);
+        runtime.tick();
+
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, false));
+        assert_eq!(res.data, [[3.0, 3.0], [3.0, 3.0]]);
+    }
+
+    #[test]
+    fn test_i_matrix_matrix_reset() {
+        let mut runtime = StubRuntime::new(StubModelClock::new(
+            Duration::ZERO,
+            None,
+            Duration::from_secs_f64(1.0),
+        ));
+
+        let ic = Matrix {
+            data: [[1.0, 2.0], [3.0, 4.0]],
+        };
+        let params = Parameters::new(ic, 0.0, 3.0, 0.0, 100.0);
+        let mut i_block = PidBlock::<Matrix<2, 2, f64>, Matrix<2, 2, bool>, 2>::new(&params);
+
+        let input = Matrix {
+            data: [[1.0, 1.0], [1.0, 1.0]],
+        };
+        let no_reset = Matrix::<2, 2, bool>::zeroed();
+        let partial_reset = Matrix {
+            data: [[true, false], [false, true]],
+        };
+
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, &no_reset));
+        assert_eq!(res.data, [[1.0, 2.0], [3.0, 4.0]]);
+        runtime.tick();
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, &no_reset));
+        assert_eq!(res.data, [[4.0, 5.0], [6.0, 7.0]]);
+        runtime.tick();
+
+        // Only the flagged components return to the initial condition
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, &partial_reset));
+        assert_eq!(res.data, [[1.0, 8.0], [9.0, 4.0]]);
+        assert_eq!(i_block.buffer().data, [[1.0, 8.0], [9.0, 4.0]]);
+        runtime.tick();
+
+        let res = i_block.process(&params, &runtime.model_clock(), (&input, &no_reset));
+        assert_eq!(res.data, [[4.0, 11.0], [12.0, 7.0]]);
     }
 }
