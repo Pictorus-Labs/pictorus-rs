@@ -478,14 +478,19 @@ mod tests {
         assert_eq!(output.data, [[12.0], [12.0], [50.0]]);
 
         runtime.tick();
-        let output = block.process(&parameters, &runtime.model_clock(), (
-            Matrix {
-                data: [[1.0], [1.0], [25.0]],
-            },
-            Matrix {
-                data: [[false], [true], [false]],
-            },
-        ).as_by());
+        let output = block.process(
+            &parameters,
+            &runtime.model_clock(),
+            (
+                Matrix {
+                    data: [[1.0], [1.0], [25.0]],
+                },
+                Matrix {
+                    data: [[false], [true], [false]],
+                },
+            )
+                .as_by(),
+        );
         // Partial reset, the reset outputs should return to the initial condition
         assert_eq!(output.data, [[13.0], [10.0], [50.0]]);
     }
