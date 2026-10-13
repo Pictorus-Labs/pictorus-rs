@@ -49,8 +49,8 @@ where
         let two = F::one() + F::one();
         let amplitude: F = parameters.amplitude.cast_element();
         let bias: F = parameters.bias.cast_element();
-        let time =
-            (parameters.frequency * F::from_duration(model_clock.time()) + parameters.phase) / F::TAU;
+        let time = (parameters.frequency * F::from_duration(model_clock.time()) + parameters.phase)
+            / F::TAU;
         let x = two * (time - num_traits::Float::floor(time)) - F::one();
         let val = amplitude * x + bias;
         self.buffer = val.cast_element();

@@ -576,7 +576,11 @@ mod tests {
 
         // Test with 7 elements
         let mut block = JsonDumpBlock::<(f64, f32, f32, f64, f32, f64, f32)>::default();
-        let output = block.process(&parameters, &model_clock, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0));
+        let output = block.process(
+            &parameters,
+            &model_clock,
+            (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0),
+        );
         let expected = json::to_string(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]);
         assert_eq!(output, expected.as_bytes());
 

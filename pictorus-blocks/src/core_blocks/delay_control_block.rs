@@ -1,6 +1,6 @@
 use crate::traits::Scalar;
 use core::time::Duration;
-use pictorus_traits::{ModelClock, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{Matrix, ModelClock, Pass, PassBy, ProcessBlock};
 
 /// Debounce or throttle an input signal.
 ///
@@ -83,11 +83,21 @@ impl<S: Scalar, O: Scalar> Apply<O> for S {
         let is_true = input.is_truthy();
         match parameters.method {
             DelayControlMethod::Debounce => {
-                *store = O::from_bool(debounce(is_true, state, parameters.delay, model_clock.time()));
+                *store = O::from_bool(debounce(
+                    is_true,
+                    state,
+                    parameters.delay,
+                    model_clock.time(),
+                ));
             }
 
             DelayControlMethod::Throttle => {
-                *store = O::from_bool(throttle(is_true, state, parameters.delay, model_clock.time()));
+                *store = O::from_bool(throttle(
+                    is_true,
+                    state,
+                    parameters.delay,
+                    model_clock.time(),
+                ));
             }
         }
         store.as_by()

@@ -228,11 +228,18 @@ mod tests {
         let mut high_pass_50_hz_data = [0.0; 1000];
 
         for i in 0..1000 {
-            sine_data[i] = sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.model_clock());
-            high_pass_1_hz_data[i] =
-                block_1_hz.process(&parameters_1_hz, &runtime.model_clock(), sine_data[i].as_by());
-            high_pass_50_hz_data[i] =
-                block_50_hz.process(&parameters_50_hz, &runtime.model_clock(), sine_data[i].as_by());
+            sine_data[i] =
+                sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.model_clock());
+            high_pass_1_hz_data[i] = block_1_hz.process(
+                &parameters_1_hz,
+                &runtime.model_clock(),
+                sine_data[i].as_by(),
+            );
+            high_pass_50_hz_data[i] = block_50_hz.process(
+                &parameters_50_hz,
+                &runtime.model_clock(),
+                sine_data[i].as_by(),
+            );
             runtime.tick();
         }
 
@@ -262,11 +269,18 @@ mod tests {
         let mut low_pass_50_hz_data = [0.0; 1000];
 
         for i in 0..1000 {
-            sine_data[i] = sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.model_clock());
-            low_pass_1_hz_data[i] =
-                block_1_hz.process(&parameters_1_hz, &runtime.model_clock(), sine_data[i].as_by());
-            low_pass_50_hz_data[i] =
-                block_50_hz.process(&parameters_50_hz, &runtime.model_clock(), sine_data[i].as_by());
+            sine_data[i] =
+                sinewave_25_hz.generate(&sinewave_25_hz_parameters, &runtime.model_clock());
+            low_pass_1_hz_data[i] = block_1_hz.process(
+                &parameters_1_hz,
+                &runtime.model_clock(),
+                sine_data[i].as_by(),
+            );
+            low_pass_50_hz_data[i] = block_50_hz.process(
+                &parameters_50_hz,
+                &runtime.model_clock(),
+                sine_data[i].as_by(),
+            );
             runtime.tick();
         }
 

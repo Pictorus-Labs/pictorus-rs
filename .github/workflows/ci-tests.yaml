@@ -35,6 +35,8 @@ jobs:
           toolchain: stable
           default: true
           components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --all -- --check
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
       - name: Run Cargo Deny

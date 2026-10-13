@@ -13,7 +13,7 @@ use embassy_stm32::can::{Can, Fifo, Frame, filter::Mask32};
 use embedded_can::{ErrorKind, Frame as EmbeddedFrame, nb::Can as EmbeddedCan};
 use pictorus_blocks::CanReceiveBlockParams;
 use pictorus_blocks::CanTransmitBlockParams;
-use pictorus_traits::{ByteSliceSignal, ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ByteSliceSignal, InputBlock, ModelClock, OutputBlock, PassBy};
 
 pub struct CanConnection<'a> {
     can: Can<'a>,

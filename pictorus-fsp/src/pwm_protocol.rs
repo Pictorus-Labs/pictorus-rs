@@ -127,7 +127,7 @@ impl FspPwm {
     /// frequency is not a period this timer can express.
     ///
     /// A model can compute any frequency at runtime, including zero, negative
-    /// and NaN. Rather than substitute an extreme, an unusable frequency 
+    /// and NaN. Rather than substitute an extreme, an unusable frequency
     /// leaves the period alone.
     fn period_counts_for(&self, frequency: f64) -> Option<u32> {
         // NaN has to be tested for rather than compared.

@@ -118,7 +118,8 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_scalar() {
-        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock =
+            StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let parameters = Parameters::new(0.0, time_constants_s);
@@ -140,7 +141,8 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_matrix() {
-        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock =
+            StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let ic = Matrix {
@@ -182,7 +184,8 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_scalar_w_ic() {
-        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock =
+            StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let parameters = Parameters::new(0.0, time_constants_s);
@@ -211,7 +214,8 @@ mod tests {
 
     #[test]
     fn test_iir_filter_block_matrix_w_ic() {
-        let mut model_clock = StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
+        let mut model_clock =
+            StubModelClock::new(Duration::from_secs(0), None, Duration::from_secs(1));
         // Use 1s settling time
         let time_constants_s = 1.0;
         let ic = Matrix {

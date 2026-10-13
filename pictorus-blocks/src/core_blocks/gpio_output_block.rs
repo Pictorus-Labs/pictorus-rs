@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use pictorus_traits::{ByteSliceSignal, ModelClock, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, Matrix, ModelClock, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Scalar;
 

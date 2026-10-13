@@ -1,6 +1,6 @@
 use crate::traits::Scalar;
 use core::ops::{Mul, Sub};
-use pictorus_traits::{ModelClock, Matrix, Pass, PassBy};
+use pictorus_traits::{Matrix, ModelClock, Pass, PassBy};
 
 pub struct Parameters {
     // No parameters needed for this block

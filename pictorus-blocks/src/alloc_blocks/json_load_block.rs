@@ -4,7 +4,7 @@ use core::time::Duration;
 use num_traits::AsPrimitive;
 
 use miniserde::json::{self, Array, Number, Object, Value};
-use pictorus_traits::{ByteSliceSignal, ModelClock, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{ByteSliceSignal, Matrix, ModelClock, Pass, PassBy, ProcessBlock};
 
 use crate::{
     stale_tracker::{duration_from_ms_f64, StaleTracker},

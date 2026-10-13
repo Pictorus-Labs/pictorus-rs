@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 use pictorus_blocks::{SpiReceiveBlockParams, SpiTransmitBlockParams};
-use pictorus_traits::{ByteSliceSignal, ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ByteSliceSignal, InputBlock, ModelClock, OutputBlock, PassBy};
 
 use pictorus_internal::protocols::Flush;
 

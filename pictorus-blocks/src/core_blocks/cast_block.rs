@@ -1,6 +1,6 @@
 use crate::traits::Scalar;
 use num_traits::{AsPrimitive, Float, PrimInt};
-use pictorus_traits::{ModelClock, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{Matrix, ModelClock, Pass, PassBy, ProcessBlock};
 
 /// Parameters for the Cast block
 ///

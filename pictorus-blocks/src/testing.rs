@@ -8,16 +8,25 @@
 //! This crate should be considered unstable and only used as a development dependency.
 
 extern crate std;
-use derive_new::new;
 use pictorus_traits::ModelClock;
 use std::time::Duration;
 
 /// An implementation of the [`pictorus_traits::ModelClock`] trait that can be used in unit tests.
-#[derive(Debug, Copy, Clone, new)]
+#[derive(Debug, Copy, Clone)]
 pub struct StubModelClock {
     pub time: Duration,
     pub timestep: Option<Duration>,
     pub fundamental_timestep: Duration,
+}
+
+impl StubModelClock {
+    pub fn new(time: Duration, timestep: Option<Duration>, fundamental_timestep: Duration) -> Self {
+        Self {
+            time,
+            timestep,
+            fundamental_timestep,
+        }
+    }
 }
 
 impl Default for StubModelClock {
@@ -41,9 +50,15 @@ impl ModelClock for StubModelClock {
 }
 
 /// A struct that wraps a [`StubModelClock`] and provides a convenient way to simulate the passage of time in a unit test.
-#[derive(Debug, new, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct StubRuntime {
     pub model_clock: StubModelClock,
+}
+
+impl StubRuntime {
+    pub fn new(model_clock: StubModelClock) -> Self {
+        Self { model_clock }
+    }
 }
 
 impl StubRuntime {

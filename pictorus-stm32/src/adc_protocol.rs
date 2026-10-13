@@ -1,7 +1,7 @@
 use embassy_stm32::adc::{Adc, AnyAdcChannel};
 use pictorus_blocks::AdcBlockParams;
 use pictorus_internal::protocols::Flush;
-use pictorus_traits::{ModelClock, InputBlock, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, PassBy};
 
 pub struct AdcWrapper<'a, T: embassy_stm32::adc::Instance> {
     adc: Adc<'a, T>,

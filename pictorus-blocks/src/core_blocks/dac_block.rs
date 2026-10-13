@@ -1,4 +1,4 @@
-use pictorus_traits::{ModelClock, Matrix, Pass, PassBy, ProcessBlock};
+use pictorus_traits::{Matrix, ModelClock, Pass, PassBy, ProcessBlock};
 
 use crate::traits::Float;
 
@@ -72,8 +72,11 @@ mod tests {
     fn test_dac_block() {
         let mut dac_block = DacBlock::<Matrix<1, 2, f64>>::default();
         let model_clock = StubModelClock::default();
-        let output =
-            *dac_block.process(&Parameters::new(), &model_clock, &Matrix { data: [[1.], [2.]] });
+        let output = *dac_block.process(
+            &Parameters::new(),
+            &model_clock,
+            &Matrix { data: [[1.], [2.]] },
+        );
         assert_eq!(output.data, [[1.], [2.]]);
         assert_eq!(dac_block.buffer(), &output);
     }
