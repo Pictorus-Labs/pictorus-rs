@@ -160,9 +160,9 @@ impl InputBlock for FspInputPin {
         // A failed read holds the previous level rather than some default.
         match self.ioport.read(self.pin) {
             Ok(level) => self.last = level,
-            Err(_) => { 
-                // TODO: Error handling in FSP 
-            },
+            Err(_) => {
+                // TODO: Error handling in FSP
+            }
         }
         self.last.into()
     }

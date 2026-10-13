@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use linux_embedded_hal::spidev::{Spidev, SpidevOptions};
 use pictorus_blocks::{SpiReceiveBlockParams, SpiTransmitBlockParams};
 use pictorus_traits::ByteSliceSignal;
-use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, OutputBlock, PassBy};
 
 use super::CdevPin;
 use pictorus_internal::protocols::{Flush, OutputPin};

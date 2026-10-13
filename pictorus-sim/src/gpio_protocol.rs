@@ -2,7 +2,7 @@ use std::convert::Infallible;
 
 use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
 use pictorus_blocks::{GpioInputBlockParams, GpioOutputBlockParams};
-use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, OutputBlock, PassBy};
 
 pub struct SimGpioPin {}
 

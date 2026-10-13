@@ -2,7 +2,7 @@ pub use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
 use linux_embedded_hal::gpio_cdev::{Chip, LineRequestFlags};
 use pictorus_blocks::{GpioInputBlockParams, GpioOutputBlockParams};
 use pictorus_internal::utils::PictorusError;
-use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, OutputBlock, PassBy};
 
 // TODO: This should be configurable by block param
 const GPIO_CHIP: &str = "/dev/gpiochip0";

@@ -1,6 +1,6 @@
 use pictorus_blocks::AdcBlockParams;
 use pictorus_internal::protocols::Flush;
-use pictorus_traits::{ModelClock, InputBlock, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, PassBy};
 
 pub struct SimAdc {}
 

@@ -2,7 +2,7 @@ use embedded_can::{Frame as EmbeddedFrame, nb::Can};
 use log::debug;
 use pictorus_blocks::CanReceiveBlockParams;
 use pictorus_blocks::CanTransmitBlockParams;
-use pictorus_traits::{ByteSliceSignal, ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{ByteSliceSignal, InputBlock, ModelClock, OutputBlock, PassBy};
 use socketcan::{CanFrame, CanSocket, Socket};
 
 use pictorus_internal::protocols::CanProtocol;

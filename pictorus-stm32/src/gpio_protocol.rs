@@ -1,6 +1,6 @@
 use embedded_hal::digital::{ErrorType, InputPin, OutputPin};
 use pictorus_blocks::{GpioInputBlockParams, GpioOutputBlockParams};
-use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, OutputBlock, PassBy};
 
 pub struct Stm32InputPin<'d>(embassy_stm32::gpio::Input<'d>);
 impl<'d> Stm32InputPin<'d> {

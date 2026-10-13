@@ -6,7 +6,7 @@ use log::warn;
 use pictorus_blocks::{SpiReceiveBlockParams, SpiTransmitBlockParams};
 use pictorus_internal::protocols::{BUFF_SIZE_BYTES, Flush};
 use pictorus_traits::ByteSliceSignal;
-use pictorus_traits::{ModelClock, InputBlock, OutputBlock, PassBy};
+use pictorus_traits::{InputBlock, ModelClock, OutputBlock, PassBy};
 
 pub struct SpiWrapper<'a> {
     spi: Spi<'a, Blocking>,
