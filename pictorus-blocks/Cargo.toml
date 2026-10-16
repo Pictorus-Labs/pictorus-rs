@@ -39,7 +39,10 @@ generic-array = { version = "1.2.0", default-features = false }
 
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-fmu-runner = "0.4.3"
+# Pictorus fork with secure quick-xml and non-yanked zip. This must be a direct
+# git dependency rather than a workspace [patch], since patches do not apply to
+# downstream crates.
+fmu-runner = { git = "https://github.com/Pictorus-Labs/fmu-runner-rs", rev = "e5f960605e08739440b49140288a5540bf91b36e" }
 
 [dev-dependencies]
 bitvec = { version = "1.0", default-features = false }
