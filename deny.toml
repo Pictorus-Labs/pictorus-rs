@@ -64,6 +64,9 @@ feature-depth = 1
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 [advisories]
 unmaintained = 'all'
+# Downstream crates resolve without our Cargo.lock and cannot select yanked
+# versions, so a yanked dependency here is a broken dependency for them.
+yanked = 'deny'
 # The path where the advisory databases are cloned/fetched into
 #db-path = "$CARGO_HOME/advisory-dbs"
 # The url(s) of the advisory databases to use
@@ -245,6 +248,7 @@ allow-git = [
     "https://github.com/embassy-rs/stm32-data-generated",
     "https://github.com/Pictorus-Labs/ra4m2-hal",
     "https://github.com/amcelroy/ra-pac",
+    "https://github.com/Pictorus-Labs/fmu-runner-rs",
 ]
 
 [sources.allow-org]
