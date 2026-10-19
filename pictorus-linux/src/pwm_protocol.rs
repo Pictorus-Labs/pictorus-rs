@@ -79,6 +79,22 @@ impl PwmConnection {
             soft_pwm.reconfigure(period_dur, pulse_width_dur);
         }
     }
+
+    fn apply(&mut self, frequency: f64, duty_cycle: f64) {
+        let period = if frequency <= PWM_PERIOD_TOLERANCE_POINT_1_US {
+            0.0
+        } else {
+            1.0 / frequency
+        };
+
+        if (self.get_period() - period).abs() >= PWM_PERIOD_TOLERANCE_POINT_1_US {
+            self.set_period(period);
+        }
+
+        if (self.get_duty(()) - duty_cycle).abs() >= PWM_DUTY_CYCLE_TOLERANCE_12_BIT {
+            self.set_duty((), duty_cycle);
+        }
+    }
 }
 
 impl Pwm for PwmConnection {
@@ -144,13 +160,23 @@ impl Pwm for PwmConnection {
     }
 }
 
-pub fn create_pwm_protocol(pin_number: f64) -> Result<PwmConnection, PictorusError> {
-    let conn = PwmConnection::new(pin_number)?;
-    Ok(conn)
+/// A PWM peripheral's two channels. Both share the block's single frequency input.
+pub struct DualPwm {
+    ch1: PwmConnection,
+    ch2: PwmConnection,
 }
 
-impl OutputBlock for PwmConnection {
-    type Inputs = (f64, f64); // (Frequency, Duty Cycle)
+impl DualPwm {
+    pub fn new(pwm_number_ch1: f64, pwm_number_ch2: f64) -> Result<DualPwm, PictorusError> {
+        Ok(DualPwm {
+            ch1: PwmConnection::new(pwm_number_ch1)?,
+            ch2: PwmConnection::new(pwm_number_ch2)?,
+        })
+    }
+}
+
+impl OutputBlock for DualPwm {
+    type Inputs = (f64, f64, f64); // (Frequency, Duty Cycle Ch1, Duty Cycle Ch2)
 
     type Parameters = PwmBlockParams;
 
@@ -160,20 +186,8 @@ impl OutputBlock for PwmConnection {
         _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
-        let (frequency, duty_cycle) = inputs;
-
-        let period = if frequency <= PWM_PERIOD_TOLERANCE_POINT_1_US {
-            0.0
-        } else {
-            1.0 / frequency
-        };
-
-        if (self.get_period() - period).abs() >= PWM_PERIOD_TOLERANCE_POINT_1_US {
-            self.set_period(period);
-        }
-
-        if (self.get_duty(()) - duty_cycle).abs() >= PWM_DUTY_CYCLE_TOLERANCE_12_BIT {
-            self.set_duty((), duty_cycle);
-        }
+        let (frequency, duty_cycle_ch1, duty_cycle_ch2) = inputs;
+        self.ch1.apply(frequency, duty_cycle_ch1);
+        self.ch2.apply(frequency, duty_cycle_ch2);
     }
 }
