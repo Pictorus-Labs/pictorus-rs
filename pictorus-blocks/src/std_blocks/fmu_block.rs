@@ -196,6 +196,9 @@ impl Parameters {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::{StubModelClock, StubRuntime};
+    use alloc::{format, vec};
+    use std::time::Duration;
 
     #[test]
     fn test_fmu_default_buffer_no_panic() {
@@ -236,5 +239,100 @@ mod tests {
         let _: <FmuBlock<7, 2> as pictorus_traits::ProcessBlock>::Inputs =
             [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let _: <FmuBlock<7, 2> as pictorus_traits::ProcessBlock>::Output = [0.0, 1.0];
+    }
+
+    // The tests below run real FMUs from the Modelica Reference-FMUs, so they exercise
+    // unzipping, library loading and the full FMI call sequence through fmu-runner.
+    fn reference_fmu(name: &str) -> String {
+        format!("{}/reference-fmus/{name}.fmu", env!("CARGO_MANIFEST_DIR"))
+    }
+
+    fn runtime() -> StubRuntime {
+        StubRuntime::new(StubModelClock::new(
+            Duration::ZERO,
+            None,
+            Duration::from_millis(10),
+        ))
+    }
+
+    #[test]
+    fn test_feedthrough_passes_inputs_to_outputs() {
+        let params = Parameters::new(
+            &reference_fmu("Feedthrough"),
+            &HashMap::new(),
+            vec!["Float64_continuous_input".into()],
+            vec!["Float64_continuous_output".into()],
+        );
+        let mut block = FmuBlock::<1, 1>::default();
+        let mut runtime = runtime();
+
+        for input in [2.5, -7.0, 0.0] {
+            runtime.tick();
+            let output = block.process(&params, &runtime.model_clock(), &[input]);
+            assert_eq!(output, &[input]);
+        }
+        assert_eq!(block.buffer(), &[0.0]);
+    }
+
+    /// Steps BouncingBall for 0.3s, before its first bounce, returning `[h, v]`
+    fn run_bouncing_ball(fmu_params: &HashMap<&'static str, f64>) -> [f64; 2] {
+        let params = Parameters::new(
+            &reference_fmu("BouncingBall"),
+            fmu_params,
+            vec![],
+            vec!["h".into(), "v".into()],
+        );
+        let mut block = FmuBlock::<0, 2>::default();
+        let mut runtime = runtime();
+        for _ in 0..30 {
+            runtime.tick();
+            block.process(&params, &runtime.model_clock(), &[]);
+        }
+        *block.buffer()
+    }
+
+    #[test]
+    fn test_bouncing_ball_free_fall() {
+        // Free fall from h0 = 1m: h = h0 + g*t^2/2, v = g*t
+        let [h, v] = run_bouncing_ball(&HashMap::new());
+        let t = 0.3;
+        approx::assert_relative_eq!(h, 1.0 - 9.81 * t * t / 2.0, epsilon = 0.02);
+        approx::assert_relative_eq!(v, -9.81 * t, epsilon = 1e-3);
+    }
+
+    #[test]
+    fn test_bouncing_ball_applies_fmu_params() {
+        let [h, v] = run_bouncing_ball(&HashMap::from([("g", -1.0)]));
+        let t = 0.3;
+        approx::assert_relative_eq!(h, 1.0 - t * t / 2.0, epsilon = 0.01);
+        approx::assert_relative_eq!(v, -t, epsilon = 1e-3);
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to load and instantiate FMU")]
+    fn test_missing_fmu_file_panics() {
+        let params = Parameters::new(
+            &reference_fmu("DoesNotExist"),
+            &HashMap::new(),
+            vec![],
+            vec![],
+        );
+        let mut runtime = runtime();
+        runtime.tick();
+        FmuBlock::<0, 0>::default().process(&params, &runtime.model_clock(), &[]);
+    }
+
+    #[test]
+    #[should_panic(expected = "Signal not found in FMU")]
+    fn test_unknown_signal_panics() {
+        let params = Parameters::new(
+            &reference_fmu("Feedthrough"),
+            &HashMap::new(),
+            vec!["not_a_signal".into()],
+            vec![],
+        );
+        let mut runtime = runtime();
+        runtime.tick();
+        FmuBlock::<1, 0>::default().process(&params, &runtime.model_clock(), &[1.0]);
     }
 }
