@@ -25,12 +25,15 @@ impl Pwm for SimPwmProtocol {
     fn set_period<P: Into<Self::Time>>(&mut self, _period: P) {}
 }
 
-pub fn create_pwm_protocol(_pin: f64) -> Result<SimPwmProtocol, Infallible> {
+pub fn create_pwm_protocol(
+    _pwm_number_ch1: f64,
+    _pwm_number_ch2: f64,
+) -> Result<SimPwmProtocol, Infallible> {
     Ok(SimPwmProtocol {})
 }
 
 impl OutputBlock for SimPwmProtocol {
-    type Inputs = (f64, f64); // (Frequency, Duty Cycle)
+    type Inputs = (f64, f64, f64); // (Frequency, Duty Cycle Ch1, Duty Cycle Ch2)
 
     type Parameters = PwmBlockParams;
 
