@@ -145,6 +145,8 @@ impl<T: timer::GeneralInstance4Channel> PwmWrapper<'_, T> {
 }
 
 impl<'d, T: timer::GeneralInstance4Channel> PwmWrapper<'d, T> {
+    // Note: STM32 supports 4 channels per PWM, but for uniformity across different platforms, the OutputBlock
+    // interface only considers the first two channels. Channels 3 and 4 are available but not used in this context.
     pub fn new(
         simple_pwm: SimplePwm<'d, T>,
         ch1: Option<Channel>,
@@ -168,7 +170,7 @@ impl<'d, T: timer::GeneralInstance4Channel> PwmWrapper<'d, T> {
 }
 
 impl<T: timer::GeneralInstance4Channel> OutputBlock for PwmWrapper<'_, T> {
-    type Inputs = (f64, f64, f64, f64, f64); // (Frequency, Duty Cycle Ch1, Duty Cycle Ch2, Duty Cycle Ch3, Duty Cycle Ch4)
+    type Inputs = (f64, f64, f64); // (Frequency, Duty Cycle Ch1, Duty Cycle Ch2)
 
     type Parameters = PwmBlockParams;
 
@@ -178,7 +180,7 @@ impl<T: timer::GeneralInstance4Channel> OutputBlock for PwmWrapper<'_, T> {
         _model_clock: &dyn pictorus_traits::ModelClock,
         inputs: pictorus_traits::PassBy<'_, Self::Inputs>,
     ) {
-        let (frequency, duty_cycle1, duty_cycle2, duty_cycle3, duty_cycle4) = inputs;
+        let (frequency, duty_cycle1, duty_cycle2) = inputs;
 
         let period = f64::min(1.0, 1.0 / frequency);
 
@@ -188,7 +190,5 @@ impl<T: timer::GeneralInstance4Channel> OutputBlock for PwmWrapper<'_, T> {
 
         self.maybe_update_duty_cycle(self.ch1, duty_cycle1);
         self.maybe_update_duty_cycle(self.ch2, duty_cycle2);
-        self.maybe_update_duty_cycle(self.ch3, duty_cycle3);
-        self.maybe_update_duty_cycle(self.ch4, duty_cycle4);
     }
 }
