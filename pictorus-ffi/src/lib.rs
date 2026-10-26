@@ -15,6 +15,7 @@
 extern crate std;
 
 pub mod logger;
+pub mod peripherals;
 pub mod runtime;
 pub mod size;
 pub mod status;

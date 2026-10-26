@@ -11,6 +11,7 @@ categories.workspace = true
 
 [dependencies]
 pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
+pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
 pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }
 serde = { version = "1.0.219", default-features = false }
 
@@ -24,7 +25,7 @@ critical-section = "1.2.0"
 default = []
 # The generated app allocates. On bare metal the runtime provides the global
 # allocator, backed by the heap passed to `pictorus_rt_init`.
-alloc = ["pictorus-internal/alloc"]
+alloc = ["pictorus-internal/alloc", "pictorus-blocks/alloc"]
 # Build for a platform with an operating system. The system allocator and panic
 # handler are used, and the heap and panic fields of the runtime config are ignored.
 std = ["alloc", "pictorus-internal/std"]

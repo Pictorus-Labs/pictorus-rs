@@ -7,6 +7,7 @@
 #ifndef PICTORUS_FFI_H
 #define PICTORUS_FFI_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -27,6 +28,74 @@ typedef int32_t pictorus_status_t;
 #define PICTORUS_ERR_PERIPHERAL (-1)
 #define PICTORUS_ERR_INVALID_ARG (-2)
 #define PICTORUS_ERR_ALREADY_INIT (-3)
+
+/* ---- Peripherals --------------------------------------------------------
+ *
+ * Each peripheral kind has a fixed handle type: a context pointer and the
+ * functions that implement the kind's operations. The functions are plain "do
+ * it now" operations shaped like vendor HAL calls. Anything the model expects
+ * beyond that, such as reading an ADC at most once per tick, is handled by the
+ * library.
+ *
+ * ctx identifies the instance, for example a HAL handle or a bus number. It is
+ * passed back to every call and must remain valid until app_interface_deinit.
+ * A function left NULL is treated as a failing operation.
+ *
+ * A function that fails should return a negative status. The library treats a
+ * failure as "no new data": an input keeps its previous value and an output is
+ * retried on the next tick. Failures are counted per peripheral, see
+ * pictorus_peripheral_status_t.
+ *
+ * Buffers passed to a function belong to the library. Use them only during the
+ * call and never keep the pointer.
+ */
+
+/* Digital input. Set *level to true when the pin is high. */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*read)(void *ctx, bool *level);
+} pictorus_gpio_in_t;
+
+/* Digital output. */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*write)(void *ctx, bool level);
+} pictorus_gpio_out_t;
+
+/*
+ * Two channel PWM output, one handle per timer. Called only when the requested
+ * values change. Duty cycles are in [0, 1]. The frequency is not negative and
+ * may be zero.
+ */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*set)(void *ctx, double frequency_hz, double duty_ch1,
+                             double duty_ch2);
+} pictorus_pwm_t;
+
+/* ADC input. Called at most once per tick. */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*read)(void *ctx, uint16_t *sample);
+} pictorus_adc_t;
+
+/*
+ * DAC output. values holds one entry per channel, in channel order, exactly as
+ * the model produced them. Converting them to the hardware's units is up to
+ * this function.
+ */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*write)(void *ctx, const double *values, size_t n);
+} pictorus_dac_t;
+
+/* Health of one peripheral, reported per named peripheral by the app. */
+typedef struct {
+    /* The most recent failure, or PICTORUS_OK if there has never been one. */
+    pictorus_status_t last_error;
+    /* Failed operations since init. Saturates at UINT32_MAX. */
+    uint32_t error_count;
+} pictorus_peripheral_status_t;
 
 /* ---- Runtime ------------------------------------------------------------ */
 
