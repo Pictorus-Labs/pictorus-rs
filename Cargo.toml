@@ -13,6 +13,7 @@ members = [
   "px4-msgs-sys",
   "state-machine",
   "pictorus-std",
+  "pictorus-ffi",
 ]
 # Exclude platform-specific crates from the default crates
 default-members = [
