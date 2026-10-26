@@ -560,7 +560,11 @@ impl Pass for ByteSliceSignal {
 // third-party dependencies
 // XXX should this encode row-order vs column-order?
 // NOTE the `Scalar` trait bound prevents the creation of nested matrices
+//
+// `repr(transparent)` guarantees the layout is identical to `[[T; NROWS]; NCOLS]`, which is
+// relied upon when matrices cross the C FFI boundary as `T name[NCOLS][NROWS]`.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(transparent)]
 pub struct Matrix<const NROWS: usize, const NCOLS: usize, T>
 where
     T: Scalar,
@@ -681,3 +685,27 @@ impl_pass_for_tuples!(
     (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14),
     (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14, P 15),
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::mem::{align_of, size_of};
+
+    #[test]
+    fn matrix_layout_matches_nested_array() {
+        assert_eq!(size_of::<Matrix<3, 2, f64>>(), size_of::<[[f64; 3]; 2]>());
+        assert_eq!(align_of::<Matrix<3, 2, f64>>(), align_of::<[[f64; 3]; 2]>());
+        assert_eq!(size_of::<Matrix<1, 3, u8>>(), 3);
+        assert_eq!(size_of::<Matrix<2, 2, bool>>(), 4);
+    }
+
+    #[test]
+    fn matrix_is_column_major() {
+        let m = Matrix::<2, 3, u8> {
+            data: [[1, 2], [3, 4], [5, 6]],
+        };
+        // SAFETY: `Matrix` is `repr(transparent)` over `[[u8; 2]; 3]`, which is 6 contiguous bytes
+        let flat: &[u8; 6] = unsafe { &*(&m as *const _ as *const [u8; 6]) };
+        assert_eq!(flat, &[1, 2, 3, 4, 5, 6]);
+    }
+}
