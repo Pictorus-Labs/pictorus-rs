@@ -14,6 +14,7 @@ members = [
   "state-machine",
   "pictorus-std",
   "pictorus-ffi",
+  "pictorus-ffi-fixture",
 ]
 # Exclude platform-specific crates from the default crates
 default-members = [

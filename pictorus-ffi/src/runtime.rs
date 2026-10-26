@@ -207,12 +207,17 @@ mod tests {
 
     #[test]
     fn header_agrees_with_rust() {
-        assert_eq!(header_define("PICTORUS_FFI_ABI_VERSION"), ABI_VERSION as i32);
-        assert_eq!(header_define("PICTORUS_OK"), PICTORUS_OK);
-        assert_eq!(header_define("PICTORUS_EMPTY"), PICTORUS_EMPTY);
-        assert_eq!(header_define("PICTORUS_ERR_PERIPHERAL"), PICTORUS_ERR_PERIPHERAL);
-        assert_eq!(header_define("PICTORUS_ERR_INVALID_ARG"), PICTORUS_ERR_INVALID_ARG);
-        assert_eq!(header_define("PICTORUS_ERR_ALREADY_INIT"), PICTORUS_ERR_ALREADY_INIT);
+        let expected = [
+            ("PICTORUS_FFI_ABI_VERSION", ABI_VERSION as i32),
+            ("PICTORUS_OK", PICTORUS_OK),
+            ("PICTORUS_EMPTY", PICTORUS_EMPTY),
+            ("PICTORUS_ERR_PERIPHERAL", PICTORUS_ERR_PERIPHERAL),
+            ("PICTORUS_ERR_INVALID_ARG", PICTORUS_ERR_INVALID_ARG),
+            ("PICTORUS_ERR_ALREADY_INIT", PICTORUS_ERR_ALREADY_INIT),
+        ];
+        for (name, value) in expected {
+            assert_eq!(header_define(name), value, "{name}");
+        }
     }
 
     #[test]
