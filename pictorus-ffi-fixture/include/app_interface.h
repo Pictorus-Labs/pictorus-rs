@@ -26,6 +26,11 @@ typedef struct {
     pictorus_pwm_t motor_pwm;
     pictorus_adc_t vbat;
     pictorus_dac_t analog_out;
+    pictorus_i2c_t imu_bus;
+    pictorus_spi_t flash;
+    pictorus_serial_t console;
+    pictorus_can_t can0;
+    pictorus_udp_t telemetry;
 } AppPeripherals;
 
 typedef struct {
@@ -34,11 +39,42 @@ typedef struct {
     pictorus_peripheral_status_t motor_pwm;
     pictorus_peripheral_status_t vbat;
     pictorus_peripheral_status_t analog_out;
+    pictorus_peripheral_status_t imu_bus;
+    pictorus_peripheral_status_t flash;
+    pictorus_peripheral_status_t console;
+    pictorus_peripheral_status_t can0;
+    pictorus_peripheral_status_t telemetry;
 } AppPeripheralStatus;
+
+/* Only the peripherals with app level settings have one. */
+typedef struct {
+    pictorus_i2c_config_t imu_bus;
+    pictorus_spi_config_t flash;
+    pictorus_serial_config_t console;
+    pictorus_can_config_t can0;
+    pictorus_udp_config_t telemetry;
+} AppPeripheralConfig;
+
+static const AppPeripheralConfig APP_PERIPHERAL_CONFIG = {
+    .imu_bus = {.frequency_hz = 400000},
+    .flash = {.frequency_hz = 1000000,
+              .mode = 3,
+              .bit_order = PICTORUS_SPI_MSB_FIRST,
+              .bits_per_transfer = 8},
+    .console = {.baud_rate = 115200},
+    .can0 = {.bitrate = 500000},
+    .telemetry = {.address = "0.0.0.0:9001"},
+};
 
 typedef struct {
     double setpoint;
 } AppInputs;
+
+/* What a byte-oriented input block produced in a tick. */
+typedef struct {
+    uint32_t len;
+    uint8_t first;
+} AppRxSummary;
 
 typedef struct {
     double output;
@@ -47,6 +83,13 @@ typedef struct {
     double button;
     double vbat_a;
     double vbat_b;
+    AppRxSummary imu;
+    AppRxSummary flash_a;
+    AppRxSummary flash_b;
+    AppRxSummary console_a;
+    AppRxSummary console_b;
+    AppRxSummary can;
+    AppRxSummary telemetry;
 } AppOutputs;
 
 size_t app_interface_size(void);
@@ -72,8 +115,13 @@ pictorus_status_t app_interface_peripheral_status(const AppInterface *app,
 
 void app_interface_deinit(AppInterface *app);
 
-/* Test hook: number of instances initialized and not yet deinitialized. */
+/* Test hooks. */
 size_t fixture_live_instances(void);
+/* sizeof the types that cross the boundary, as Rust lays them out. */
+size_t fixture_can_frame_size(void);
+size_t fixture_peripheral_status_size(void);
+size_t fixture_peripherals_size(void);
+size_t fixture_outputs_size(void);
 
 #ifdef __cplusplus
 }

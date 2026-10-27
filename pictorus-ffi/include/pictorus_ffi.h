@@ -28,7 +28,6 @@ typedef int32_t pictorus_status_t;
 #define PICTORUS_ERR_PERIPHERAL (-1)
 #define PICTORUS_ERR_INVALID_ARG (-2)
 #define PICTORUS_ERR_ALREADY_INIT (-3)
-
 /* ---- Peripherals --------------------------------------------------------
  *
  * Each peripheral kind has a fixed handle type: a context pointer and the
@@ -89,6 +88,84 @@ typedef struct {
     pictorus_status_t (*write)(void *ctx, const double *values, size_t n);
 } pictorus_dac_t;
 
+/*
+ * I2C bus. Addresses are the 7 bit address, not shifted. Both operations
+ * perform a complete bus transaction, and reads and writes are not cached, since
+ * several devices can share one bus.
+ *
+ * write_read writes wr, issues a repeated start, and reads rd_len bytes.
+ */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*write_read)(void *ctx, uint8_t addr, const uint8_t *wr,
+                                    size_t wr_len, uint8_t *rd, size_t rd_len);
+    pictorus_status_t (*write)(void *ctx, uint8_t addr, const uint8_t *wr,
+                               size_t wr_len);
+} pictorus_i2c_t;
+
+/*
+ * SPI device. Chip select belongs to this side: each call is one complete,
+ * chip-select framed transaction. read is called at most once per tick.
+ */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*read)(void *ctx, uint8_t *rx, size_t len);
+    pictorus_status_t (*write)(void *ctx, const uint8_t *tx, size_t len);
+} pictorus_spi_t;
+
+/*
+ * Serial port. read must not block. Write to buf the bytes received since the
+ * last call, at most cap of them, and set *len to how many. Return PICTORUS_EMPTY
+ * if there are none. Bytes left unread should be returned by a later call. read is
+ * called at most once per tick.
+ */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*read)(void *ctx, uint8_t *buf, size_t cap, size_t *len);
+    pictorus_status_t (*write)(void *ctx, const uint8_t *buf, size_t len);
+} pictorus_serial_t;
+
+/* A classic CAN data frame. */
+typedef struct {
+    /* 11 bit identifier, or 29 bit if extended is true. */
+    uint32_t id;
+    bool extended;
+    /* Number of valid bytes in data, at most 8. */
+    uint8_t dlc;
+    uint8_t data[8];
+} pictorus_can_frame_t;
+
+/*
+ * CAN bus. receive must not block. Fill *frame and return PICTORUS_OK, or return
+ * PICTORUS_EMPTY once the receive queue is drained. Remote frames should not be
+ * reported. A tick takes at most 64 frames from receive, and the rest are taken on
+ * later ticks.
+ */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*receive)(void *ctx, pictorus_can_frame_t *frame);
+    pictorus_status_t (*transmit)(void *ctx, const pictorus_can_frame_t *frame);
+} pictorus_can_t;
+
+/*
+ * UDP socket, available when the library is built for a target with an operating
+ * system. Binding to the address in the app's peripheral configuration is this
+ * side's job.
+ *
+ * recv must not block. It works as the serial read does, for one datagram: write
+ * it to buf, at most cap bytes, set *len, and return PICTORUS_EMPTY if there is
+ * none. It is called until it reports empty, and the most recent datagram of the
+ * tick is the one the model sees.
+ *
+ * destination is the NUL-terminated "address:port" from the transmit block.
+ */
+typedef struct {
+    void *ctx;
+    pictorus_status_t (*recv)(void *ctx, uint8_t *buf, size_t cap, size_t *len);
+    pictorus_status_t (*send)(void *ctx, const char *destination, const uint8_t *buf,
+                              size_t len);
+} pictorus_udp_t;
+
 /* Health of one peripheral, reported per named peripheral by the app. */
 typedef struct {
     /* The most recent failure, or PICTORUS_OK if there has never been one. */
@@ -96,6 +173,45 @@ typedef struct {
     /* Failed operations since init. Saturates at UINT32_MAX. */
     uint32_t error_count;
 } pictorus_peripheral_status_t;
+
+/* ---- Peripheral configuration --------------------------------------------
+ *
+ * The settings a model chooses for a peripheral, which this side applies when it
+ * initializes the hardware. Peripheral kinds with no such settings (GPIO, PWM, ADC
+ * and DAC) have no struct. The generated app header has a static const instance
+ * for each peripheral that does.
+ */
+
+typedef struct {
+    uint32_t frequency_hz;
+} pictorus_i2c_config_t;
+
+/* Values for pictorus_spi_config_t.bit_order. */
+#define PICTORUS_SPI_MSB_FIRST 0
+#define PICTORUS_SPI_LSB_FIRST 1
+
+typedef struct {
+    uint32_t frequency_hz;
+    /* Clock polarity and phase, 0 to 3. */
+    uint8_t mode;
+    /* PICTORUS_SPI_MSB_FIRST or PICTORUS_SPI_LSB_FIRST. */
+    uint8_t bit_order;
+    /* 8 or 16. */
+    uint8_t bits_per_transfer;
+} pictorus_spi_config_t;
+
+typedef struct {
+    uint32_t baud_rate;
+} pictorus_serial_config_t;
+
+typedef struct {
+    uint32_t bitrate;
+} pictorus_can_config_t;
+
+typedef struct {
+    /* The "address:port" to bind to. */
+    const char *address;
+} pictorus_udp_config_t;
 
 /* ---- Runtime ------------------------------------------------------------ */
 

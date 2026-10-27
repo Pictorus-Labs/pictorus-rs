@@ -14,6 +14,8 @@ pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
 pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
 pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }
 serde = { version = "1.0.219", default-features = false }
+embedded-can = "0.4.1"
+log = "0.4.21"
 
 # The runtime only owns the allocator and panic handler where there is no OS to
 # provide them.
@@ -28,4 +30,6 @@ default = []
 alloc = ["pictorus-internal/alloc", "pictorus-blocks/alloc"]
 # Build for a platform with an operating system. The system allocator and panic
 # handler are used, and the heap and panic fields of the runtime config are ignored.
-std = ["alloc", "pictorus-internal/std"]
+#
+# This also enables the blocks that need `std`, which is where the UDP blocks live.
+std = ["alloc", "pictorus-internal/std", "pictorus-blocks/std"]

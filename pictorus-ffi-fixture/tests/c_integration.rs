@@ -59,9 +59,14 @@ fn c_program_runs_against_staticlib() {
         .arg(&lib)
         .arg("-o")
         .arg(&exe);
-    // The Rust standard library inside the staticlib needs these from the platform.
+    // The standard library and the crates under the staticlib need these from the platform. The
+    // authoritative list for a build is `cargo rustc --crate-type staticlib -- --print
+    // native-static-libs`.
     if cfg!(target_os = "linux") {
         compile.args(["-lpthread", "-ldl", "-lm"]);
+    }
+    if cfg!(target_os = "macos") {
+        compile.args(["-framework", "CoreFoundation"]);
     }
     let status = compile.status().expect("failed to run the C compiler");
     assert!(status.success(), "C compilation or linking failed");

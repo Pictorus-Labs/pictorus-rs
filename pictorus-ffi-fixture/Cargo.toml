@@ -13,6 +13,7 @@ repository.workspace = true
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
+embedded-can = "0.4.1"
 pictorus-ffi = { path = "../pictorus-ffi", version = "0.0.0" }
 pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
 pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }

@@ -16,10 +16,38 @@ pub mod dac;
 pub mod gpio;
 pub mod pwm;
 
+// The adapters for byte-oriented peripherals buffer data, and the blocks that consume it are
+// only available when the app allocates.
+#[cfg(feature = "alloc")]
+mod buffer;
+#[cfg(feature = "alloc")]
+pub mod can;
+#[cfg(feature = "alloc")]
+pub mod i2c;
+#[cfg(feature = "alloc")]
+pub mod serial;
+#[cfg(feature = "alloc")]
+pub mod spi;
+// The UDP blocks are only available on platforms with `std`.
+#[cfg(feature = "std")]
+pub mod udp;
+
 pub use adc::{AdcInput, pictorus_adc_t};
+#[cfg(feature = "alloc")]
+pub use buffer::RECEIVE_BUFFER_BYTES;
+#[cfg(feature = "alloc")]
+pub use can::{CanBus, RX_FRAMES_PER_TICK, pictorus_can_frame_t, pictorus_can_t};
 pub use dac::{DacOutput, pictorus_dac_t};
 pub use gpio::{GpioInput, GpioOutput, pictorus_gpio_in_t, pictorus_gpio_out_t};
+#[cfg(feature = "alloc")]
+pub use i2c::{I2cBus, pictorus_i2c_t};
 pub use pwm::{PwmOutput, pictorus_pwm_t};
+#[cfg(feature = "alloc")]
+pub use serial::{SerialPort, pictorus_serial_t};
+#[cfg(feature = "alloc")]
+pub use spi::{SpiBus, pictorus_spi_t};
+#[cfg(feature = "std")]
+pub use udp::{UdpPort, pictorus_udp_t};
 
 /// Mirror of `pictorus_peripheral_status_t` in `pictorus_ffi.h`.
 #[repr(C)]

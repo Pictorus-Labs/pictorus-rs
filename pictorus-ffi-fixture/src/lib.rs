@@ -5,6 +5,10 @@
 //! needing the code generator. The model is arranged the way generated code is: a set of
 //! blocks reaching hardware only through an `IoManager`, which here is backed by the
 //! C-implemented adapters.
+//!
+//! The UDP peripheral exists only with the `std` feature, as in `pictorus-ffi`. The header
+//! always declares it, so builds without `std` are only meaningful as a check that the library
+//! builds for a bare-metal target, not for linking against C.
 #![cfg_attr(target_os = "none", no_std)]
 
 extern crate alloc;
@@ -14,20 +18,29 @@ use core::mem::{align_of, size_of};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use core::time::Duration;
 
+use embedded_can::{Id, StandardId};
 use pictorus_blocks::{
-    AdcBlockParams, DacBlockParams, GpioInputBlockParams, GpioOutputBlockParams, PwmBlockParams,
+    AdcBlockParams, CanReceiveBlockParams, CanTransmitBlockParams, DacBlockParams,
+    GpioInputBlockParams, GpioOutputBlockParams, I2cInputBlockParams, I2cOutputBlockParams,
+    PwmBlockParams, SerialReceiveBlockParams, SerialTransmitBlockParams, SpiReceiveBlockParams,
+    SpiTransmitBlockParams,
 };
+#[cfg(feature = "std")]
+use pictorus_blocks::{UdpReceiveBlockParams, UdpTransmitBlockParams};
 use pictorus_ffi::peripherals::{
-    AdcInput, DacOutput, GpioInput, GpioOutput, Peripheral, PwmOutput, pictorus_adc_t,
-    pictorus_dac_t, pictorus_gpio_in_t, pictorus_gpio_out_t, pictorus_peripheral_status_t,
-    pictorus_pwm_t,
+    AdcInput, CanBus, DacOutput, GpioInput, GpioOutput, I2cBus, Peripheral, PwmOutput, SerialPort,
+    SpiBus, pictorus_adc_t, pictorus_can_frame_t, pictorus_can_t, pictorus_dac_t,
+    pictorus_gpio_in_t, pictorus_gpio_out_t, pictorus_i2c_t, pictorus_peripheral_status_t,
+    pictorus_pwm_t, pictorus_serial_t, pictorus_spi_t,
 };
+#[cfg(feature = "std")]
+use pictorus_ffi::peripherals::{UdpPort, pictorus_udp_t};
 use pictorus_ffi::{
     PICTORUS_ERR_INVALID_ARG, PICTORUS_ERR_PERIPHERAL, PICTORUS_OK, export_app_interface_size,
     pictorus_status_t,
 };
 use pictorus_internal::protocols::Flush;
-use pictorus_traits::{InputBlock, Matrix, ModelClock, OutputBlock};
+use pictorus_traits::{ByteSliceSignal, InputBlock, Matrix, ModelClock, OutputBlock};
 
 const FUNDAMENTAL_TIMESTEP_US: u64 = 10_000;
 
@@ -42,6 +55,12 @@ pub struct AppPeripherals {
     motor_pwm: pictorus_pwm_t,
     vbat: pictorus_adc_t,
     analog_out: pictorus_dac_t,
+    imu_bus: pictorus_i2c_t,
+    flash: pictorus_spi_t,
+    console: pictorus_serial_t,
+    can0: pictorus_can_t,
+    #[cfg(feature = "std")]
+    telemetry: pictorus_udp_t,
 }
 
 /// Mirror of `AppPeripheralStatus` in `app_interface.h`.
@@ -52,12 +71,35 @@ pub struct AppPeripheralStatus {
     motor_pwm: pictorus_peripheral_status_t,
     vbat: pictorus_peripheral_status_t,
     analog_out: pictorus_peripheral_status_t,
+    imu_bus: pictorus_peripheral_status_t,
+    flash: pictorus_peripheral_status_t,
+    console: pictorus_peripheral_status_t,
+    can0: pictorus_peripheral_status_t,
+    #[cfg(feature = "std")]
+    telemetry: pictorus_peripheral_status_t,
 }
 
 /// Mirror of `AppInputs` in `app_interface.h`.
 #[repr(C)]
 pub struct AppInputs {
     pub setpoint: f64,
+}
+
+/// Mirror of `AppRxSummary` in `app_interface.h`.
+#[repr(C)]
+#[derive(Default)]
+pub struct AppRxSummary {
+    len: u32,
+    first: u8,
+}
+
+impl AppRxSummary {
+    fn of(bytes: &[u8]) -> Self {
+        Self {
+            len: bytes.len() as u32,
+            first: bytes.first().copied().unwrap_or(0),
+        }
+    }
 }
 
 /// Mirror of `AppOutputs` in `app_interface.h`.
@@ -68,6 +110,13 @@ pub struct AppOutputs {
     pub button: f64,
     pub vbat_a: f64,
     pub vbat_b: f64,
+    imu: AppRxSummary,
+    flash_a: AppRxSummary,
+    flash_b: AppRxSummary,
+    console_a: AppRxSummary,
+    console_b: AppRxSummary,
+    can: AppRxSummary,
+    telemetry: AppRxSummary,
 }
 
 /// The shape of the generated `IoManager`: one accessor per named peripheral.
@@ -83,6 +132,37 @@ trait IoManager {
     fn analog_out(
         &mut self,
     ) -> &mut impl OutputBlock<Inputs = Matrix<1, 2, f64>, Parameters = DacBlockParams>;
+    fn imu_bus(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = I2cInputBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = I2cOutputBlockParams>
+         );
+    fn flash(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = SpiReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = SpiTransmitBlockParams>
+         );
+    fn console(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = SerialReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = SerialTransmitBlockParams>
+         );
+    fn can0(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = CanReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = CanTransmitBlockParams>
+         );
+    #[cfg(feature = "std")]
+    fn telemetry(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = UdpReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = UdpTransmitBlockParams>
+         );
     fn flush_inputs(&mut self);
 }
 
@@ -92,6 +172,12 @@ struct FfiIoManager {
     motor_pwm: PwmOutput,
     vbat: AdcInput,
     analog_out: DacOutput,
+    imu_bus: I2cBus,
+    flash: SpiBus,
+    console: SerialPort,
+    can0: CanBus,
+    #[cfg(feature = "std")]
+    telemetry: UdpPort,
 }
 
 impl FfiIoManager {
@@ -107,6 +193,12 @@ impl FfiIoManager {
                 motor_pwm: PwmOutput::new(peripherals.motor_pwm),
                 vbat: AdcInput::new(peripherals.vbat),
                 analog_out: DacOutput::new(peripherals.analog_out),
+                imu_bus: I2cBus::new(peripherals.imu_bus),
+                flash: SpiBus::new(peripherals.flash),
+                console: SerialPort::new(peripherals.console),
+                can0: CanBus::new(peripherals.can0),
+                #[cfg(feature = "std")]
+                telemetry: UdpPort::new(peripherals.telemetry),
             }
         }
     }
@@ -118,15 +210,31 @@ impl FfiIoManager {
             motor_pwm: self.motor_pwm.status(),
             vbat: self.vbat.status(),
             analog_out: self.analog_out.status(),
+            imu_bus: self.imu_bus.status(),
+            flash: self.flash.status(),
+            console: self.console.status(),
+            can0: self.can0.status(),
+            #[cfg(feature = "std")]
+            telemetry: self.telemetry.status(),
         }
     }
 
     fn total_errors(&self) -> u64 {
         let s = self.peripheral_status();
-        [s.pwr_btn, s.status_led, s.motor_pwm, s.vbat, s.analog_out]
-            .iter()
-            .map(|s| u64::from(s.error_count))
-            .sum()
+        let all = [
+            s.pwr_btn,
+            s.status_led,
+            s.motor_pwm,
+            s.vbat,
+            s.analog_out,
+            s.imu_bus,
+            s.flash,
+            s.console,
+            s.can0,
+            #[cfg(feature = "std")]
+            s.telemetry,
+        ];
+        all.iter().map(|s| u64::from(s.error_count)).sum()
     }
 }
 
@@ -157,8 +265,59 @@ impl IoManager for FfiIoManager {
         &mut self.analog_out
     }
 
+    fn imu_bus(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = I2cInputBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = I2cOutputBlockParams>
+         ) {
+        &mut self.imu_bus
+    }
+
+    fn flash(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = SpiReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = SpiTransmitBlockParams>
+         ) {
+        &mut self.flash
+    }
+
+    fn console(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = SerialReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = SerialTransmitBlockParams>
+         ) {
+        &mut self.console
+    }
+
+    fn can0(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = CanReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = CanTransmitBlockParams>
+         ) {
+        &mut self.can0
+    }
+
+    #[cfg(feature = "std")]
+    fn telemetry(
+        &mut self,
+    ) -> &mut (
+             impl InputBlock<Output = ByteSliceSignal, Parameters = UdpReceiveBlockParams>
+             + OutputBlock<Inputs = ByteSliceSignal, Parameters = UdpTransmitBlockParams>
+         ) {
+        &mut self.telemetry
+    }
+
     fn flush_inputs(&mut self) {
         self.vbat.flush();
+        self.flash.flush();
+        self.console.flush();
+        self.can0.flush();
+        #[cfg(feature = "std")]
+        self.telemetry.flush();
     }
 }
 
@@ -281,6 +440,48 @@ pub unsafe extern "C" fn app_interface_step(
             data: [[inputs.setpoint], [inputs.setpoint * 2.0]],
         },
     );
+
+    // Read two registers from the device at 0x68, then write one back.
+    outputs.imu = AppRxSummary::of(
+        io.imu_bus()
+            .input(&I2cInputBlockParams::new(104.0, 117.0, 2.0, 0.0), &clock),
+    );
+    io.imu_bus()
+        .output(&I2cOutputBlockParams::new(104.0, 107.0), &clock, &[1, 2]);
+
+    // Two blocks sharing one SPI device, which must see the same data.
+    let spi_read = SpiReceiveBlockParams::new(3.0, 0.0);
+    outputs.flash_a = AppRxSummary::of(io.flash().input(&spi_read, &clock));
+    outputs.flash_b = AppRxSummary::of(io.flash().input(&spi_read, &clock));
+    io.flash()
+        .output(&SpiTransmitBlockParams::new(), &clock, &[0xAA]);
+
+    let serial_read = SerialReceiveBlockParams::new("", "", 0.0, 0.0);
+    outputs.console_a = AppRxSummary::of(io.console().input(&serial_read, &clock));
+    outputs.console_b = AppRxSummary::of(io.console().input(&serial_read, &clock));
+    io.console()
+        .output(&SerialTransmitBlockParams::new("", ""), &clock, b"hi");
+
+    let can_id = |id| Id::Standard(StandardId::new(id).unwrap());
+    outputs.can = AppRxSummary::of(
+        io.can0()
+            .input(&CanReceiveBlockParams::new(can_id(0x123), 8, 0.0), &clock),
+    );
+    io.can0().output(
+        &CanTransmitBlockParams::new(can_id(0x321)),
+        &clock,
+        &[1, 2, 3],
+    );
+
+    #[cfg(feature = "std")]
+    {
+        outputs.telemetry = AppRxSummary::of(
+            io.telemetry()
+                .input(&UdpReceiveBlockParams::new(0.0), &clock),
+        );
+        io.telemetry()
+            .output(&UdpTransmitBlockParams::new(b"10.0.0.1:9000"), &clock, &[9]);
+    }
     io.flush_inputs();
 
     app.history.push(app_time_us);
@@ -330,4 +531,24 @@ pub unsafe extern "C" fn app_interface_deinit(app: *mut AppInterface) {
 #[unsafe(no_mangle)]
 pub extern "C" fn fixture_live_instances() -> usize {
     LIVE_INSTANCES.load(Ordering::SeqCst)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fixture_can_frame_size() -> usize {
+    size_of::<pictorus_can_frame_t>()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fixture_peripheral_status_size() -> usize {
+    size_of::<pictorus_peripheral_status_t>()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fixture_peripherals_size() -> usize {
+    size_of::<AppPeripherals>()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fixture_outputs_size() -> usize {
+    size_of::<AppOutputs>()
 }

@@ -11,6 +11,9 @@
 #![no_std]
 #![allow(non_camel_case_types)]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 #[cfg(test)]
 extern crate std;
 
