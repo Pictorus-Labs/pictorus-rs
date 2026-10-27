@@ -8,12 +8,6 @@ use super::buffer::{ByteBuffer, RECEIVE_BUFFER_BYTES, Received};
 use super::{Peripheral, pictorus_peripheral_status_t};
 use crate::status::{PICTORUS_ERR_INVALID_ARG, PICTORUS_ERR_PERIPHERAL, pictorus_status_t};
 
-// TODO: Broaden UDP support to `alloc` instead of just `std`
-// Traditionally, this has always been a `std` only block and protocol for us. But this was
-// only because we only had UDP prototocol implmentations for targets with an OS. With this interface
-// there is no reason we can't broaden UDP support to `alloc`. If a user has a udp stack on their
-// target, they can implement the C interface and use it with this adapter.
-
 /// Datagrams drained from C per tick, at most.
 const MAX_DATAGRAMS_PER_TICK: usize = 256;
 

@@ -116,12 +116,12 @@ pictorus_status_t app_interface_peripheral_status(const AppInterface *app,
 void app_interface_deinit(AppInterface *app);
 
 /* Test hooks. */
-size_t fixture_live_instances(void);
+size_t mock_live_instances(void);
 /* sizeof the types that cross the boundary, as Rust lays them out. */
-size_t fixture_can_frame_size(void);
-size_t fixture_peripheral_status_size(void);
-size_t fixture_peripherals_size(void);
-size_t fixture_outputs_size(void);
+size_t mock_can_frame_size(void);
+size_t mock_peripheral_status_size(void);
+size_t mock_peripherals_size(void);
+size_t mock_outputs_size(void);
 
 #ifdef __cplusplus
 }

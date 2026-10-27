@@ -1,21 +1,21 @@
-//! A hand-written stand-in for a generated `ffi_lib`.
+//! A hand-written stand-in for the `ffi_lib` that codegen generates for an app, built as the
+//! staticlib the C tests in `tests/c_integration.rs` link against.
 //!
-//! It exposes the `app_interface_*` entry points described in `include/app_interface.h` over a
-//! small model, so the runtime and adapters in `pictorus-ffi` can be exercised from C without
-//! needing the code generator. The model is arranged the way generated code is: a set of
-//! blocks reaching hardware only through an `IoManager`, which here is backed by the
-//! C-implemented adapters.
+//! It exposes the `app_interface_*` entry points declared in `tests/c/app_interface.h` over a
+//! small model, so the runtime and adapters in this crate can be exercised from C without the
+//! code generator. The model is arranged the way generated code is: a set of blocks reaching
+//! hardware only through an `IoManager`, which here is backed by the C-implemented adapters.
 //!
-//! The UDP peripheral exists only with the `std` feature, as in `pictorus-ffi`. The header
-//! always declares it, so builds without `std` are only meaningful as a check that the library
-//! builds for a bare-metal target, not for linking against C.
+//! It is also a worked example of how a generated library composes the pieces of this crate.
+
+// `no_std` only where there is no OS. A host build of a `no_std` staticlib needs an unwinding
+// personality routine it has no way to supply, and the host build is the one the C tests use.
 #![cfg_attr(target_os = "none", no_std)]
 
 extern crate alloc;
 
 use alloc::vec::Vec;
 use core::mem::{align_of, size_of};
-use core::sync::atomic::{AtomicUsize, Ordering};
 use core::time::Duration;
 
 use embedded_can::{Id, StandardId};
@@ -23,24 +23,21 @@ use pictorus_blocks::{
     AdcBlockParams, CanReceiveBlockParams, CanTransmitBlockParams, DacBlockParams,
     GpioInputBlockParams, GpioOutputBlockParams, I2cInputBlockParams, I2cOutputBlockParams,
     PwmBlockParams, SerialReceiveBlockParams, SerialTransmitBlockParams, SpiReceiveBlockParams,
-    SpiTransmitBlockParams,
+    SpiTransmitBlockParams, UdpReceiveBlockParams, UdpTransmitBlockParams,
 };
-#[cfg(feature = "std")]
-use pictorus_blocks::{UdpReceiveBlockParams, UdpTransmitBlockParams};
 use pictorus_ffi::peripherals::{
     AdcInput, CanBus, DacOutput, GpioInput, GpioOutput, I2cBus, Peripheral, PwmOutput, SerialPort,
-    SpiBus, pictorus_adc_t, pictorus_can_frame_t, pictorus_can_t, pictorus_dac_t,
+    SpiBus, UdpPort, pictorus_adc_t, pictorus_can_frame_t, pictorus_can_t, pictorus_dac_t,
     pictorus_gpio_in_t, pictorus_gpio_out_t, pictorus_i2c_t, pictorus_peripheral_status_t,
-    pictorus_pwm_t, pictorus_serial_t, pictorus_spi_t,
+    pictorus_pwm_t, pictorus_serial_t, pictorus_spi_t, pictorus_udp_t,
 };
-#[cfg(feature = "std")]
-use pictorus_ffi::peripherals::{UdpPort, pictorus_udp_t};
 use pictorus_ffi::{
     PICTORUS_ERR_INVALID_ARG, PICTORUS_ERR_PERIPHERAL, PICTORUS_OK, export_app_interface_size,
     pictorus_status_t,
 };
 use pictorus_internal::protocols::Flush;
 use pictorus_traits::{ByteSliceSignal, InputBlock, Matrix, ModelClock, OutputBlock};
+use portable_atomic::{AtomicUsize, Ordering};
 
 const FUNDAMENTAL_TIMESTEP_US: u64 = 10_000;
 
@@ -59,7 +56,6 @@ pub struct AppPeripherals {
     flash: pictorus_spi_t,
     console: pictorus_serial_t,
     can0: pictorus_can_t,
-    #[cfg(feature = "std")]
     telemetry: pictorus_udp_t,
 }
 
@@ -75,7 +71,6 @@ pub struct AppPeripheralStatus {
     flash: pictorus_peripheral_status_t,
     console: pictorus_peripheral_status_t,
     can0: pictorus_peripheral_status_t,
-    #[cfg(feature = "std")]
     telemetry: pictorus_peripheral_status_t,
 }
 
@@ -156,7 +151,6 @@ trait IoManager {
              impl InputBlock<Output = ByteSliceSignal, Parameters = CanReceiveBlockParams>
              + OutputBlock<Inputs = ByteSliceSignal, Parameters = CanTransmitBlockParams>
          );
-    #[cfg(feature = "std")]
     fn telemetry(
         &mut self,
     ) -> &mut (
@@ -176,7 +170,6 @@ struct FfiIoManager {
     flash: SpiBus,
     console: SerialPort,
     can0: CanBus,
-    #[cfg(feature = "std")]
     telemetry: UdpPort,
 }
 
@@ -197,7 +190,6 @@ impl FfiIoManager {
                 flash: SpiBus::new(peripherals.flash),
                 console: SerialPort::new(peripherals.console),
                 can0: CanBus::new(peripherals.can0),
-                #[cfg(feature = "std")]
                 telemetry: UdpPort::new(peripherals.telemetry),
             }
         }
@@ -214,14 +206,13 @@ impl FfiIoManager {
             flash: self.flash.status(),
             console: self.console.status(),
             can0: self.can0.status(),
-            #[cfg(feature = "std")]
             telemetry: self.telemetry.status(),
         }
     }
 
     fn total_errors(&self) -> u64 {
         let s = self.peripheral_status();
-        let all = [
+        [
             s.pwr_btn,
             s.status_led,
             s.motor_pwm,
@@ -231,10 +222,11 @@ impl FfiIoManager {
             s.flash,
             s.console,
             s.can0,
-            #[cfg(feature = "std")]
             s.telemetry,
-        ];
-        all.iter().map(|s| u64::from(s.error_count)).sum()
+        ]
+        .iter()
+        .map(|s| u64::from(s.error_count))
+        .sum()
     }
 }
 
@@ -301,7 +293,6 @@ impl IoManager for FfiIoManager {
         &mut self.can0
     }
 
-    #[cfg(feature = "std")]
     fn telemetry(
         &mut self,
     ) -> &mut (
@@ -316,7 +307,6 @@ impl IoManager for FfiIoManager {
         self.flash.flush();
         self.console.flush();
         self.can0.flush();
-        #[cfg(feature = "std")]
         self.telemetry.flush();
     }
 }
@@ -473,15 +463,12 @@ pub unsafe extern "C" fn app_interface_step(
         &[1, 2, 3],
     );
 
-    #[cfg(feature = "std")]
-    {
-        outputs.telemetry = AppRxSummary::of(
-            io.telemetry()
-                .input(&UdpReceiveBlockParams::new(0.0), &clock),
-        );
+    outputs.telemetry = AppRxSummary::of(
         io.telemetry()
-            .output(&UdpTransmitBlockParams::new(b"10.0.0.1:9000"), &clock, &[9]);
-    }
+            .input(&UdpReceiveBlockParams::new(0.0), &clock),
+    );
+    io.telemetry()
+        .output(&UdpTransmitBlockParams::new(b"10.0.0.1:9000"), &clock, &[9]);
     io.flush_inputs();
 
     app.history.push(app_time_us);
@@ -529,26 +516,26 @@ pub unsafe extern "C" fn app_interface_deinit(app: *mut AppInterface) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn fixture_live_instances() -> usize {
+pub extern "C" fn mock_live_instances() -> usize {
     LIVE_INSTANCES.load(Ordering::SeqCst)
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn fixture_can_frame_size() -> usize {
+pub extern "C" fn mock_can_frame_size() -> usize {
     size_of::<pictorus_can_frame_t>()
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn fixture_peripheral_status_size() -> usize {
+pub extern "C" fn mock_peripheral_status_size() -> usize {
     size_of::<pictorus_peripheral_status_t>()
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn fixture_peripherals_size() -> usize {
+pub extern "C" fn mock_peripherals_size() -> usize {
     size_of::<AppPeripherals>()
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn fixture_outputs_size() -> usize {
+pub extern "C" fn mock_outputs_size() -> usize {
     size_of::<AppOutputs>()
 }

@@ -317,10 +317,10 @@ static void test_runtime(void) {
 
 /* The header and Rust must lay the shared types out the same way. */
 static void test_layout_agrees_with_rust(void) {
-    CHECK(sizeof(pictorus_can_frame_t) == fixture_can_frame_size());
-    CHECK(sizeof(pictorus_peripheral_status_t) == fixture_peripheral_status_size());
-    CHECK(sizeof(AppPeripherals) == fixture_peripherals_size());
-    CHECK(sizeof(AppOutputs) == fixture_outputs_size());
+    CHECK(sizeof(pictorus_can_frame_t) == mock_can_frame_size());
+    CHECK(sizeof(pictorus_peripheral_status_t) == mock_peripheral_status_size());
+    CHECK(sizeof(AppPeripherals) == mock_peripherals_size());
+    CHECK(sizeof(AppOutputs) == mock_outputs_size());
 }
 
 static void test_peripheral_config(void) {
@@ -340,7 +340,7 @@ static void test_init_validation(void) {
 
     CHECK(app_interface_init(NULL, &p, &app) == PICTORUS_ERR_INVALID_ARG);
     CHECK(app_interface_init(mem, NULL, &app) == PICTORUS_ERR_INVALID_ARG);
-    CHECK(fixture_live_instances() == 0);
+    CHECK(mock_live_instances() == 0);
     free(mem);
 }
 
@@ -357,7 +357,7 @@ static void test_simple_peripherals_and_independent_instances(void) {
     CHECK(app_interface_init(mem_a, &pa, &a) == PICTORUS_OK);
     CHECK(app_interface_init(mem_b, &pb, &b) == PICTORUS_OK);
     CHECK(a == mem_a && b == mem_b);
-    CHECK(fixture_live_instances() == 2);
+    CHECK(mock_live_instances() == 2);
 
     /* The peripheral table is copied, so the caller's copy may go away. */
     pa = (AppPeripherals){0};
@@ -412,9 +412,9 @@ static void test_simple_peripherals_and_independent_instances(void) {
     CHECK(status.pwr_btn.error_count == 0 && status.vbat.error_count == 0);
 
     app_interface_deinit(a);
-    CHECK(fixture_live_instances() == 1);
+    CHECK(mock_live_instances() == 1);
     app_interface_deinit(b);
-    CHECK(fixture_live_instances() == 0);
+    CHECK(mock_live_instances() == 0);
     free(mem_a);
     free(mem_b);
 }

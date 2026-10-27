@@ -6,7 +6,8 @@
 //! hand it over through [`pictorus_rt_init`].
 
 use core::ffi::{c_char, c_void};
-use core::sync::atomic::{AtomicBool, Ordering};
+
+use portable_atomic::{AtomicBool, Ordering};
 
 use crate::status::*;
 
@@ -20,8 +21,8 @@ pub struct pictorus_rt_config_t {
     pub heap: *mut c_void,
     pub heap_bytes: usize,
     pub on_panic: Option<unsafe extern "C" fn(msg: *const c_char, len: usize)>,
-    pub critical_section_enter: Option<unsafe extern "C" fn()>,
-    pub critical_section_exit: Option<unsafe extern "C" fn()>,
+    pub critical_section_enter: Option<unsafe extern "C" fn() -> u32>,
+    pub critical_section_exit: Option<unsafe extern "C" fn(state: u32)>,
 }
 
 impl pictorus_rt_config_t {
@@ -59,7 +60,7 @@ pub unsafe extern "C" fn pictorus_rt_init(
         return PICTORUS_ERR_ALREADY_INIT;
     }
 
-    #[cfg(all(not(feature = "std"), target_os = "none"))]
+    #[cfg(target_os = "none")]
     // SAFETY: the caller guarantees the heap memory is valid, and the `INITIALIZED` guard above
     // means this runs once, before any app instance exists to allocate.
     unsafe {
@@ -76,17 +77,18 @@ pub extern "C" fn pictorus_rt_abi_version() -> u32 {
 }
 
 /// Allocator, critical section and panic handler. Only present where there is no OS to supply
-/// them. The `target_os = "none"` condition (rather than only `not(feature = "std")`) keeps host
-/// builds and test binaries, which link the standard library, free of duplicate lang items.
-#[cfg(all(not(feature = "std"), target_os = "none"))]
+/// them, which is what keeps host builds and test binaries, which link the standard library,
+/// free of duplicate lang items.
+#[cfg(target_os = "none")]
 mod hooks {
     use super::pictorus_rt_config_t;
     use core::ffi::c_char;
     use core::fmt::Write;
-    use core::sync::atomic::{AtomicPtr, Ordering};
+    use portable_atomic::{AtomicPtr, Ordering};
 
     type PanicFn = unsafe extern "C" fn(*const c_char, usize);
-    type CsFn = unsafe extern "C" fn();
+    type CsEnterFn = unsafe extern "C" fn() -> u32;
+    type CsExitFn = unsafe extern "C" fn(u32);
 
     // Function pointers held as `*mut ()` so they can live in atomics.
     static ON_PANIC: AtomicPtr<()> = AtomicPtr::new(core::ptr::null_mut());
@@ -126,22 +128,24 @@ mod hooks {
 
     // SAFETY: mutual exclusion is exactly as strong as the integrator's callbacks. With none
     // provided it is a no-op, which `pictorus_ffi.h` documents as requiring a single calling
-    // context.
+    // context. The state returned by `enter` is handed back to `exit` untouched, so nested
+    // sections restore correctly as long as the callbacks do.
     unsafe impl critical_section::Impl for CriticalSection {
         unsafe fn acquire() -> critical_section::RawRestoreState {
-            call(&CS_ENTER);
+            let f = CS_ENTER.load(Ordering::Acquire);
+            if f.is_null() {
+                return 0;
+            }
+            // SAFETY: only ever stored from an `Option<CsEnterFn>` in `install`.
+            unsafe { core::mem::transmute::<*mut (), CsEnterFn>(f)() }
         }
 
-        unsafe fn release(_: critical_section::RawRestoreState) {
-            call(&CS_EXIT);
-        }
-    }
-
-    fn call(slot: &AtomicPtr<()>) {
-        let f = slot.load(Ordering::Acquire);
-        if !f.is_null() {
-            // SAFETY: only ever stored from an `Option<CsFn>` in `install`.
-            unsafe { core::mem::transmute::<*mut (), CsFn>(f)() };
+        unsafe fn release(state: critical_section::RawRestoreState) {
+            let f = CS_EXIT.load(Ordering::Acquire);
+            if !f.is_null() {
+                // SAFETY: only ever stored from an `Option<CsExitFn>` in `install`.
+                unsafe { core::mem::transmute::<*mut (), CsExitFn>(f)(state) };
+            }
         }
     }
 

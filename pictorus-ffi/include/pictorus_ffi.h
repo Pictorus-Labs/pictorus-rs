@@ -148,9 +148,8 @@ typedef struct {
 } pictorus_can_t;
 
 /*
- * UDP socket, available when the library is built for a target with an operating
- * system. Binding to the address in the app's peripheral configuration is this
- * side's job.
+ * UDP socket, backed by whatever network stack the target has. Binding to the
+ * address in the app's peripheral configuration is this side's job.
  *
  * recv must not block. It works as the serial read does, for one datagram: write
  * it to buf, at most cap bytes, set *len, and return PICTORUS_EMPTY if there is
@@ -232,15 +231,23 @@ typedef struct {
     void (*on_panic)(const char *msg, size_t len);
 
     /*
-     * Optional pair used to make the runtime allocator safe when app instances
-     * are stepped from more than one task or interrupt context. enter must
-     * prevent any other context from allocating until exit is called. If NULL
-     * the allocator is unprotected, and all allocating calls into the library
-     * must come from a single context. Ignored on targets with an operating
-     * system.
+     * Optional pair that makes the library's shared state safe when app
+     * instances are used from more than one task or interrupt context. The
+     * library holds a critical section around each allocation and, on targets
+     * with no atomic read-modify-write instructions such as Cortex-M0, around
+     * its own atomic operations.
+     *
+     * enter must prevent any other context from running library code that
+     * takes a critical section until the matching exit, and returns an opaque
+     * state. exit is passed the state its matching enter returned. Sections can
+     * nest, so the state should capture what is needed to put things back as
+     * they were, for example the previous interrupt mask.
+     *
+     * If either is NULL the library is unprotected, and all calls into it must
+     * come from a single context. Ignored on targets with an operating system.
      */
-    void (*critical_section_enter)(void);
-    void (*critical_section_exit)(void);
+    uint32_t (*critical_section_enter)(void);
+    void (*critical_section_exit)(uint32_t state);
 } pictorus_rt_config_t;
 
 /*

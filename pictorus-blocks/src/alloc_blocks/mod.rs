@@ -55,3 +55,13 @@ pub use string_format_block::StringFormatBlock;
 
 mod switch_block;
 pub use switch_block::SwitchBlock;
+
+mod udp_receive_block;
+#[doc(hidden)]
+pub use udp_receive_block::Parameters as UdpReceiveBlockParams;
+pub use udp_receive_block::UdpReceiveBlock;
+
+mod udp_transmit_block;
+#[doc(hidden)]
+pub use udp_transmit_block::Parameters as UdpTransmitBlockParams;
+pub use udp_transmit_block::UdpTransmitBlock;

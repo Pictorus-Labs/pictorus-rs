@@ -28,8 +28,7 @@ pub mod i2c;
 pub mod serial;
 #[cfg(feature = "alloc")]
 pub mod spi;
-// The UDP blocks are only available on platforms with `std`.
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub mod udp;
 
 pub use adc::{AdcInput, pictorus_adc_t};
@@ -46,7 +45,7 @@ pub use pwm::{PwmOutput, pictorus_pwm_t};
 pub use serial::{SerialPort, pictorus_serial_t};
 #[cfg(feature = "alloc")]
 pub use spi::{SpiBus, pictorus_spi_t};
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub use udp::{UdpPort, pictorus_udp_t};
 
 /// Mirror of `pictorus_peripheral_status_t` in `pictorus_ffi.h`.
