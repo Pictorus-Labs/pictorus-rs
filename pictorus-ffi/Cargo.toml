@@ -1,0 +1,48 @@
+[package]
+name = "pictorus-ffi"
+edition = "2024"
+description = "Runtime and peripheral adapters backing the Pictorus C FFI."
+version = "0.0.0"
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+pictorus-traits = { path = "../pictorus-traits", version = "0.0.0" }
+pictorus-blocks = { path = "../pictorus-blocks", version = "0.0.0" }
+pictorus-internal = { path = "../pictorus-internal", version = "0.0.0" }
+serde = { version = "1.0.219", default-features = false }
+embedded-can = "0.4.1"
+log = "0.4.21"
+# Atomic read-modify-write operations are not available on every target (Cortex-M0 has none).
+# Where they are missing this falls back to a critical section, and on bare metal that is the
+# one the runtime provides.
+portable-atomic = { version = "1.15", default-features = false, features = ["critical-section"] }
+
+# The runtime only owns the allocator and panic handler where there is no OS to
+# provide them.
+[target.'cfg(target_os = "none")'.dependencies]
+embedded-alloc = "0.5.1"
+# The restore state is what lets nested critical sections put interrupts back as they found them.
+critical-section = { version = "1.2.0", features = ["restore-state-u32"] }
+
+[features]
+default = []
+# The generated app allocates. On bare metal the runtime provides the global
+# allocator, backed by the heap passed to `pictorus_rt_init`. Where there is an operating
+# system the system allocator and panic handler are used, and the heap and panic fields of the
+# runtime config are ignored.
+alloc = ["pictorus-internal/alloc", "pictorus-blocks/alloc"]
+
+# A stand-in for the library codegen generates for an app, and the C program that is run against
+# it. The generated library is a staticlib, which is the shape of these two.
+[[example]]
+name = "mock_ffi_lib"
+crate-type = ["staticlib"]
+required-features = ["alloc"]
+
+[[test]]
+name = "c_integration"
+required-features = ["alloc"]

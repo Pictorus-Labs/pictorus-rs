@@ -9,6 +9,8 @@ on:
       # `vendor/**` is matched wholesale to catch FSP_VERSION, which src/lib.rs
       # checks against the generated header and which is not a `.h` file.
       - "**/*.h"
+      # pictorus-ffi's integration test compiles and runs a C program.
+      - "**/*.c"
       - "**/*.sh"
       - "**/Cargo.toml"
       - "renesas-fsp-sys/vendor/**"
@@ -65,7 +67,9 @@ jobs:
           ]
         include:
           - target: x86_64-unknown-linux-gnu
-            platforms: "pictorus-linux pictorus-sim renesas-fsp-sys pictorus-fsp"
+            # pictorus-ffi's tests build a staticlib and link a C program against it, so they
+            # need a C compiler, which the runner has.
+            platforms: "pictorus-linux pictorus-sim renesas-fsp-sys pictorus-fsp pictorus-ffi"
             run_tests: true
           - target: arm-unknown-linux-musleabi
             linker: arm-linux-gnueabihf
@@ -149,3 +153,36 @@ jobs:
             fi
 
           done
+  # pictorus-ffi on bare metal. The host build and its C tests run in the `compile` job above.
+  # This is a separate job because that matrix applies one set of feature variants to every
+  # platform in a row, and this crate needs its own (`alloc`).
+  compile-ffi:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        # thumbv6m has no atomic read-modify-write instructions, which the crate has to work around.
+        target:
+          [thumbv6m-none-eabi, thumbv7em-none-eabihf, thumbv8m.main-none-eabi]
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set Up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+          components: rustfmt, clippy
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+      - name: Check without an allocator
+        run: cargo check -p pictorus-ffi --target ${{ matrix.target }}
+      - name: Check with an allocator
+        run: |
+          cargo clippy -p pictorus-ffi --features alloc --target ${{ matrix.target }}
+          cargo check -p pictorus-ffi --features alloc --target ${{ matrix.target }}
+      # The mock library is the shape of a generated one, so this exercises the runtime's
+      # allocator and panic handler, and the size symbols, for a real target.
+      - name: Build the mock library
+        run: cargo build -p pictorus-ffi --example mock_ffi_lib --features alloc --target ${{ matrix.target }}

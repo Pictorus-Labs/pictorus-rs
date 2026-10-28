@@ -129,7 +129,10 @@ unsafe impl critical_section::Impl for CriticalSection {
     /// # Safety
     /// Safe in single-threaded context with no interrupt handlers modifying shared data
     unsafe fn acquire() -> critical_section::RawRestoreState {
-        // NO-OP is safe in single-threaded PX4 module context
+        // NO-OP is safe in single-threaded PX4 module context. The restore state is never read
+        // back, so any value will do, and `Default` keeps this valid whichever state type the
+        // `critical-section` features selected elsewhere in the build give it.
+        Default::default()
     }
 
     /// Release critical section - NO-OP for single-threaded PX4 module
