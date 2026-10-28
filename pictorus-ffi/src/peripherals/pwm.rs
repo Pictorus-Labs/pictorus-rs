@@ -64,6 +64,7 @@ impl OutputBlock for PwmOutput {
         _model_clock: &dyn ModelClock,
         inputs: PassBy<'_, Self::Inputs>,
     ) {
+        // C already has these values, and reconfiguring the timer is not free.
         if self.applied == Some(inputs) {
             return;
         }

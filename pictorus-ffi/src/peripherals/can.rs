@@ -80,7 +80,11 @@ fn split_id(id: Id) -> (u32, bool) {
 /// one. Decoding signals from the frame is up to the blocks.
 pub struct CanBus {
     handle: pictorus_can_t,
+    /// The frames taken from C this tick. Clearing it at the end of the tick, rather than
+    /// dropping it, keeps its allocation for the next one.
     frames: Vec<pictorus_can_frame_t>,
+    /// Whether the receive queue has been drained yet this tick. An empty `frames` can't say,
+    /// since the queue may simply have held nothing.
     polled: bool,
     status: pictorus_peripheral_status_t,
 }

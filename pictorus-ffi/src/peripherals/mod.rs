@@ -19,7 +19,7 @@ pub mod pwm;
 // The adapters for byte-oriented peripherals buffer data, and the blocks that consume it are
 // only available when the app allocates.
 #[cfg(feature = "alloc")]
-mod buffer;
+mod byte_buffer;
 #[cfg(feature = "alloc")]
 pub mod can;
 #[cfg(feature = "alloc")]
@@ -33,7 +33,7 @@ pub mod udp;
 
 pub use adc::{AdcInput, pictorus_adc_t};
 #[cfg(feature = "alloc")]
-pub use buffer::RECEIVE_BUFFER_BYTES;
+pub use byte_buffer::RECEIVE_BUFFER_BYTES;
 #[cfg(feature = "alloc")]
 pub use can::{CanBus, RX_FRAMES_PER_TICK, pictorus_can_frame_t, pictorus_can_t};
 pub use dac::{DacOutput, pictorus_dac_t};

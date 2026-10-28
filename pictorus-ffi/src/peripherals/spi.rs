@@ -4,7 +4,7 @@ use pictorus_blocks::{SpiReceiveBlockParams, SpiTransmitBlockParams};
 use pictorus_internal::protocols::Flush;
 use pictorus_traits::{ByteSliceSignal, InputBlock, ModelClock, OutputBlock, PassBy};
 
-use super::buffer::ByteBuffer;
+use super::byte_buffer::ByteBuffer;
 use super::{Peripheral, pictorus_peripheral_status_t};
 use crate::status::{PICTORUS_ERR_PERIPHERAL, pictorus_status_t};
 

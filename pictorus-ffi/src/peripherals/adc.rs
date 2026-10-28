@@ -21,7 +21,11 @@ pub struct pictorus_adc_t {
 /// per tick. That includes a failed read: it is not retried until the next tick.
 pub struct AdcInput {
     handle: pictorus_adc_t,
+    /// The last sample C returned successfully. It outlives the tick so that a failed read can
+    /// fall back to it.
     value: u16,
+    /// Whether C has been asked yet this tick. It is separate from `value` because a failed
+    /// read has to leave the previous sample in place.
     sampled_this_tick: bool,
     status: pictorus_peripheral_status_t,
 }

@@ -3,7 +3,7 @@ use core::ffi::c_void;
 use pictorus_blocks::{I2cInputBlockParams, I2cOutputBlockParams};
 use pictorus_traits::{ByteSliceSignal, InputBlock, ModelClock, OutputBlock, PassBy};
 
-use super::buffer::ByteBuffer;
+use super::byte_buffer::ByteBuffer;
 use super::{Peripheral, pictorus_peripheral_status_t};
 use crate::status::{PICTORUS_ERR_PERIPHERAL, pictorus_status_t};
 
@@ -43,7 +43,11 @@ pub struct pictorus_i2c_t {
 /// tracking sees it as a missed update.
 pub struct I2cBus {
     handle: pictorus_i2c_t,
+    /// The bytes of the most recent read. `input` returns a slice of it, so it has to outlive
+    /// the call, and keeping it between calls means reads do not allocate.
     rx: ByteBuffer,
+    /// Assembles the command byte and data of a write, kept between calls so writes do not
+    /// allocate either.
     tx: ByteBuffer,
     status: pictorus_peripheral_status_t,
 }

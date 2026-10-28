@@ -105,7 +105,9 @@ typedef struct {
 
 /*
  * SPI device. Chip select belongs to this side: each call is one complete,
- * chip-select framed transaction. read is called at most once per tick.
+ * chip-select framed transaction. read is called at most once per tick. The
+ * library only ever reads or writes in a call, never both, so what read clocks
+ * out on MOSI while it receives is this side's choice.
  */
 typedef struct {
     void *ctx;
@@ -208,7 +210,7 @@ typedef struct {
 } pictorus_can_config_t;
 
 typedef struct {
-    /* The "address:port" to bind to. */
+    /* The "address:port" to bind to, as a NUL-terminated string. */
     const char *address;
 } pictorus_udp_config_t;
 
@@ -242,6 +244,11 @@ typedef struct {
      * state. exit is passed the state its matching enter returned. Sections can
      * nest, so the state should capture what is needed to put things back as
      * they were, for example the previous interrupt mask.
+     *
+     * What these functions do is up to the integrator. The library only
+     * promises to call them around code that is unsafe to run from two contexts
+     * at once. If they mask interrupts, interrupts stay masked for as long as
+     * that code runs, which for an allocation is not constant time.
      *
      * If either is NULL the library is unprotected, and all calls into it must
      * come from a single context. Ignored on targets with an operating system.

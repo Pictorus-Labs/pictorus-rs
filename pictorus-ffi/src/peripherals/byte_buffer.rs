@@ -1,17 +1,14 @@
 //! Storage for bytes that cross the C boundary.
 //!
-//! Every byte buffer an adapter owns lives in a [`ByteBuffer`], and adapters touch it only
-//! through the methods here. With an allocator the buffer grows to whatever an operation needs,
-//! as the platform adapters in the other crates do, and is kept between ticks so that a
-//! running model does not allocate.
+//! Every byte buffer an adapter owns lives in a [`ByteBuffer`]. With an allocator it grows to
+//! whatever an operation needs, as the platform adapters in the other crates do, and it keeps
+//! its allocation between ticks so that a running model does not allocate.
 //!
-//! Supporting builds without an allocator means changing only this file. Back `ByteBuffer`
-//! with a `heapless::Vec<u8, N>`, take `N` as a const generic on the adapters, and source `N`
-//! from the target's `buffer_size_bytes`. Operations that do not fit would then fail with a
-//! status code of their own, which is the only place a capacity error can arise. The adapters'
-//! logic, and what C observes when everything fits, stay as they are. Blocks that buffer data themselves (I2C, serial, SPI and CAN) still
-//! allocate until they are reworked, so the adapters are not the only thing a no-alloc build
-//! needs.
+//! Supporting builds without an allocator is a change to this file only. Back `ByteBuffer` with
+//! a `heapless::Vec<u8, N>`, take `N` as a const generic on the adapters, and source it from the
+//! target's `buffer_size_bytes`. Operations that do not fit would then fail with a status code
+//! of their own. The blocks that buffer data themselves (I2C, serial, SPI and CAN) still
+//! allocate, so this is not the only thing a no-alloc build needs.
 
 use alloc::vec::Vec;
 

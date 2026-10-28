@@ -25,6 +25,8 @@ pub struct pictorus_gpio_out_t {
 /// A digital input backed by C. Reads as `1.0` when high and `0.0` when low.
 pub struct GpioInput {
     handle: pictorus_gpio_in_t,
+    /// The last level C read successfully, which is reported again if a read fails. This is not
+    /// a per-tick cache: every call reads C afresh.
     last: f64,
     status: pictorus_peripheral_status_t,
 }

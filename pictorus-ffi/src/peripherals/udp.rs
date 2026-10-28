@@ -4,7 +4,7 @@ use pictorus_blocks::{UdpReceiveBlockParams, UdpTransmitBlockParams};
 use pictorus_internal::protocols::Flush;
 use pictorus_traits::{ByteSliceSignal, InputBlock, ModelClock, OutputBlock, PassBy};
 
-use super::buffer::{ByteBuffer, RECEIVE_BUFFER_BYTES, Received};
+use super::byte_buffer::{ByteBuffer, RECEIVE_BUFFER_BYTES, Received};
 use super::{Peripheral, pictorus_peripheral_status_t};
 use crate::status::{PICTORUS_ERR_INVALID_ARG, PICTORUS_ERR_PERIPHERAL, pictorus_status_t};
 
