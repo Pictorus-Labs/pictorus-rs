@@ -41,6 +41,10 @@ fn c_program_runs_against_staticlib() {
     // authoritative list for a build is `cargo rustc --example mock_ffi_lib --crate-type
     // staticlib -- --print native-static-libs`.
     if cfg!(target_os = "linux") {
+        // The test takes the address of the absolute `PICTORUS_APP_INTERFACE_*` symbols, which
+        // a position independent executable (the default on most distributions) cannot do.
+        // Real users read these symbols in a linker script, not from C.
+        compile.args(["-fno-pie", "-no-pie"]);
         compile.args([
             "-lgcc_s",
             "-lutil",
