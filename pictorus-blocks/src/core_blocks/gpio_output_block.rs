@@ -75,14 +75,11 @@ impl ToBool for ByteSliceSignal {
 
 impl<const NROWS: usize, const NCOLS: usize, S: Scalar> ToBool for Matrix<NROWS, NCOLS, S> {
     fn to_bool(value: PassBy<Self>) -> bool {
-        for r in 0..NROWS {
-            for c in 0..NCOLS {
-                if value.data[c][r].is_truthy() {
-                    return true;
-                }
-            }
-        }
-        false
+        value
+            .data
+            .iter()
+            .flatten()
+            .any(|element| element.is_truthy())
     }
 }
 

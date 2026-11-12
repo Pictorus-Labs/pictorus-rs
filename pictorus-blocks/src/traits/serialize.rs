@@ -61,8 +61,8 @@ where
         let mut data = Array::new();
         for row in 0..NROWS {
             let mut row_data = Array::new();
-            for col in 0..NCOLS {
-                row_data.push(S::as_json_value(input.data[col][row], ()));
+            for col in input.data.iter() {
+                row_data.push(S::as_json_value(col[row], ()));
             }
             data.push(Value::Array(row_data));
         }
