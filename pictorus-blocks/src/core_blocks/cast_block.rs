@@ -26,7 +26,7 @@ pub trait OverflowMode {
     /// Callers must apply the rounding mode first; `CastElement` does. A value that still
     /// has a fractional part is truncated toward zero by the conversion itself, which
     /// would silently bypass the chosen rounding mode.
-    fn from_float<F: Float, T: PrimInt + 'static>(v: F) -> T
+    fn from_float<F: Float + AsPrimitive<T>, T: PrimInt + 'static>(v: F) -> T
     where
         i128: AsPrimitive<T>;
 
@@ -47,9 +47,12 @@ pub struct Wrap;
 /// Panic when a value does not fit the destination type.
 pub struct Panic;
 
+/// Behave exactly like Rust's [`as` cast](https://doc.rust-lang.org/reference/expressions/operator-expr.html#numeric-cast-expressions).
+pub struct AsCast;
+
 impl OverflowMode for Saturate {
     #[inline]
-    fn from_float<F: Float, T: PrimInt + 'static>(v: F) -> T
+    fn from_float<F: Float + AsPrimitive<T>, T: PrimInt + 'static>(v: F) -> T
     where
         i128: AsPrimitive<T>,
     {
@@ -76,7 +79,7 @@ impl OverflowMode for Saturate {
 
 impl OverflowMode for Wrap {
     #[inline]
-    fn from_float<F: Float, T: PrimInt + 'static>(v: F) -> T
+    fn from_float<F: Float + AsPrimitive<T>, T: PrimInt + 'static>(v: F) -> T
     where
         i128: AsPrimitive<T>,
     {
@@ -101,9 +104,25 @@ impl OverflowMode for Wrap {
     }
 }
 
+impl OverflowMode for AsCast {
+    #[inline]
+    fn from_float<F: Float + AsPrimitive<T>, T: PrimInt + 'static>(v: F) -> T
+    where
+        i128: AsPrimitive<T>,
+    {
+        // `AsPrimitive` is `as`: floats saturate with NaN to zero, integers wrap.
+        v.as_()
+    }
+
+    #[inline]
+    fn narrow_int<F: PrimInt + AsPrimitive<T>, T: PrimInt + 'static>(v: F) -> T {
+        v.as_()
+    }
+}
+
 impl OverflowMode for Panic {
     #[inline]
-    fn from_float<F: Float, T: PrimInt + 'static>(v: F) -> T
+    fn from_float<F: Float + AsPrimitive<T>, T: PrimInt + 'static>(v: F) -> T
     where
         i128: AsPrimitive<T>,
     {
@@ -355,7 +374,7 @@ where
 ///
 /// `Ovf` and `Rnd` select the overflow and rounding behavior, defaulting to `Saturate`
 /// and `Truncate`. That matches `as` for float to integer, but clamps rather than wrapping
-/// when narrowing between integers.
+/// when narrowing between integers. Use `AsCast` to match `as` in both cases.
 pub struct CastBlock<I, O, Ovf = Saturate, Rnd = Truncate>
 where
     I: CastTo<O, Ovf, Rnd>,
@@ -747,6 +766,59 @@ mod tests {
     #[should_panic(expected = "cast overflowed the destination type")]
     fn test_nan_panics_under_panic_mode() {
         cast_scalar_as::<f64, i32, Panic, Truncate>(f64::NAN);
+    }
+
+    #[test]
+    fn test_as_cast_matches_rust_as() {
+        // Int -> int wraps, unlike the Saturate default.
+        assert_eq!(
+            cast_scalar_as::<u16, u8, AsCast, Truncate>(300),
+            300u16 as u8
+        );
+        assert_eq!(cast_scalar_as::<u16, u8, AsCast, Truncate>(300), 44u8);
+        assert_eq!(cast_scalar_as::<i32, u8, AsCast, Truncate>(-1), -1i32 as u8);
+        assert_eq!(
+            cast_scalar_as::<i64, i8, AsCast, Truncate>(200),
+            200i64 as i8
+        );
+
+        // Float -> int saturates, with NaN going to zero.
+        assert_eq!(cast_scalar_as::<f64, u8, AsCast, Truncate>(300.7), 255u8);
+        assert_eq!(cast_scalar_as::<f64, u8, AsCast, Truncate>(-1.2), 0u8);
+        assert_eq!(cast_scalar_as::<f64, i8, AsCast, Truncate>(-500.7), -128i8);
+        assert_eq!(cast_scalar_as::<f64, i32, AsCast, Truncate>(f64::NAN), 0);
+        assert_eq!(
+            cast_scalar_as::<f64, i32, AsCast, Truncate>(f64::INFINITY),
+            i32::MAX
+        );
+        assert_eq!(
+            cast_scalar_as::<f64, i32, AsCast, Truncate>(f64::NEG_INFINITY),
+            i32::MIN
+        );
+
+        // In range, and the non-integer pairs, are unaffected.
+        assert_eq!(cast_scalar_as::<u16, u8, AsCast, Truncate>(42), 42u8);
+        assert_eq!(cast_scalar_as::<f64, i32, AsCast, Truncate>(-3.9), -3);
+        assert_eq!(cast_scalar_as::<u8, f64, AsCast, Truncate>(7), 7.0);
+        assert!(cast_scalar_as::<f64, bool, AsCast, Truncate>(2.0));
+    }
+
+    #[test]
+    fn test_as_cast_still_honors_rounding_mode() {
+        assert_eq!(cast_scalar_as::<f64, i32, AsCast, Nearest>(2.7), 3);
+        assert_eq!(cast_scalar_as::<f64, i32, AsCast, Floor>(-2.2), -3);
+    }
+
+    #[test]
+    fn test_as_cast_applies_elementwise_to_matrices() {
+        let mut block =
+            CastBlock::<Matrix<2, 1, i32>, Matrix<2, 1, u8>, AsCast, Truncate>::default();
+        let model_clock = StubModelClock::default();
+
+        let input = Matrix::<2, 1, i32> { data: [[300, -1]] };
+        let output = block.process(&Parameters::new(), &model_clock, &input);
+
+        assert_eq!(output, &Matrix::<2, 1, u8> { data: [[44, 255]] });
     }
 
     #[test]
