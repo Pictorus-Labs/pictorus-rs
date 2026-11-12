@@ -7,14 +7,22 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-/// Cargo builds examples before running integration tests, into the `examples` directory next
-/// to the test binary's `deps` directory.
+/// Cargo builds examples before running integration tests, into an `examples` directory in the
+/// profile directory. Where the test binary sits under that depends on the Cargo version (`deps`
+/// directly beneath it, or a per-package directory under `build`), so look in each ancestor.
 fn mock_ffi_lib() -> PathBuf {
     let test_exe = std::env::current_exe().unwrap();
-    let profile_dir = test_exe.parent().unwrap().parent().unwrap();
-    let lib = profile_dir.join("examples/libmock_ffi_lib.a");
-    assert!(lib.exists(), "staticlib not found at {}", lib.display());
-    lib
+    test_exe
+        .ancestors()
+        .skip(1)
+        .map(|dir| dir.join("examples/libmock_ffi_lib.a"))
+        .find(|lib| lib.exists())
+        .unwrap_or_else(|| {
+            panic!(
+                "staticlib libmock_ffi_lib.a not found in any `examples` directory above {}",
+                test_exe.display()
+            )
+        })
 }
 
 #[test]

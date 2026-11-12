@@ -127,10 +127,8 @@ impl<S: BitOperations<S> + Scalar, const NROWS: usize, const NCOLS: usize> BitOp
     for Matrix<NROWS, NCOLS, S>
 {
     fn operate_assign(lhs: &mut Self, rhs: PassBy<S>, operation: Operation) {
-        for r in 0..NROWS {
-            for c in 0..NCOLS {
-                S::operate_assign(&mut lhs.data[c][r], rhs, operation);
-            }
+        for element in lhs.data.iter_mut().flatten() {
+            S::operate_assign(element, rhs, operation);
         }
     }
 }
