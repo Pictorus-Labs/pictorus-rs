@@ -769,37 +769,56 @@ mod tests {
     }
 
     #[test]
+    // The expected values are deliberately literal `as` casts, which clippy flags.
+    #[allow(clippy::cast_nan_to_int, clippy::unnecessary_cast)]
     fn test_as_cast_matches_rust_as() {
-        // Int -> int wraps, unlike the Saturate default.
+        // Int -> int wraps, unlike the Saturate default: 300 -> 44, -1 -> 255, 200 -> -56.
         assert_eq!(
             cast_scalar_as::<u16, u8, AsCast, Truncate>(300),
             300u16 as u8
         );
-        assert_eq!(cast_scalar_as::<u16, u8, AsCast, Truncate>(300), 44u8);
         assert_eq!(cast_scalar_as::<i32, u8, AsCast, Truncate>(-1), -1i32 as u8);
         assert_eq!(
             cast_scalar_as::<i64, i8, AsCast, Truncate>(200),
             200i64 as i8
         );
 
-        // Float -> int saturates, with NaN going to zero.
-        assert_eq!(cast_scalar_as::<f64, u8, AsCast, Truncate>(300.7), 255u8);
-        assert_eq!(cast_scalar_as::<f64, u8, AsCast, Truncate>(-1.2), 0u8);
-        assert_eq!(cast_scalar_as::<f64, i8, AsCast, Truncate>(-500.7), -128i8);
-        assert_eq!(cast_scalar_as::<f64, i32, AsCast, Truncate>(f64::NAN), 0);
+        // Float -> int saturates: 300.7 -> 255, -1.2 -> 0, -500.7 -> -128, NaN -> 0, and
+        // the infinities clamp to the destination's limits.
+        assert_eq!(
+            cast_scalar_as::<f64, u8, AsCast, Truncate>(300.7),
+            300.7f64 as u8
+        );
+        assert_eq!(
+            cast_scalar_as::<f64, u8, AsCast, Truncate>(-1.2),
+            -1.2f64 as u8
+        );
+        assert_eq!(
+            cast_scalar_as::<f64, i8, AsCast, Truncate>(-500.7),
+            -500.7f64 as i8
+        );
+        assert_eq!(
+            cast_scalar_as::<f64, i32, AsCast, Truncate>(f64::NAN),
+            f64::NAN as i32
+        );
         assert_eq!(
             cast_scalar_as::<f64, i32, AsCast, Truncate>(f64::INFINITY),
-            i32::MAX
+            f64::INFINITY as i32
         );
         assert_eq!(
             cast_scalar_as::<f64, i32, AsCast, Truncate>(f64::NEG_INFINITY),
-            i32::MIN
+            f64::NEG_INFINITY as i32
         );
 
-        // In range, and the non-integer pairs, are unaffected.
-        assert_eq!(cast_scalar_as::<u16, u8, AsCast, Truncate>(42), 42u8);
-        assert_eq!(cast_scalar_as::<f64, i32, AsCast, Truncate>(-3.9), -3);
-        assert_eq!(cast_scalar_as::<u8, f64, AsCast, Truncate>(7), 7.0);
+        // In range values and int -> float are unaffected.
+        assert_eq!(cast_scalar_as::<u16, u8, AsCast, Truncate>(42), 42u16 as u8);
+        assert_eq!(
+            cast_scalar_as::<f64, i32, AsCast, Truncate>(-3.9),
+            -3.9f64 as i32
+        );
+        assert_eq!(cast_scalar_as::<u8, f64, AsCast, Truncate>(7), 7u8 as f64);
+
+        // `as` cannot cast to bool, so this one checks truthiness instead.
         assert!(cast_scalar_as::<f64, bool, AsCast, Truncate>(2.0));
     }
 
