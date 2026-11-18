@@ -99,7 +99,6 @@ mod std_utils {
     use std::panic::PanicHookInfo;
     use std::prelude::rust_2021::*;
 
-    use chrono::Local;
     use env_logger::Builder;
     use log::{LevelFilter, info, warn};
 
@@ -379,7 +378,7 @@ mod std_utils {
                 writeln!(
                     buf,
                     "{} [{}] - {}",
-                    Local::now().format("%+"),
+                    jiff::Zoned::now().strftime("%Y-%m-%dT%H:%M:%S%.f%:z"),
                     record.level(),
                     record.args()
                 )

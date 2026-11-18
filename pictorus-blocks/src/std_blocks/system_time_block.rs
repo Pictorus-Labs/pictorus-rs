@@ -1,30 +1,30 @@
-use chrono::{DateTime, Datelike, Local, Timelike};
+use jiff::Zoned;
 use pictorus_traits::{GeneratorBlock, PassBy};
 
 /// This block can be used in `std` environments to get the current system time.
 /// The time output can be in different formats, such as epoch time, second, minute, hour, day of the month, day of the year, month, or year.
 pub struct SystemTimeBlock {
     output: f64,
-    start_time: DateTime<Local>,
+    start_time: Zoned,
 }
 
 impl Default for SystemTimeBlock {
     fn default() -> Self {
         Self {
             output: 0.0,
-            start_time: Local::now(),
+            start_time: Zoned::now(),
         }
     }
 }
 
-fn get_output_value(time: DateTime<Local>, method: SystemTimeEnum) -> f64 {
+fn get_output_value(time: &Zoned, method: SystemTimeEnum) -> f64 {
     match method {
-        SystemTimeEnum::Epoch => time.timestamp() as f64,
+        SystemTimeEnum::Epoch => time.timestamp().as_second() as f64,
         SystemTimeEnum::Second => time.second().into(),
         SystemTimeEnum::Minute => time.minute().into(),
         SystemTimeEnum::Hour => time.hour().into(),
         SystemTimeEnum::DayLunar => time.day().into(),
-        SystemTimeEnum::DayOrdinal => time.ordinal().into(),
+        SystemTimeEnum::DayOrdinal => time.day_of_year().into(),
         SystemTimeEnum::Month => time.month().into(),
         SystemTimeEnum::Year => time.year().into(),
     }
@@ -42,8 +42,11 @@ impl GeneratorBlock for SystemTimeBlock {
         // Since simulations can run faster than real-time, we'll use the delta between system start
         // and now, as measured by app_time, for system clock.
         let elapsed_time = model_clock.time();
-        let time_now = self.start_time + elapsed_time;
-        self.output = get_output_value(time_now, parameters.method);
+        let time_now = self
+            .start_time
+            .checked_add(elapsed_time)
+            .expect("System time overflowed");
+        self.output = get_output_value(&time_now, parameters.method);
         self.output
     }
 
@@ -87,22 +90,22 @@ mod tests {
 
     #[test]
     fn test_get_output_value() {
-        let time = Local::now();
-        let epoch = get_output_value(time, SystemTimeEnum::Epoch);
-        let second = get_output_value(time, SystemTimeEnum::Second);
-        let minute = get_output_value(time, SystemTimeEnum::Minute);
-        let hour = get_output_value(time, SystemTimeEnum::Hour);
-        let day_lunar = get_output_value(time, SystemTimeEnum::DayLunar);
-        let day_ordinal = get_output_value(time, SystemTimeEnum::DayOrdinal);
-        let month = get_output_value(time, SystemTimeEnum::Month);
-        let year = get_output_value(time, SystemTimeEnum::Year);
+        let time = Zoned::now();
+        let epoch = get_output_value(&time, SystemTimeEnum::Epoch);
+        let second = get_output_value(&time, SystemTimeEnum::Second);
+        let minute = get_output_value(&time, SystemTimeEnum::Minute);
+        let hour = get_output_value(&time, SystemTimeEnum::Hour);
+        let day_lunar = get_output_value(&time, SystemTimeEnum::DayLunar);
+        let day_ordinal = get_output_value(&time, SystemTimeEnum::DayOrdinal);
+        let month = get_output_value(&time, SystemTimeEnum::Month);
+        let year = get_output_value(&time, SystemTimeEnum::Year);
 
-        assert_eq!(epoch, time.timestamp() as f64);
+        assert_eq!(epoch, time.timestamp().as_second() as f64);
         assert_eq!(second, time.second() as f64);
         assert_eq!(minute, time.minute() as f64);
         assert_eq!(hour, time.hour() as f64);
         assert_eq!(day_lunar, time.day() as f64);
-        assert_eq!(day_ordinal, time.ordinal() as f64);
+        assert_eq!(day_ordinal, time.day_of_year() as f64);
         assert_eq!(month, time.month() as f64);
         assert_eq!(year, time.year() as f64);
     }
@@ -116,9 +119,9 @@ mod tests {
     #[test]
     fn test_system_time_block() {
         let mut block: SystemTimeBlock = Default::default();
-        let start_time = block.start_time;
-        assert!(Local::now() >= start_time);
-        assert!(Local::now() <= start_time + chrono::Duration::milliseconds(100));
+        let start_time = block.start_time.clone();
+        assert!(Zoned::now() >= start_time);
+        assert!(Zoned::now() <= start_time.checked_add(Duration::from_millis(100)).unwrap());
 
         let params = Parameters::new("Epoch");
         let model_clock = StubModelClock::new(
@@ -127,8 +130,11 @@ mod tests {
             Duration::from_millis(100),
         );
         let output = block.generate(&params, &model_clock);
-        assert_eq!(output, start_time.timestamp() as f64 + 42.0);
-        assert_eq!(block.buffer(), start_time.timestamp() as f64 + 42.0);
+        assert_eq!(output, start_time.timestamp().as_second() as f64 + 42.0);
+        assert_eq!(
+            block.buffer(),
+            start_time.timestamp().as_second() as f64 + 42.0
+        );
         assert_eq!(block.buffer(), output);
     }
 }
