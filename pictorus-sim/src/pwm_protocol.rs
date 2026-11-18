@@ -25,10 +25,7 @@ impl Pwm for SimPwmProtocol {
     fn set_period<P: Into<Self::Time>>(&mut self, _period: P) {}
 }
 
-pub fn create_pwm_protocol(
-    _pwm_number_ch1: f64,
-    _pwm_number_ch2: f64,
-) -> Result<SimPwmProtocol, Infallible> {
+pub fn create_pwm_protocol() -> Result<SimPwmProtocol, Infallible> {
     Ok(SimPwmProtocol {})
 }
 
