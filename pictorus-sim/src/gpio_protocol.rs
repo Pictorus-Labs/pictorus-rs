@@ -28,11 +28,11 @@ impl OutputPin for SimGpioPin {
     }
 }
 
-pub fn create_gpio_input_pin(_: f64) -> Result<SimGpioPin, Infallible> {
+pub fn create_gpio_input_pin() -> Result<SimGpioPin, Infallible> {
     Ok(SimGpioPin {})
 }
 
-pub fn create_gpio_output_pin(_: f64) -> Result<SimGpioPin, Infallible> {
+pub fn create_gpio_output_pin() -> Result<SimGpioPin, Infallible> {
     Ok(SimGpioPin {})
 }
 
