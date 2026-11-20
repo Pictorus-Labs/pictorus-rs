@@ -1,8 +1,8 @@
-use chrono::Utc;
 use core::time::Duration;
 use log::info;
 use std::boxed::Box;
 use std::io::{BufWriter, Write};
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs::File, string::String};
 
 use super::Logger;
@@ -39,12 +39,9 @@ impl CsvLogger {
             csv_log_period,
             writer,
             output_path,
-            app_start_epoch: Duration::from_micros(
-                Utc::now()
-                    .timestamp_micros()
-                    .try_into()
-                    .expect("Could not cast app start epoch as u64"),
-            ),
+            app_start_epoch: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("System clock is set before the Unix epoch"),
             buffer: String::with_capacity(1024),
         }
     }

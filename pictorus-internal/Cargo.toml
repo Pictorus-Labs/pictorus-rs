@@ -23,7 +23,7 @@ num-traits = { version = "0.2.19", default-features = false, features = [
 log = "0.4.21"
 embedded-can = "0.4.1"
 nb = "1.1.0"
-chrono = { version = "0.4.40", optional = true }
+jiff = { version = "0.2", optional = true }
 env_logger = { version = "0.11.8", optional = true }
 rtt-target = { git = "https://github.com/Pictorus-Labs/rtt-target", branch = "alignment-fix", optional = true }
 postcard = { version = "1.1.1" }
@@ -38,6 +38,6 @@ temp-env = "0.3"
 cobs = "0.4.0"
 
 [features]
-std = ["serde/std", "dep:env_logger", "dep:chrono", "dep:serde_json", "dep:smashquote", "dep:serde-big-array", "alloc"]
+std = ["serde/std", "dep:env_logger", "dep:jiff", "dep:serde_json", "dep:smashquote", "dep:serde-big-array", "alloc"]
 rtt = ["dep:rtt-target"]
 alloc = ["serde/alloc"]

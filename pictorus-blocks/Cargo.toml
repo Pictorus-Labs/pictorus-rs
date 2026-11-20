@@ -30,10 +30,7 @@ seq-macro = "0.3.6"
 
 # Std-only dependencies
 rustfft = { version = "6.2.0", default-features = false, optional = true }
-chrono = { version = "0.4.40", default-features = false, features = [
-  "now",
-  "clock",
-], optional = true }
+jiff = { version = "0.2", optional = true }
 typenum = { version = "1.19.0", features = ["no_std", "const-generics"] }
 generic-array = { version = "1.2.0", default-features = false }
 
@@ -52,4 +49,4 @@ byteorder = { version = "1.5.0", features = ["std"] }
 
 [features]
 alloc = ["generic-array/alloc"]
-std = ["alloc", "dep:rustfft", "dep:chrono"]
+std = ["alloc", "dep:rustfft", "dep:jiff"]
