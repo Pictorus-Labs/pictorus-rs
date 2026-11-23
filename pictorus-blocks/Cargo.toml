@@ -10,7 +10,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-heapless = "0.8.0"
+heapless = "0.9.0"
 nalgebra = { version = "0.33.2", default-features = false, features = [
   "libm",
 ] }
