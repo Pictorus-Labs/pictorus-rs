@@ -4,7 +4,7 @@ pub struct PostcardEncoderCOBS {}
 
 impl PostcardEncoderCOBS {
     pub fn encode<const N: usize>(&mut self, data: &impl Serialize) -> heapless::Vec<u8, N> {
-        match postcard::to_vec_cobs(data) {
+        match postcard::heapless_v0_9::to_vec_cobs(data) {
             Ok(encoded) => encoded,
             Err(_) => {
                 log::warn!(
